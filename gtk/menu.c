@@ -420,8 +420,8 @@ static void popup_about_notebook(enum ABOUT_SECTIONS default_section)
     "and early 1970s.",
     "",
     "Written by Adrian Wise",
-    "adrian@sapere.demon.co.uk",
-    "http://www.sapere.demon.co.uk",
+    "apw@adrianwise.co.uk",
+    "http://www.series16.adrianwise.co.uk",
     NULL
   };
 
