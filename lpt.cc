@@ -65,11 +65,11 @@ void LPT::master_clear()
   pending_nl = false;
 }
 
-bool LPT::ina(unsigned short instr, signed short &data)
+LPT::STATUS LPT::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "%s Input from line printer\n", __PRETTY_FUNCTION__);
   exit(1);
-  return 0;
+  return STATUS_READY;
 }
 
 void LPT::open_file()
@@ -105,7 +105,7 @@ void LPT::open_file()
     }
 }
 
-bool LPT::ota(unsigned short instr, signed short data)
+LPT::STATUS LPT::ota(unsigned short instr, signed short data)
 {
   bool r = false;
   int d;
@@ -147,7 +147,7 @@ bool LPT::ota(unsigned short instr, signed short data)
       exit(1);
     }
   
-  return r;
+  return status(r);
 }
 
 #define LINES 66
@@ -173,7 +173,7 @@ void LPT::deal_pending_nl()
     }
 }
 
-void LPT::ocp(unsigned short instr)
+LPT::STATUS LPT::ocp(unsigned short instr)
 {
   switch(instr & 01700)
     {
@@ -227,10 +227,10 @@ void LPT::ocp(unsigned short instr)
       exit(1);
     }
 
-  
+  return STATUS_READY;
 }
 
-bool LPT::sks(unsigned short instr)
+LPT::STATUS LPT::sks(unsigned short instr)
 {
   bool r = 0;
 
@@ -261,10 +261,10 @@ bool LPT::sks(unsigned short instr)
       exit(1);
     }
   
-  return r;
+  return status(r);
 }
 
-void LPT::smk(unsigned short mask)
+LPT::STATUS LPT::smk(unsigned short mask)
 {
   bool ready = false;
 
@@ -274,6 +274,8 @@ void LPT::smk(unsigned short mask)
     p->set_interrupt(this->mask);
   else
     p->clear_interrupt(SMK_MASK);
+
+  return STATUS_READY;
 }
 
 void LPT::event(int reason)

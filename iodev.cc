@@ -28,31 +28,31 @@
 #include "asr_intf.hh"
 #include "lpt.hh"
 
-bool IODEV::ina(unsigned short instr, signed short &data)
+IODEV::STATUS IODEV::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "INA with undefined device: '%02o\n", instr & 0x3f);
   exit(1);
 }
 
-void IODEV::ocp(unsigned short instr)
+IODEV::STATUS IODEV::ocp(unsigned short instr)
 {
   fprintf(stderr, "OCP with undefined device: '%02o\n", instr & 0x3f);
   exit(1);
 }
 
-bool IODEV::sks(unsigned short instr)
+IODEV::STATUS IODEV::sks(unsigned short instr)
 {
   fprintf(stderr, "SKS with undefined device: '%02o\n", instr & 0x3f);
   exit(1);
 }
 
-bool IODEV::ota(unsigned short instr, signed short data)
+IODEV::STATUS IODEV::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "OTA with undefined device: '%02o\n", instr & 0x3f);
   exit(1);
 }
 
-void IODEV::smk(unsigned short mask)
+IODEV::STATUS IODEV::smk(unsigned short mask)
 {
   // quite likely to get here from set_mask();
 }

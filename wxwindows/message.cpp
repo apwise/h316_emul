@@ -39,6 +39,7 @@ Message::Argument::Argument(const Argument &a)
 
 Message::Argument &Message::Argument::operator=(const Argument &a)
 {
+  int i, n;
   if (this != &a)
     {
       if (type == ARG_LIST)

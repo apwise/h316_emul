@@ -61,7 +61,7 @@ void ASR_INTF::master_clear()
   mask = 0;
 
   data_buf = 0;
-  ready = 0;
+  ready = false;
   input_pending = 0;
 
   output_mode = 0;
@@ -69,7 +69,7 @@ void ASR_INTF::master_clear()
   activity = ASR_ACTIVITY_NONE;
 }
 
-bool ASR_INTF::ina(unsigned short instr, signed short &data)
+ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
 {
   char c;
   bool r = ready;
@@ -86,7 +86,7 @@ bool ASR_INTF::ina(unsigned short instr, signed short &data)
         }
 			
       output_pending = 0;
-      ready = 0;
+      ready = false;
       p->clear_interrupt(SMK_MASK);
     }
   else
@@ -105,10 +105,10 @@ bool ASR_INTF::ina(unsigned short instr, signed short &data)
         }
     }
 
-  return r;
+  return status(r);
 }
 
-void ASR_INTF::ocp(unsigned short instr)
+ASR_INTF::STATUS ASR_INTF::ocp(unsigned short instr)
 {
   switch(instr & 0700)
     {
@@ -116,7 +116,7 @@ void ASR_INTF::ocp(unsigned short instr)
 						
       output_mode = 0;
       activity = ASR_ACTIVITY_NONE;
-      ready = 0;
+      ready = false;
       p->clear_interrupt(SMK_MASK);
       break;
 
@@ -135,11 +135,12 @@ void ASR_INTF::ocp(unsigned short instr)
       fprintf(stderr, "ASR_INTF: OCP '%04o\n", instr&0x3ff);
       exit(1);
     }
+  return STATUS_READY;
 }
 
-bool ASR_INTF::sks(unsigned short instr)
+ASR_INTF::STATUS ASR_INTF::sks(unsigned short instr)
 {
-  bool r = 0;
+  bool r = false;
 
   switch(instr & 0700)
     {
@@ -156,10 +157,10 @@ bool ASR_INTF::sks(unsigned short instr)
   //if (( (instr & 0x03ff) == 0004) && r)
   //	Printf("%s %04o r=%d\n",  __PRETTY_FUNCTION__, instr & 0x03ff, r);
 
-  return r;
+  return status(r);
 }
 
-bool ASR_INTF::ota(unsigned short instr, signed short data)
+ASR_INTF::STATUS ASR_INTF::ota(unsigned short instr, signed short data)
 {
   bool r = ready;
 
@@ -190,10 +191,10 @@ bool ASR_INTF::ota(unsigned short instr, signed short data)
         }
     }
 
-  return r;
+  return status(r);
 }
 
-void ASR_INTF::smk(unsigned short mask)
+ASR_INTF::STATUS ASR_INTF::smk(unsigned short mask)
 {
   this->mask = mask & SMK_MASK;
 
@@ -201,7 +202,7 @@ void ASR_INTF::smk(unsigned short mask)
     p->set_interrupt(this->mask);
   else
     p->clear_interrupt(SMK_MASK);
-	
+  return STATUS_READY;
 }
 
 void ASR_INTF::event(int reason)
