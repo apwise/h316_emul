@@ -102,6 +102,12 @@ libraries :=
 #
 PLUS_TEST := 1
 
+#
+# The first thing make all (or just make) should do is
+# delete the dat-stamp file which causes it to rebuilt
+#
+all: remove_date
+
 include $(topdir)makebody
 
 no_gtk:
@@ -110,9 +116,13 @@ no_gtk:
 #
 # date file to be rebuilt each time we build...
 #
-#$(objdir)/monitor.o:	obj/date.h
+$(objdir)/monitor.o $(objdir)/monitor.d:	obj/date.h
+$(objdir)/gpl.o $(objdir)/gpl.d:	obj/date.h
 
-obj/date.h: FORCE
+obj/date.h: $(objdir)/.exists
 	@echo "#define DATE \"`date`\"" > $@
+
+remove_date: FORCE
+	@rm -f obj/date.h
 
 
