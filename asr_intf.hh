@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: asr_intf.hh,v 1.1 1999/02/20 00:06:35 adrian Exp $
- * Copyright (C) 1997, 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,10 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: asr_intf.hh,v $
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
  *
  */
 

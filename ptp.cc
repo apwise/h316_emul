@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: ptp.cc,v 1.4 2004/04/21 21:21:47 adrian Exp $
- * Copyright (C) 1997, 1998, 1999  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 1999, 2004, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,19 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: ptp.cc,v $
- * Revision 1.4  2004/04/21 21:21:47  adrian
- * Batch operation and line-printer
- *
- * Revision 1.3  1999/09/01 18:02:06  adrian
- * Don't close the file when the punch stops; it may start again
- *
- * Revision 1.2  1999/02/25 06:54:55  adrian
- * Removed Printf, Fprintf etc.
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
  *
  */
 #include <stdlib.h>
@@ -45,48 +32,48 @@
 #define SMK_MASK (1 << (16-10))
 
 enum PTP_REASON
-{
-	PTP_REASON_CHARACTER,
+  {
+    PTP_REASON_CHARACTER,
 
-	PTP_REASON_NUM
-};
+    PTP_REASON_NUM
+  };
 
 static char *ptp_reason[PTP_REASON_NUM] __attribute__ ((unused)) =
 {
-	"Character ready"
+  "Character ready"
 
 };
 
 PTP::PTP(Proc *p, STDTTY *stdtty)
 {
-	this->p = p;
-	this->stdtty = stdtty;
+  this->p = p;
+  this->stdtty = stdtty;
 
   fp = NULL;
 
-	master_clear();
+  master_clear();
 }
 
 void PTP::master_clear()
 {
-	mask = 0;
+  mask = 0;
 
-	if (fp)
-		fclose(fp);
-	fp = NULL;
-	pending_filename = 0;
+  if (fp)
+    fclose(fp);
+  fp = NULL;
+  pending_filename = 0;
 
-	ascii_file = 0;
+  ascii_file = 0;
 
-	power_on = false;
-	ready = false;
+  power_on = false;
+  ready = false;
 };
 
 bool PTP::ina(unsigned short instr, signed short &data)
 {
-	fprintf(stderr, "%s Input from punch\n", __PRETTY_FUNCTION__);
-	exit(1);
-	return 0;
+  fprintf(stderr, "%s Input from punch\n", __PRETTY_FUNCTION__);
+  exit(1);
+  return 0;
 }
 
 bool PTP::ota(unsigned short instr, signed short data)
@@ -144,7 +131,7 @@ void PTP::turn_power_on()
       while (!fp)
 	{
 	  if (pending_filename)
-						strcpy(buf, filename);
+	    strcpy(buf, filename);
 	  else
 	    stdtty->get_input("PTP: Filename>", buf, 256, 0);
 	  

@@ -1,7 +1,13 @@
 #CXXFLAGS := -I/usr/local/lib/wx/include/gtk-2.4 -D__WXGTK__ -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -O4 -Wall
 #DFLAGS := -L/usr/local/lib -pthread -lwx_gtk-2.4
-CXXFLAGS := -I/usr/local/lib/wx/include/gtkd-2.4 -D__WXDEBUG__ -D__WXGTK__ -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -O0 -g -Wall
-LDFLAGS := -L/usr/local/lib -pthread -lwx_gtkd-2.4
+#CXXFLAGS := -I/usr/local/lib/wx/include/gtkd-2.4 -D__WXDEBUG__ -D__WXGTK__ -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -O0 -g -Wall
+#LDFLAGS := -L/usr/local/lib -pthread -lwx_gtkd-2.4
+
+WXGTK_CXXFLAGS := $(shell wx-config --cxxflags)
+WXGTK_LIBS := $(shell wx-config --libs)
+
+CXXFLAGS := $(WXGTK_CXXFLAGS)
+LDFLAGS := $(WXGTK_LIBS)
 
 LINK.C := g++
 

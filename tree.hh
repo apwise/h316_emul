@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: tree.hh,v 1.1 1999/02/20 00:06:35 adrian Exp $
- * Copyright (C) 1996, 1997, 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1996, 1997, 1998, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

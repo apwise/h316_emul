@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: proc.cc,v 1.9 2004/04/21 21:20:27 adrian Exp $
- * Copyright (C) 1997, 1998, 1999  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 1999, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,35 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: proc.cc,v $
- * Revision 1.9  2004/04/21 21:20:27  adrian
- * Batch operation and line-printer
- *
- * Revision 1.8  2001/06/09 22:12:02  adrian
- * Various bug fixes
- *
- * Revision 1.7  2000/01/15 06:26:17  adrian
- * Generic shift and group A instructions
- *
- * Revision 1.6  1999/06/04 07:57:21  adrian
- * *** empty log message ***
- *
- * Revision 1.5  1999/04/14 20:27:34  adrian
- * Fixed overflow test in divide routine
- *
- * Revision 1.4  1999/03/31 23:44:08  adrian
- * Fixed the high speed arithmetic intructions
- *
- * Revision 1.3  1999/03/29 06:31:30  adrian
- * Added High speed arithmetic option (untested as yet)
- *
- * Revision 1.2  1999/02/25 06:54:55  adrian
- * Removed Printf, Fprintf etc.
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
- *
  *
  * This file constitutes the main simulation kernel of
  * the processor. 
@@ -532,30 +503,30 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
       
       trace_ptr = (trace_ptr + 1) % TRACE_BUF;
 
-//       static bool trace_on = false;
-//       if (dp == 001461) trace_on = true;
+      //       static bool trace_on = false;
+      //       if (dp == 001461) trace_on = true;
 
-//       if (trace_on)
-//         {
-//           printf("A:%06o B:%06o X:%06o C:%d %s\n",
-//                   (a & 0xffff),
-//                   (b & 0xffff),
-//                   (x & 0xffff),
-//                   (c & 1),
-//                  Instr::disassemble(dp, instr,  false));
-//         }
+      //       if (trace_on)
+      //         {
+      //           printf("A:%06o B:%06o X:%06o C:%d %s\n",
+      //                   (a & 0xffff),
+      //                   (b & 0xffff),
+      //                   (x & 0xffff),
+      //                   (c & 1),
+      //                  Instr::disassemble(dp, instr,  false));
+      //         }
 
-//       static long count=0;
-//       count ++;
-//       if ((count % 1000000) == 0)
-//         printf("count=%ld\n", count);
-//       if (count == 4000000)
-//         this->run = false;
+      //       static long count=0;
+      //       count ++;
+      //       if ((count % 1000000) == 0)
+      //         printf("count=%ld\n", count);
+      //       if (count == 4000000)
+      //         this->run = false;
 
-//       if ((half_cycles > 7500000) && ((half_cycles % 100000)==0))
-//         printf("%010lu\n", half_cycles);
-//       if (half_cycles == 33500000)
-//         this->run = false;
+      //       if ((half_cycles > 7500000) && ((half_cycles % 100000)==0))
+      //         printf("%010lu\n", half_cycles);
+      //       if (half_cycles == 33500000)
+      //         this->run = false;
 
       /*
        * We either interrupted, or interrupts weren't

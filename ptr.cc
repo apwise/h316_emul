@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: ptr.cc,v 1.5 2004/04/21 21:22:14 adrian Exp $
- * Copyright (C) 1997, 1998, 1999  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 1999, 2004, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,22 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: ptr.cc,v $
- * Revision 1.5  2004/04/21 21:22:14  adrian
- * Batch operation and line-printer
- *
- * Revision 1.4  2001/06/09 22:12:02  adrian
- * Various bug fixes
- *
- * Revision 1.3  1999/09/01 18:00:24  adrian
- * Cludge to allow reading a new tape if EOT reached (DAP16)
- *
- * Revision 1.2  1999/02/25 06:54:55  adrian
- * Removed Printf, Fprintf etc.
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
  *
  */
 #include <stdlib.h>
@@ -65,11 +49,11 @@
  */
 
 enum PTR_REASON
-{
-  PTR_REASON_CHARACTER,
+  {
+    PTR_REASON_CHARACTER,
 
-  PTR_REASON_NUM
-};
+    PTR_REASON_NUM
+  };
 
 static char *ptr_reason[PTR_REASON_NUM] __attribute__ ((unused)) =
 {
@@ -301,7 +285,7 @@ void PTR::event(int reason)
           if (ready)
             fprintf(stderr,
                     "%s %ld Character overrun\n",
-                     __PRETTY_FUNCTION__, p->get_half_cycles());
+		    __PRETTY_FUNCTION__, p->get_half_cycles());
 
           if (insert_lf)
             {

@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: tree.cc,v 1.2 1999/02/25 06:54:55 adrian Exp $
- * Copyright (C) 1996, 1997, 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1996, 1997, 1998, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
  * tree_read and tree_delete no longer work so
  * are removed.
  *
-*/
+ */
 
 static char *RcsId __attribute__ ((unused)) = "$Id: tree.cc,v 1.2 1999/02/25 06:54:55 adrian Exp $";
 
@@ -114,7 +114,7 @@ void tree_free(TREE *t, void (*free_fn)(void *ptr))
 }
 
 void tree_for_all(TREE *t, void *data,
-						 void (*proc)(TREE *t, unsigned long name, void *record, void *data))
+		  void (*proc)(TREE *t, unsigned long name, void *record, void *data))
 {
   //	char *PN="tree_for_all()";
   
@@ -143,7 +143,7 @@ static char *spaces(int depth)
 void tree_dump(TREE *t, FILE *fp, int depth,
 	       void (*dump_proc)(TREE *t, char *space, void *record))
 {
-	//char *PN="tree_dump()";
+  //char *PN="tree_dump()";
   char *s = strdup(spaces(depth));
   
   if (*t)
@@ -157,7 +157,7 @@ void tree_dump(TREE *t, FILE *fp, int depth,
 	{
 	  fprintf(fp, "%sLeft:\n", s);
 	  tree_dump(&((*t)->l), fp, depth+1, dump_proc);
-		}
+	}
       else
 	fprintf(fp, "%sLeft: (NULL)\n", s);
       

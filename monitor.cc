@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: monitor.cc,v 1.3 2001/06/09 22:24:11 adrian Exp $
- * Copyright (C) 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1998, 2004, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,18 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: monitor.cc,v $
- * Revision 1.3  2001/06/09 22:24:11  adrian
- * Removed gtk_copyright (unnecessary)
- *
- * Revision 1.2  1999/02/25 06:54:55  adrian
- * Removed Printf, Fprintf etc.
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
- *
- *
  *
  * Command line monitor for H316 emulator
  */

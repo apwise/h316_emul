@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: monitor.hh,v 1.2 2004/04/21 21:20:27 adrian Exp $
- * Copyright (C) 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1998, 2004, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,14 +16,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
  *
- * $Log: monitor.hh,v $
- * Revision 1.2  2004/04/21 21:20:27  adrian
- * Batch operation and line-printer
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
- *
  */
+
 class STDTTY;
 class Proc;
 
@@ -31,11 +25,11 @@ struct CmdTab;
 
 class Monitor
 {
- public:
+public:
   Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv);
   void do_commands(bool &run, FILE **fp);
   
- private:
+private:
   Proc *p;
   STDTTY *stdtty;
   int argc;
