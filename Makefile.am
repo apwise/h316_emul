@@ -1,5 +1,5 @@
 
-SUBDIRS = gtk
+dnl SUBDIRS = gtk
 
 bin_PROGRAMS = h16
 
@@ -14,6 +14,14 @@ h16_SOURCES = 	asr_intf.cc \
 		proc.cc \
 		ptp.cc \
 		ptr.cc \
-		tree.cc
+		tree.cc \
+		asr.cc \
+		stdtty.cc \
+		gtk/fp.c \
+		gtk/menu.c
 
-h16_LDADD = gtk/libgtkfp.a
+h16_CPPFLAGS = $(GTK_CFLAGS) -I gtk
+
+h16_LDADD = $(GTK_LIBS)
+
+dnl h16_LDADD = gtk/libgtkfp.la

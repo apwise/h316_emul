@@ -1,7 +1,7 @@
 
-noinst_LIBRARIES = libgtkfp.a
+noinst_LTLIBRARIES = libgtkfp.la
 
-libgtkfp_a_CPPFLAGS = $(GTK_CFLAGS)
+libgtkfp_la_CPPFLAGS = $(GTK_CFLAGS)
 
-libgtkfp_a_SOURCES =	fp.c \
+libgtkfp_la_SOURCES =	fp.c \
 			menu.c

@@ -12,23 +12,20 @@ AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
-AC_PROG_CXX
 AC_PROG_CC
-AC_PROG_RANLIB
+AC_PROG_CXX
+# AC_PROG_LIBTOOL
 
 AM_PATH_GTK([1.2.10])
 
 # Checks for libraries.
-# FIXME: Replace `main' with a function in `-lhistory':
-AC_CHECK_LIB([history], [main])
-# FIXME: Replace `main' with a function in `-lreadline':
-AC_CHECK_LIB([readline], [main])
-# FIXME: Replace `main' with a function in `-ltermcap':
-AC_CHECK_LIB([termcap], [main])
+AC_CHECK_LIB([termcap], [tgoto])
+AC_CHECK_LIB([history], [add_history])
+AC_CHECK_LIB([readline], [readline])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([stdlib.h string.h unistd.h readline/readline.h readline/history.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -40,7 +37,8 @@ AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([floor strdup strtol])
 
-AC_CONFIG_FILES([Makefile
-		gtk/Makefile])
+dnl AC_CONFIG_FILES([Makefile
+dnl		gtk/Makefile])
+AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
