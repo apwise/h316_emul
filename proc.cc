@@ -873,6 +873,11 @@ void Proc::set_asr_ptp_filename(char *filename)
   ((ASR_INTF *) devices[ASR_DEVICE])->set_filename(filename, true);
 }
 
+void Proc::asr_ptp_on(char *filename)
+{
+  ((ASR_INTF *) devices[ASR_DEVICE])->asr_ptp_on(filename);
+}
+
 bool Proc::special(char k)
 {
   bool r = false;

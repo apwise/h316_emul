@@ -46,6 +46,7 @@ public:
 
   void event(int reason);
   void set_filename(char *filename, bool asr_ptp);
+  void asr_ptp_on(char *filename);
   bool special(char c);
 	
 private:
