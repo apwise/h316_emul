@@ -1,0 +1,96 @@
+#######################################################
+# $Id: makefile,v 1.1 1999/02/20 00:12:06 adrian Exp $
+#
+# Created 15 January 1998 Adrian Wise
+#
+# Copyright (c) 1998 Adrian WIse
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+# MA  02111-1307 USA
+#
+# $Log: makefile,v $
+# Revision 1.1  1999/02/20 00:12:06  adrian
+# Initial revision
+#
+#
+#######################################################
+
+#
+# Use gtk-config to get appropriate cflags and libs options
+#
+GTK_CPPFLAGS = $(shell gtk-config --cflags)
+GTK_LIBS = $(shell gtk-config --libs)
+
+#
+# This picks up the first -L/... path from the gtk libs
+# option (which is assumed to be where the gtk libraries
+# are installed) and adds the Gtk--/include directory to
+# form an appropriate -I/... flag for gtk-- code
+#
+lib_dir_flags = $(filter -L/% , $(GTK_LIBS))
+gnu_lib_dir_flag = $(patsubst -L%, %, $(word 1, $(lib_dir_flags)))
+gtk--_include_flag = -I$(strip $(gnu_lib_dir_flag))/Gtk--/include
+
+
+#
+# Build the appropriate macros for the built-in compilation
+# rules.
+# Note that since the preprocessor needs to see th -I/...
+# flags CPPFLAGS is used here in preference to CXXFLAGS.
+#
+#CPPFLAGS = $(GTK_CPPFLAGS) $(gtk--_include_flag)
+#LOADLIBES = $(GTK_LIBS) -lgtkmm
+CPPFLAGS = $(GTK_CPPFLAGS)
+LOADLIBES = $(GTK_LIBS)
+
+#
+# location of the top of the project tree
+#
+topdir := ../../
+
+#
+# List the subdirectories which must be visited
+#
+subdirs := 
+
+#
+# List the directories containing library code
+#
+libdirs :=
+
+#
+# list the "C" and "C++" source files in this directory
+# which are part of the overall project
+#
+csources := fp.c menu.c
+cxxsources := 
+
+#
+# Stuff for testing this portion of the project
+#
+testprog := play
+testcsources := play.c ../gpl.c
+testcxxsources :=
+libraries := 
+
+include $(topdir)makebody
+
+#
+# date file to be rebuilt each time we build...
+#
+menu.c:	../obj/date.h
+
+../obj/date.h: FORCE
+	@echo "#define DATE \"`date`\"" > $@

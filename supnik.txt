@@ -1,0 +1,98 @@
+From - Sat Jun  9 12:38:50 2001
+Return-Path: <bsupnik@us.inter.net>
+Received: from punt-2.mail.demon.net by mailstore for adrian@sapere.demon.co.uk
+          id 991103842:20:12202:0; Tue, 29 May 2001 02:37:22 GMT
+Received: from mail.ionet.net ([206.41.128.16]) by punt-2.mail.demon.net
+           id ac2012127; 29 May 2001 2:37 GMT
+Received: from bs-home (ip20.bedford11.ma.pub-ip.psi.net [38.32.83.20]) by ionet.net (8.9.1a/8.9.1) with SMTP id VAA12591 for <adrian@sapere.demon.co.uk>; Mon, 28 May 2001 21:38:00 -0500 (CDT)
+Message-Id: <3.0.6.32.20010528223355.007fe250@pop.us.inter.net>
+X-Sender: bsupnik@pop.us.inter.net
+X-Mailer: QUALCOMM Windows Eudora Light Version 3.0.6 (32)
+Date: Mon, 28 May 2001 22:33:55 -0400
+To: Adrian Wise <adrian@sapere.demon.co.uk>
+From: Bob Supnik <bsupnik@us.inter.net>
+Subject: An update on the H316 generics
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+X-Mozilla-Status: 8001
+X-Mozilla-Status2: 00000000
+X-UIDL: sapere.991103842:20:12202:0
+
+Adrian,
+
+At long last I've obtained an H316 print set and been able to look at the
+decoding of the generics.  It turns out that Donald Bell's description is
+somewhat incomplete, and the logic equations in the instruction
+descriptions cannot be trusted.  I think I have a more complete set now,
+but it requires hand verification.  Nonetheless, I wanted to send you my
+working notes.
+
+   A group A generic executes in 3 or 5 phases.  A 'normal'
+   instruction takes 3 phases:
+
+	tlate	t2 extended into t3
+	t3	t3
+	t4	t4
+
+   A '1.5 cycle' instruction takes 5 phases:
+
+	tlate	t2 extended into t3
+	t3	t3
+	t2	'special' t2
+	tlate	t2 extended into t3
+	t3	t3
+	t4	t4
+
+   The key signals, by phase, are the following
+
+	tlate	EASTL	enable A to sum leg 1 (else 0)
+			(((m12+m16)x!azzzz)+(m9+m11+azzzz)
+		EASBM	enable 0 to sum leg 2 (else 177777)
+			(m9+m11+azzzz)
+		JAMKN	jam carry network to 0 (force XOR)
+			((m12+m16)x!azzzz)
+		EIKI7	force carry into adder
+			((m15+(Cx!m13))x!JAMKN)
+
+	t3	CLDTR	set D to 177777 (always)
+		ESDTS	enable adder sum to D (always)
+		SETAZ	enable repeat cycle = set azzzz
+			(m8xm15x!azzzz)
+
+   if not azzzz,
+	t4	CLATR	clear A register
+			(m11+m15+m16)
+		CLA1R	clear A1 register
+			(m10+m14)
+		EDAHS	enable D high to A high register
+			((m11xm14)+m15+m16)
+		EDALS	enable D low to A low register
+			((m11xm13)+m15+m16)
+		ETAHS	enable D transposed to A high register
+			(m9xm11)
+		ETALS	enable D transposed to A low register
+			(m10xm11)
+		EDA1R	enable D1 to A1 register
+			((m8xm10)+m14)
+		CS1TF	conditionally set C from adder output
+			(m9x!m11)
+		US1TF	unconditionally set C
+			(m8xm9)
+
+   if azzzz,
+	t2	CLATR	clear A register (on due to azzzz)
+		EDAHS	enable D high to A high register (on due to azzzz)
+		EDALS	enable D low to A low register (on due to azzzz)
+		
+	tlate, t3, t4 as above
+
+The key addition is the control of the adder input multiplexors, and the
+adder carry network, which was not previously noted.  This allows various
+combinations of {A,0} and {0,-1} to be asserted, along with ADD vs XOR
+processing.
+
+I'm constructing a program based on this analysis and will try the various
+combinations documented in Bell's memo.
+
+/Bob
+
