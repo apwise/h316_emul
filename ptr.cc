@@ -95,7 +95,7 @@ void PTR::master_clear()
   data_count = 0;
 };
 
-bool PTR::ina(unsigned short instr, signed short &data)
+PTR::STATUS PTR::ina(unsigned short instr, signed short &data)
 {
   bool r = ready;
 
@@ -143,7 +143,7 @@ bool PTR::ina(unsigned short instr, signed short &data)
         }
     }
   
-  return r;
+  return status(r);
 }
 
 void PTR::open_file(void)
@@ -191,7 +191,7 @@ void PTR::start_reader(void)
   tape_running = true;
 }
 
-void PTR::ocp(unsigned short instr)
+PTR::STATUS PTR::ocp(unsigned short instr)
 {
   switch(instr & 0700)
     {
@@ -228,10 +228,10 @@ void PTR::ocp(unsigned short instr)
       fprintf(stderr, "PTR: OCP '%04o\n", instr&0x3ff);
       exit(1);
     }
-  
+  return STATUS_READY;
 }
 
-bool PTR::sks(unsigned short instr)
+PTR::STATUS PTR::sks(unsigned short instr)
 {
   bool r = 0;
 
@@ -245,18 +245,18 @@ bool PTR::sks(unsigned short instr)
       exit(1);
     }
 
-  return r;
+  return status(r);
 }
 
-bool PTR::ota(unsigned short instr, signed short data)
+PTR::STATUS PTR::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
   exit(1);
 
-  return 0;
+  return STATUS_READY;
 }
 
-void PTR::smk(unsigned short mask)
+PTR::STATUS PTR::smk(unsigned short mask)
 {
   this->mask = mask & SMK_MASK;
 
@@ -264,6 +264,8 @@ void PTR::smk(unsigned short mask)
     p->set_interrupt(this->mask);
   else
     p->clear_interrupt(SMK_MASK);
+
+  return STATUS_READY;
 }
 
 void PTR::event(int reason)

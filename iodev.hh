@@ -21,25 +21,37 @@
 class Proc;
 class STDTTY;
 
-#define PTR_DEVICE 1
-#define PTP_DEVICE 2
-#define LPT_DEVICE 3
-#define ASR_DEVICE 4
-
 class IODEV
 {
 public:
-  virtual bool ina(unsigned short instr, signed short &data);
-  virtual void ocp(unsigned short instr);
-  virtual bool sks(unsigned short instr);
-  virtual bool ota(unsigned short instr, signed short data);
-  virtual void smk(unsigned short mask);
+  enum DEVICE
+    {
+      PTR_DEVICE=1,
+      PTP_DEVICE=2,
+      LPT_DEVICE=3,
+      ASR_DEVICE=4
+    };
+
+  enum STATUS
+    {
+      STATUS_WAIT,  // Instruction compleye I/O not yet ready
+      STATUS_READY, // Instruction complete I/O ready (for INA, OTA, SKS)
+      STATUS_INCOMPLETE // Instruction incomplete - go to GUI
+    };
+
+  virtual STATUS ina(unsigned short instr, signed short &data);
+  virtual STATUS ocp(unsigned short instr);
+  virtual STATUS sks(unsigned short instr);
+  virtual STATUS ota(unsigned short instr, signed short data);
+  virtual STATUS smk(unsigned short mask);
   
   virtual void event(int reason);
   
   static IODEV **dispatch_table(Proc *p, STDTTY *stdtty);
   static void master_clear_devices(IODEV **dt);
   static void set_mask(IODEV **dt, unsigned short mask);
+
+  static STATUS status(bool b){return (b)?STATUS_READY:STATUS_WAIT;};
 };
 
 #define REASON_MASTER_CLEAR -1

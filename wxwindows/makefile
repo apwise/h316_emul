@@ -13,7 +13,7 @@ LINK.C := g++
 
 CXXSOURCE := draw.cc papertape.cc papertapereader.cc
 CXXSOURCE2 := fp.cc gui.cc
-CXXSOURCE3 := message.cpp
+CXXSOURCE3 := message.cpp h16cmd.cpp
 
 CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
 OBJECTS := $(CXXOBJECTS)

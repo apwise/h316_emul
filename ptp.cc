@@ -69,14 +69,14 @@ void PTP::master_clear()
   ready = false;
 };
 
-bool PTP::ina(unsigned short instr, signed short &data)
+PTP::STATUS PTP::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "%s Input from punch\n", __PRETTY_FUNCTION__);
   exit(1);
-  return 0;
+  return STATUS_READY;
 }
 
-bool PTP::ota(unsigned short instr, signed short data)
+PTP::STATUS PTP::ota(unsigned short instr, signed short data)
 {
   bool r = false;
   int c;
@@ -118,7 +118,7 @@ bool PTP::ota(unsigned short instr, signed short data)
       exit(1);
     }
   
-  return r;
+  return status(r);
 }
 
 void PTP::turn_power_on()
@@ -166,7 +166,7 @@ void PTP::turn_power_on()
     }	
 }
 
-void PTP::ocp(unsigned short instr)
+PTP::STATUS PTP::ocp(unsigned short instr)
 {
   
   switch(instr & 0700)
@@ -193,10 +193,10 @@ void PTP::ocp(unsigned short instr)
       fprintf(stderr, "PTP: OCP '%04o\n", instr&0x3ff);
       exit(1);
     }
-  
+  return STATUS_READY;
 }
 
-bool PTP::sks(unsigned short instr)
+PTP::STATUS PTP::sks(unsigned short instr)
 {
   bool r = 0;
   
@@ -211,10 +211,10 @@ bool PTP::sks(unsigned short instr)
       exit(1);
     }
   
-  return r;
+  return status(r);
 }
 
-void PTP::smk(unsigned short mask)
+PTP::STATUS PTP::smk(unsigned short mask)
 {
   this->mask = mask & SMK_MASK;
   
@@ -222,6 +222,8 @@ void PTP::smk(unsigned short mask)
     p->set_interrupt(this->mask);
   else
     p->clear_interrupt(SMK_MASK);
+
+  return STATUS_READY;
 }
 
 void PTP::event(int reason)

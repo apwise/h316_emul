@@ -1,3 +1,5 @@
+// {{{ GPL copyright notice
+
 /* Honeywell Series 16 emulator
  * Copyright (C) 1997, 1998, 1999, 2005  Adrian Wise
  *
@@ -20,6 +22,10 @@
  * the processor. 
  */
 
+// }}}
+
+// {{{ Includes
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -40,6 +46,10 @@
 #define CORE_SIZE 32768
 #define TRACE_BUF (1024*1024)
 
+// }}}
+
+// {{{ struct Btrace
+
 /*****************************************************************
  * Btrace; binary trace (because an earlier one that stored ASCII
  * strings was too slow).
@@ -58,6 +68,9 @@ struct Btrace
   bool c;
   unsigned short p, instr;
 };
+
+// }}}
+// {{{ key-in loader
 
 /*****************************************************************
  * The key-in loader
@@ -111,9 +124,9 @@ static unsigned short keyin[] =
 
 #endif
 
-/*****************************************************************
- * So, setup the Proc structure
- *****************************************************************/
+// }}}
+
+// {{{ Proc::Proc(STDTTY *stdtty)
 
 Proc::Proc(STDTTY *stdtty)
 {
@@ -185,9 +198,10 @@ Proc::Proc(STDTTY *stdtty)
 #endif
 }
 
-/*****************************************************************
- * Dump the trace buffer
- *****************************************************************/
+// }}}
+
+// {{{ void Proc::dump_trace(char *filename, int n)
+
 void Proc::dump_trace(char *filename, int n)
 {
   int i;
@@ -228,6 +242,9 @@ void Proc::dump_trace(char *filename, int n)
     fclose(fp);
 }
 
+// }}}
+// {{{ void Proc::dump_disassemble(char *filename, int first, int last)
+
 /*****************************************************************
  * Dump a disassembly of core between the given addresses
  *****************************************************************/
@@ -260,6 +277,9 @@ void Proc::dump_disassemble(char *filename, int first, int last)
     fclose(fp);
 }
 
+// }}}
+// {{{ void Proc::master_clear(void)
+
 /*****************************************************************
  * Master clear
  *****************************************************************/
@@ -290,6 +310,8 @@ void Proc::master_clear(void)
   IODEV::master_clear_devices(devices);
   Event::discard_events();
 }
+
+// }}}
 
 #ifndef NO_GTK
 /*****************************************************************
@@ -338,6 +360,8 @@ struct FP_INTF *Proc::fp_intf()
 }
 #endif
 
+// {{{ static signed short short_add(signed short a, signed short m,
+
 /*****************************************************************
  * Add setting the carry bit to overflow
  * Weird, I know but that's the way it works on a series 16
@@ -347,12 +371,15 @@ static signed short short_add(signed short a, signed short m,
 {
   signed short r, v;
 
-  v = ~(a ^ m);        // MSB is signs same
+  v = ~(a ^ m);      // MSB is signs same
   r = a + m;
-  v &= (r ^ m);        // if signs were same and now differ
+  v &= (r ^ m);      // if signs were same and now differ
   c = (v >> 15) & 1; // set overflow
   return r;
 }
+
+// }}}
+// {{{ static signed short short_adc(signed short a, signed short m,
 
 /*****************************************************************
  * Add, with the C bit added in
@@ -362,12 +389,15 @@ static signed short short_adc(signed short a, signed short m,
 {
   signed short r, v;
 
-  v = ~(a ^ m);        // MSB is signs same
+  v = ~(a ^ m);      // MSB is signs same
   r = a + m + c;
-  v &= (r ^ m);        // if signs were same and now differ
+  v &= (r ^ m);      // if signs were same and now differ
   c = (v >> 15) & 1; // set overflow
   return r;
 }
+
+// }}}
+// {{{ void Proc::set_x(unsigned short n)
 
 /*****************************************************************
  * set the X register
@@ -383,6 +413,8 @@ void Proc::set_x(unsigned short n)
   y = j;
   core[j] = n;
 }
+
+// }}}
 
 /*****************************************************************
  * Set or clear one bit of the "interrupts" variable
@@ -717,7 +749,7 @@ bool Proc::optimize_io_poll(unsigned short instr)
           // so for now just let it poll the
           // device
 
-          if ((instr & 077) == ASR_DEVICE)
+          if ((instr & 077) == IODEV::ASR_DEVICE)
             {
               // Ought to wait for keyboard or GUI
               // printf("Polling ASR\n");
@@ -821,39 +853,39 @@ void Proc::flush_events()
 
 void Proc::set_ptr_filename(char *filename)
 {
-  ((PTR *) devices[PTR_DEVICE])->set_filename(filename);
+  ((PTR *) devices[IODEV::PTR_DEVICE])->set_filename(filename);
 }
 
 void Proc::set_ptp_filename(char *filename)
 {
-  ((PTR *) devices[PTP_DEVICE])->set_filename(filename);
+  ((PTR *) devices[IODEV::PTP_DEVICE])->set_filename(filename);
 }
 
 void Proc::set_lpt_filename(char *filename)
 {
-  ((PTR *) devices[LPT_DEVICE])->set_filename(filename);
+  ((PTR *) devices[IODEV::LPT_DEVICE])->set_filename(filename);
 }
 
 void Proc::set_asr_ptr_filename(char *filename)
 {
-  ((ASR_INTF *) devices[ASR_DEVICE])->set_filename(filename, false);
+  ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->set_filename(filename, false);
 }
 
 void Proc::set_asr_ptp_filename(char *filename)
 {
-  ((ASR_INTF *) devices[ASR_DEVICE])->set_filename(filename, true);
+  ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->set_filename(filename, true);
 }
 
 void Proc::asr_ptp_on(char *filename)
 {
-  ((ASR_INTF *) devices[ASR_DEVICE])->asr_ptp_on(filename);
+  ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->asr_ptp_on(filename);
 }
 
 bool Proc::special(char k)
 {
   bool r = false;
   
-  r = ((ASR_INTF *) devices[ASR_DEVICE])->special(k);
+  r = ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->special(k);
   
   if ( (k & 0x7f) == 'h' )
     {

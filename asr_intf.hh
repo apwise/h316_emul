@@ -34,11 +34,11 @@ class ASR_INTF : public IODEV
 {
 public:
   ASR_INTF(Proc *p, STDTTY *stdtty);
-  bool ina(unsigned short instr, signed short &data);
-  void ocp(unsigned short instr);
-  bool sks(unsigned short instr);
-  bool ota(unsigned short instr, signed short data);
-  void smk(unsigned short mask);
+  STATUS ina(unsigned short instr, signed short &data);
+  STATUS ocp(unsigned short instr);
+  STATUS sks(unsigned short instr);
+  STATUS ota(unsigned short instr, signed short data);
+  STATUS smk(unsigned short mask);
 
   void event(int reason);
   void set_filename(char *filename, bool asr_ptp);
