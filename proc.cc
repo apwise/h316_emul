@@ -98,44 +98,44 @@ struct Btrace
 
 /* With ASR as device... */
 static unsigned short keyin[] =
-{
-  0010057,
-  0030004,
-  0131004,
-  0002003,
-  0101040,
-  0002003,
-  0010000,
-  0131004,
-  0002010,
-  0041470,
-  0130004,
-  0002013,
-  0110000,
-  0024000,
-  0100040
-};
+  {
+    0010057,
+    0030004,
+    0131004,
+    0002003,
+    0101040,
+    0002003,
+    0010000,
+    0131004,
+    0002010,
+    0041470,
+    0130004,
+    0002013,
+    0110000,
+    0024000,
+    0100040
+  };
 
 #else
 
 static unsigned short keyin[] =
-{
-  0010057,
-  0030001,
-  0131001,
-  0002003,
-  0101040,
-  0002003,
-  0010000,
-  0131001,
-  0002010,
-  0041470,
-  0130001,
-  0002013,
-  0110000,
-  0024000,
-  0100040
-};
+  {
+    0010057,
+    0030001,
+    0131001,
+    0002003,
+    0101040,
+    0002003,
+    0010000,
+    0131001,
+    0002010,
+    0041470,
+    0130001,
+    0002013,
+    0110000,
+    0024000,
+    0100040
+  };
 
 #endif
 
@@ -268,9 +268,9 @@ void Proc::dump_disassemble(char *filename, int first, int last)
     {
       fp = fopen(filename, "w");
       if (!fp)        {
-          fprintf(stderr, "Could not open <%s>\n", filename);
-          return;
-        }
+        fprintf(stderr, "Could not open <%s>\n", filename);
+        return;
+      }
     }
   
   for (i=first; i<=last; i++)
@@ -590,40 +590,41 @@ unsigned short Proc::ea(unsigned short instr)
   unsigned short d;
   bool sec_zero;
   bool ind;
-  bool first = 1;
+  bool first = true;
 
   m = instr;
   y = p; // program counter
   sec_zero = ((instr & 0x0200) == 0);
 
   do
-    {
-      //printf("ea: m=%06o y=%06o\n", m, y);
-
+    {      
       ind = ((m & 0x8000) != 0);
       
       if (sec_zero)
-  d = (j & 0x7e00) | (m & 0x81ff);
+        d = (j & 0x7e00) | (m & 0x81ff);
       else
-  {
-    if (first)
-      d = (y & 0xfe00) | (m & 0x01ff);
-    else
-      {
-        if (extend)
-    d = m;
-        else
-    d = (p & 0x4000) | (m & 0xbfff);
-      }
-  }
+        {
+          if (first)
+            d = (y & 0xfe00) | (m & 0x01ff);
+          else
+            {
+              if (extend)
+                d = m;
+              else
+                d = (p & 0x4000) | (m & 0xbfff);
+            }
+        }
       
       if ( ((m & 0x4000) && (!extend)) ||
-     ((instr & 0x4000) && extend && (!ind)) )
-  // If in extend mode then normal indexing is
-  // not allowed.
-  // But when done with indirection the original
-  // instr can call for indexing
-  d += x;
+           ((instr & 0x4000) && extend && (!ind)) )
+        {
+          // If in extend mode then normal indexing is
+          // not allowed.
+          // But when done with indirection the original
+          // instr can call for indexing
+
+          d += x;
+        }
       
       /*
        * This is what is documented in the Programmers'
@@ -631,28 +632,27 @@ unsigned short Proc::ea(unsigned short instr)
        * it means that an attempt to address sector zero
        * from the upper 16kword of memory would address
        * sector 040
-       
-       * if (extend)
-       *  y = d;
-       * else
-       *  y = (d & 0xbfff) | (y & 0x4000);
        */
+       
+      //       if (extend)
+      //         y = d;
+      //       else
+      //         y = (d & 0xbfff) | (y & 0x4000);
       
-      y = d & 0x7fff;
-      
+      y = d & ((extend) ? 0x7fff : 0x3fff);
+
       if (ind)
-  {
-    //printf("ea: indirect\n");
-    half_cycles += 2;
+        {
+          half_cycles += 2;
     
-    (void) read(y); /* sets m */
+          (void) read(y); /* sets m */
     
-    if (extend)
-      sec_zero = ((m & 0x7e00) == 0);
-    else
-      sec_zero = ((m & 0x3e00) == 0);
-  }
-      first = 0;
+          if (extend)
+            sec_zero = ((m & 0x7e00) == 0);
+          else
+            sec_zero = ((m & 0x3e00) == 0);
+        }
+      first = false;
     }
   while (ind);
   
@@ -684,51 +684,51 @@ bool Proc::optimize_io_poll(unsigned short instr)
       unsigned long next_event_time;
       
       if (Event::next_event_time(next_event_time))
-  {
-    // jump time forward to the next event
-    half_cycles = next_event_time;
+        {
+          // jump time forward to the next event
+          half_cycles = next_event_time;
     
-    // call devices to actually change the state
-    // of the devices
-    Event::call_devices(half_cycles, 1);
+          // call devices to actually change the state
+          // of the devices
+          Event::call_devices(half_cycles, 1);
     
-    // rerun the IO command in the hope that
-    // it will now skip the JMP *-1
-    r = true;
-  }
+          // rerun the IO command in the hope that
+          // it will now skip the JMP *-1
+          r = true;
+        }
       else
-  {
-    // There are no events pending
-    //
-    // Are we waiting on the ASR for input?
-    //
-    // We could wait for keyboard input
-    // at this point, however this won't
-    // work for the case that there is a GUI
-    // frontpanel since that needs to be
-    // serviced too.
-    //
-    // Ideally we should return to the
-    // GUI code, remove the idle procedure
-    // and wait until a GUI event or keyboard
-    // input occurs before reinvoking the
-    // call to the kernel.
-    //
-    // However, this is a bit complicated
-    // so for now just let it poll the
-    // device
+        {
+          // There are no events pending
+          //
+          // Are we waiting on the ASR for input?
+          //
+          // We could wait for keyboard input
+          // at this point, however this won't
+          // work for the case that there is a GUI
+          // frontpanel since that needs to be
+          // serviced too.
+          //
+          // Ideally we should return to the
+          // GUI code, remove the idle procedure
+          // and wait until a GUI event or keyboard
+          // input occurs before reinvoking the
+          // call to the kernel.
+          //
+          // However, this is a bit complicated
+          // so for now just let it poll the
+          // device
 
-    if ((instr & 077) == ASR_DEVICE)
-      {
-        // Ought to wait for keyboard or GUI
-        // printf("Polling ASR\n");
-      }
-    else
-      {
-        // Do something about apparent infinite
-        // loop?
-      }
-  }
+          if ((instr & 077) == ASR_DEVICE)
+            {
+              // Ought to wait for keyboard or GUI
+              // printf("Polling ASR\n");
+            }
+          else
+            {
+              // Do something about apparent infinite
+              // loop?
+            }
+        }
 
       //
       // If there is an interrupt now pending then
@@ -736,7 +736,7 @@ bool Proc::optimize_io_poll(unsigned short instr)
       // be taken instead
       //
       if (pi && (interrupts || start_button_interrupt))
-  r = 0;
+        r = 0;
     }
 
   return r;
@@ -751,16 +751,16 @@ void Proc::dump_memory()
   j = -1;
   for (i=0; i<32768; i++)
     {
-       if (modified[i])
-  {
-    if ((j+1) != i)
-      fprintf(fp, "\n");
+      if (modified[i])
+        {
+          if ((j+1) != i)
+            fprintf(fp, "\n");
 
-    instr = core[i];
-    fprintf(fp, "%s\n",
-      Instr::disassemble(i, instr, 0));
-    j = i;
-  }
+          instr = core[i];
+          fprintf(fp, "%s\n",
+                  Instr::disassemble(i, instr, 0));
+          j = i;
+        }
     }
 
   fclose(fp);
@@ -791,10 +791,10 @@ void Proc::write(unsigned short addr, signed short data)
  * start button routines
  */
 /*
-void Proc::set_start_button_interrupt()
-{
-start_button_interrupt = 1;
-}
+  void Proc::set_start_button_interrupt()
+  {
+  start_button_interrupt = 1;
+  }
 */
 
 void Proc::start_button()
@@ -835,9 +835,14 @@ void Proc::set_lpt_filename(char *filename)
   ((PTR *) devices[LPT_DEVICE])->set_filename(filename);
 }
 
-void Proc::set_asr_filename(char *filename)
+void Proc::set_asr_ptr_filename(char *filename)
 {
-  ((ASR_INTF *) devices[ASR_DEVICE])->set_filename(filename);
+  ((ASR_INTF *) devices[ASR_DEVICE])->set_filename(filename, false);
+}
+
+void Proc::set_asr_ptp_filename(char *filename)
+{
+  ((ASR_INTF *) devices[ASR_DEVICE])->set_filename(filename, true);
 }
 
 bool Proc::special(char k)
@@ -855,16 +860,16 @@ bool Proc::special(char k)
   if (!r)
     {
       switch (k & 0x7f)
-  {
-  case 's':
-    start_button();
-    r = 1;
-    break;
-  case 'm':
-    goto_monitor();
-    r = 1;
-    break;
-  }
+        {
+        case 's':
+          start_button();
+          r = 1;
+          break;
+        case 'm':
+          goto_monitor();
+          r = 1;
+          break;
+        }
     }
 
   return r;
@@ -926,7 +931,7 @@ void Proc::do_INK(unsigned short instr)
 #endif
   a = ((c & 1) << 15) | ((dp & 1) << 14) |
     ((extend & 1) << 13) |
-      (sc & 0x1f);
+    (sc & 0x1f);
 }
 
 void Proc::do_LDA(unsigned short instr)
@@ -1107,7 +1112,7 @@ void Proc::do_SUB(unsigned short instr)
       sc = 0;
     }
   else
-  a = short_add(a, (-read(ea(instr))), c);
+    a = short_add(a, (-read(ea(instr))), c);
 }
 
 void Proc::do_TCA(unsigned short instr)
@@ -1386,11 +1391,11 @@ void Proc::do_INA(unsigned short instr)
   do {
     if (devices[instr & 077]->ina(instr, d))
       {
-  p++;
-  if (instr & 01000)
-    a = 0;
-  a |= d;
-  rerun = 0;
+        p++;
+        if (instr & 01000)
+          a = 0;
+        a |= d;
+        rerun = 0;
       }
     else
       rerun = optimize_io_poll(instr);
@@ -1445,12 +1450,12 @@ void Proc::do_SKS(unsigned short instr)
   do {
     if (devices[instr & 0x3f]->sks(instr))
       {
-  p++;
-  rerun = 0;
+        p++;
+        rerun = 0;
       }
     else
       rerun = optimize_io_poll(instr);
-    } while (rerun);
+  } while (rerun);
 }
 
 void Proc::do_CAS(unsigned short instr)
@@ -2281,7 +2286,7 @@ void Proc::do_iab_sca(unsigned short instr)
 }
 
 /*****************************************************************
-* Unusual instruction routines
+ * Unusual instruction routines
  *****************************************************************/
 
 /* generic_shift()
@@ -2375,7 +2380,7 @@ void Proc::generic_skip(unsigned short instr)
    * S3 - sense switch 3 reset
    * S4 - sense switch 4 reset
    * C  - C-bit zero.
-  */
+   */
  
   if (instr & 0x001) cond &= ((~c) & 1);
   if (instr & 0x002) cond &= ((~ss[3]) & 1);
@@ -2541,8 +2546,8 @@ void Proc::test_generic_group_A()
   int j, k;
   signed short test_data[] = {
     0x0000, 0xffff, 0x5555, 0xaaaa,
-      0x5aa5, 0xa55a, 0x137f, 0xfec8,
-      0x8000, 0};
+    0x5aa5, 0xa55a, 0x137f, 0xfec8,
+    0x8000, 0};
   signed short sav_a;
   bool sav_c;
   unsigned long sav_h;

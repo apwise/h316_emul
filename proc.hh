@@ -103,7 +103,8 @@ class Proc{
   void set_ptr_filename(char *filename);
   void set_ptp_filename(char *filename);
   void set_lpt_filename(char *filename);
-  void set_asr_filename(char *filename);
+  void set_asr_ptr_filename(char *filename);
+  void set_asr_ptp_filename(char *filename);
   bool special(char k);
 
   bool optimize_io_poll(unsigned short instr);

@@ -90,7 +90,8 @@ include $(topdir)makebody
 #
 # date file to be rebuilt each time we build...
 #
-menu.c:	../obj/date.h
+menu.c ../gpl.c: ../obj/date.h
 
-../obj/date.h: FORCE
+../obj/date.h: 
+	@mkdir -p $(@D)
 	@echo "#define DATE \"`date`\"" > $@
