@@ -65,6 +65,10 @@ struct CmdTab
 
 struct CmdTab Monitor::commands[] =
   {
+    {"a",          2, 0, 1, "Get/Set A register",        &Monitor::a},
+    {"b",          2, 0, 1, "Get/Set B register",        &Monitor::b},
+    {"x",          2, 0, 1, "Get/Set X register",        &Monitor::x},
+    {"m",          1, 1, 2, "Get/Set memory",            &Monitor::m},
     {"quit",       1, 0, 0, "Quit emulation",            &Monitor::quit},
     {"continue",   1, 0, 0, "Continue",                  &Monitor::cont},
     {"stop",       1, 0, 0, "Stop",                      &Monitor::cont},
@@ -74,10 +78,6 @@ struct CmdTab Monitor::commands[] =
     {"ptp",        1, 1, 1, "Set PTP filename",          &Monitor::ptp},
     {"asr_ptr",    1, 1, 1, "Set ASR PTR filename",      &Monitor::asr_ptr},
     {"asr_ptp",    1, 1, 1, "Set ASR PTP filename",      &Monitor::asr_ptp},
-    {"a",          2, 0, 1, "Get/Set A register",        &Monitor::a},
-    {"b",          2, 0, 1, "Get/Set B register",        &Monitor::b},
-    {"x",          2, 0, 1, "Get/Set X register",        &Monitor::x},
-    {"m",          1, 1, 2, "Get/Set memory",            &Monitor::m},
     {"clear",      1, 0, 0, "Master clear",              &Monitor::clear},
     {"help",       1, 0, 0, "Print this help",           &Monitor::help},
     {"trace",      1, 0, 2, "trace [filename] [,lines]", &Monitor::trace},
@@ -101,12 +101,19 @@ Monitor::Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv)
 void Monitor::get_line(char *prompt, FILE **fp, char *buffer, int buf_size)
 {
   char *p;
+  int i;
 
   if (*fp)
     {
       p = fgets(buffer, buf_size, *fp);
+
+      // Nibble off trailing newline and space
+      i = strlen(buffer)-1;
+      while (i && ((buffer[i]=='\n') || isspace(buffer[i])))
+        buffer[i--] = '\0';
+
       if (p)
-        printf("%s%s", prompt, buffer);
+        printf("%s%s\n", prompt, buffer);
       else
         {
           fclose(*fp);
@@ -180,6 +187,8 @@ char **Monitor::break_command(char *buf, int &words)
 
   i = k = 0;
 
+  //printf("Monitor::break_command(): <%s>\n", buf);
+
   while (buf[i])
     {
       while (isspace(buf[i])) i++; // skip over space
@@ -232,7 +241,8 @@ void Monitor::free_command(char **q)
 void Monitor::do_command(bool &run, int words, char **cmd)
 {
   int i;
-  int last_match=-1, matches;
+  int best_match=-1, matches;
+  unsigned int len;
   //void (Monitor::*routine)(bool &run, int argc, char **argv);
 
   if (words <= 0) return;
@@ -240,37 +250,54 @@ void Monitor::do_command(bool &run, int words, char **cmd)
 
   i = matches = 0;
 
+  //printf("Monitor::do_command(): %s words=%d\n", cmd[0], words);
+
   while (commands[i].name)
     {
-      if (strncmp(cmd[0], commands[i].name, strlen(cmd[0]))==0)
+      len = strlen(cmd[0]);
+      if (strncmp(cmd[0], commands[i].name, len)==0)
         {
-          last_match = i;
-          matches ++;
+          if (len == strlen(commands[i].name))
+            {
+              // This is using all of the characters
+              // of the command name from the table
+              // so this wins over entries in the
+              // table that start with this sequence
+
+              best_match = i;
+              matches = 1;
+              break; // Don't look at later table entries
+            }
+          else
+            {
+              best_match = i;
+              matches++;
+            }
         }
       i++;
     }
 
   //printf("matches = %d\n", matches);
 
-  if (run && (!((commands[last_match].while_running == 1) ||
-                ((commands[last_match].while_running == 2) &&
+  if (run && (!((commands[best_match].while_running == 1) ||
+                ((commands[best_match].while_running == 2) &&
                  (words <= 1)) )) )
     {
       printf("! %s can only be used when halted\n",
-             commands[last_match].name);
+             commands[best_match].name);
     }
   else if (matches == 1)
     {
-      if (((words-1) >= commands[last_match].min_args) &&
-          ((words-1) <= commands[last_match].max_args))
+      if (((words-1) >= commands[best_match].min_args) &&
+          ((words-1) <= commands[best_match].max_args))
         {
-          if (! (this->*commands[last_match].cmd)(run, words, cmd))
+          if (! (this->*commands[best_match].cmd)(run, words, cmd))
             printf("??\n");
         }
       else
         printf("Expected %d to %d arguments\n",
-               commands[last_match].min_args,
-               commands[last_match].max_args);
+               commands[best_match].min_args,
+               commands[best_match].max_args);
     }
   else
     printf("??\n");
@@ -429,10 +456,12 @@ bool Monitor::a(bool &run, int words, char **cmd)
 {
   return reg(run, words, cmd, REG_A);
 }
+
 bool Monitor::b(bool &run, int words, char **cmd)
 {
   return reg(run, words, cmd, REG_B);
 }
+
 bool Monitor::x(bool &run, int words, char **cmd)
 {
   return reg(run, words, cmd, REG_X);

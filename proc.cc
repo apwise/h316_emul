@@ -82,6 +82,7 @@ struct Btrace
 {
   bool v; // valid flag
   bool brk; // this is some sort of break
+  unsigned long half_cycles;
   unsigned short a, b, x;
   bool c;
   unsigned short p, instr;
@@ -240,7 +241,8 @@ void Proc::dump_trace(char *filename, int n)
     {
       if (btrace_buf[i].v)
         {
-          fprintf(fp, "A:%06o B:%06o X:%06o C:%d %s\n",
+          fprintf(fp, "%010lu: A:%06o B:%06o X:%06o C:%d %s\n",
+                  btrace_buf[i].half_cycles,
                   (btrace_buf[i].a & 0xffff),
                   (btrace_buf[i].b & 0xffff),
                   (btrace_buf[i].x & 0xffff),
@@ -520,6 +522,7 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
       // binary trace ...
       
       btrace_buf[trace_ptr].v = 1; // valid
+      btrace_buf[trace_ptr].half_cycles = half_cycles;
       btrace_buf[trace_ptr].a = a;
       btrace_buf[trace_ptr].b = b;
       btrace_buf[trace_ptr].c = c;
@@ -528,7 +531,32 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
       btrace_buf[trace_ptr].instr = instr;
       
       trace_ptr = (trace_ptr + 1) % TRACE_BUF;
-  
+
+//       static bool trace_on = false;
+//       if (dp == 001461) trace_on = true;
+
+//       if (trace_on)
+//         {
+//           printf("A:%06o B:%06o X:%06o C:%d %s\n",
+//                   (a & 0xffff),
+//                   (b & 0xffff),
+//                   (x & 0xffff),
+//                   (c & 1),
+//                  Instr::disassemble(dp, instr,  false));
+//         }
+
+//       static long count=0;
+//       count ++;
+//       if ((count % 1000000) == 0)
+//         printf("count=%ld\n", count);
+//       if (count == 4000000)
+//         this->run = false;
+
+//       if ((half_cycles > 7500000) && ((half_cycles % 100000)==0))
+//         printf("%010lu\n", half_cycles);
+//       if (half_cycles == 33500000)
+//         this->run = false;
+
       /*
        * We either interrupted, or interrupts weren't
        * enabled. Either way clear this flag.
@@ -1185,12 +1213,22 @@ void Proc::do_SSP(unsigned short instr)
   a &= 0x7fff;
 }
 
+signed short Proc::ex_sc(unsigned short instr)
+{
+  signed short res = instr & 0x003f;
+
+  if (res != 0)
+    res |= (~0x003f); // Sign extend
+
+  return res;
+}
+
 void Proc::do_ALR(unsigned short instr)
 {
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1206,7 +1244,7 @@ void Proc::do_ALS(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   c = 0;
   while (sc < 0)
     {
@@ -1224,7 +1262,7 @@ void Proc::do_ARR(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1239,7 +1277,7 @@ void Proc::do_ARS(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1254,7 +1292,7 @@ void Proc::do_LGL(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1269,7 +1307,7 @@ void Proc::do_LGR(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1284,7 +1322,7 @@ void Proc::do_LLL(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1300,7 +1338,7 @@ void Proc::do_LLR(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1317,7 +1355,7 @@ void Proc::do_LLS(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   c = 0;
   while (sc < 0)
     {
@@ -1336,7 +1374,7 @@ void Proc::do_LRL(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1352,7 +1390,7 @@ void Proc::do_LRR(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -1368,7 +1406,7 @@ void Proc::do_LRS(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;
@@ -2315,7 +2353,7 @@ void Proc::generic_shift(unsigned short instr)
   int cccc = (instr >> 6) & 0x0f;
   short d;
 
-  sc = (~0x003f) | (instr & 0x003f);
+  sc = ex_sc(instr);
   while (sc < 0)
     {
       half_cycles ++;

@@ -443,7 +443,7 @@ char *Instr::do_disassemble(unsigned short addr, unsigned short instr,
           sprintf(p, " %04o %02o   %s  '%02o",
                   ((instr>>6) & 0x3ff), (instr & 0x3f),
                   ip->mnemonic,
-                  (-((-1 << 6)|(instr & 0x3f))));
+                  static_cast<int>(Proc::ex_sc(instr)));
           break;
         case IO:
           sprintf(p, " %02o %04o   %s  '%04o",
