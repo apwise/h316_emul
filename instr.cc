@@ -300,7 +300,7 @@ void Instr::build_instr_tables()
   unsigned long lim, i;
   Instr *ui, *gskp, *gshf, *gena;
 
-  dispatch_table = new (Instr *)[1<<16];
+  dispatch_table = new Instr *[1<<16];
   //
   // First set all instructions to unimplemented
   //
