@@ -402,7 +402,7 @@ char *Instr::str_ea(unsigned short addr, unsigned short instr)
       sprintf(a, "'%06o", ea);
     }
   
-  sprintf(str, "%c%s%s", ((instr & 0x8000)?'*':' '), a,
+  sprintf(str, "%s%s", a,
     ((((instr & 0x4000)!=0) && (!is_ldx)) ? ",1" : ""));
   
   return str;
@@ -432,10 +432,11 @@ char *Instr::do_disassemble(unsigned short addr, unsigned short instr,
       switch(ip->type)
         {
         case MR:
-          sprintf(p, "%c%1o %02o %04o %s %s",
+          sprintf(p, "%c%1o %02o %04o %s%c %s",
                   ((instr & 0x8000)?'-':' '),
                   ((instr>>14) & 1), ((instr >> 10) & 0xf),
                   (instr & 0x3ff), ip->mnemonic,
+                  ((instr & 0x8000)?'*':' '),
                   str_ea(addr, instr));
           break;
         case SH:

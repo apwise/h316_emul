@@ -27,16 +27,16 @@ class ASR;
 class STDTTY;
 
 enum ASR_ACTIVITY
-{
-	ASR_ACTIVITY_NONE,
-	ASR_ACTIVITY_OUTPUT,
-	ASR_ACTIVITY_INPUT,
-	ASR_ACTIVITY_DUMMY
-};
+  {
+    ASR_ACTIVITY_NONE,
+    ASR_ACTIVITY_OUTPUT,
+    ASR_ACTIVITY_INPUT,
+    ASR_ACTIVITY_DUMMY
+  };
 
 class ASR_INTF : public IODEV
 {
- public:
+public:
   ASR_INTF(Proc *p, STDTTY *stdtty);
   bool ina(unsigned short instr, signed short &data);
   void ocp(unsigned short instr);
@@ -44,24 +44,24 @@ class ASR_INTF : public IODEV
   bool ota(unsigned short instr, signed short data);
   void smk(unsigned short mask);
 
-	void event(int reason);
-	void set_filename(char *filename);
-	bool special(char c);
+  void event(int reason);
+  void set_filename(char *filename, bool asr_ptp);
+  bool special(char c);
 	
- private:
-	void master_clear(void);
+private:
+  void master_clear(void);
 
-	Proc *p;
+  Proc *p;
 
-	unsigned short mask; // just set the one bit for this device
+  unsigned short mask; // just set the one bit for this device
 
-	int data_buf;
-	bool ready;
-	bool input_pending;
+  int data_buf;
+  bool ready;
+  bool input_pending;
 
-	bool output_mode;
-	bool output_pending;
-	enum ASR_ACTIVITY activity;
+  bool output_mode;
+  bool output_pending;
+  enum ASR_ACTIVITY activity;
 
   ASR *asr;
 };

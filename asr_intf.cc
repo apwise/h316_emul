@@ -263,12 +263,12 @@ void ASR_INTF::event(int reason)
 
 }
 
-void ASR_INTF::set_filename(char *filename)
+void ASR_INTF::set_filename(char *filename, bool asr_ptp)
 {
-	asr->set_filename(filename, ASR_PTR);
+  asr->set_filename(filename, asr_ptp);
 }
  
 bool ASR_INTF::special(char c)
 {
-	return asr->special(c);
+  return asr->special(c);
 }
