@@ -209,7 +209,7 @@ char **Monitor::break_command(char *buf, int &words)
         i++;
     }
   
-  q = new (char *)[k+1];
+  q = new char *[k+1];
   for (i=0; i<k; i++)
     q[i] = p[i];
   q[k] = (char *)NULL;

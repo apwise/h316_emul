@@ -28,7 +28,7 @@ struct FP_INTF;
 
 class Proc{
 
- public:
+public:
   Proc(STDTTY *stdtty);
 
   void mem_access(bool p_not_pp1, bool store);
@@ -47,11 +47,11 @@ class Proc{
    */
   void write(unsigned short addr, signed short data);
   unsigned short read(unsigned short addr)
-    {
-      y = addr;
-      m = core[addr];
-      return m;
-    };
+  {
+    y = addr;
+    m = core[addr];
+    return m;
+  };
   
   /*
    * Get and set registers - used by monitor
@@ -97,7 +97,7 @@ class Proc{
 
   bool optimize_io_poll(unsigned short instr);
   
- private:
+private:
   /*
    * the following are the machine registers
    */
@@ -156,9 +156,9 @@ class Proc{
   int trace_ptr;
   struct Btrace *btrace_buf;
 
-/* These routines are public in order that the instruction
-   tables can refer to them. */
- public:
+  /* These routines are public in order that the instruction
+     tables can refer to them. */
+public:
   void unimplemented(unsigned short instr);
 
   void do_CRA(unsigned short instr);
