@@ -304,5 +304,7 @@ class Proc{
   void Proc::test_generic_group_A();
 #endif
 
+  static signed short ex_sc(unsigned short instr);
+
 };
 
