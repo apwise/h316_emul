@@ -1,17 +1,24 @@
 
+#ifndef _FP_HH_
+#define _FP_HH_
+
+#include "h16cmd.hh"
+
 class WordButtons;
 class ControlButtons;
 
 class FrontPanel : public wxPanel
 {
 public:
-  FrontPanel(wxWindow *parent);
+  FrontPanel(wxWindow *parent, enum CPU cpu_type);
+  bool Destroy();
 
   void OnClear(wxCommandEvent& event);
   void OnOnOff(wxCommandEvent& event);
   void OnMasterClear(wxCommandEvent& event);
   void OnMaSiRun(wxCommandEvent& event);
   void OnRegisterButton(wxCommandEvent& event);
+  void OnStart(wxCommandEvent& event);
 
   enum ID
     {
@@ -30,14 +37,16 @@ public:
 
       ID_MA,
       ID_SI,
-      ID_RUN
+      ID_RUN,
+
+      ID_Start
     };
 
-  enum DSBL
+  enum DISABLE
     {
-      DSBL_OFF    = 1,
-      DSBL_OP     = 2,
-      DSBL_SI_RUN = 4
+      DISABLE_OFF    = 1,
+      DISABLE_OP     = 2,
+      DISABLE_SI_RUN = 4
     };
 
 private:
@@ -45,6 +54,10 @@ private:
   ControlButtons *cb;
 
   void EnableButtons();
+  void Dispatch(H16Cmd &cmd);
 
   DECLARE_EVENT_TABLE()
 };
+
+#endif
+

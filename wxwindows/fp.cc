@@ -12,13 +12,16 @@
 #include <wx/statline.h>
 #include <iostream>
 
+#include "gui_types.hh"
+#include "gui.hh"
+#include "h16cmd.hh"
 #include "fp.hh"
 
 // }}}
 
-// {{{ class BitButton : public wxBoxSizer
+// {{{ class BitButton : public wxPanel
 
-class BitButton : public wxBoxSizer
+class BitButton : public wxPanel
 {
 public:
   BitButton(wxWindow *parent, int num, char *label);
@@ -27,6 +30,7 @@ public:
   void EnableButton(bool enbl);
 
 private:
+  wxBoxSizer *sizer;
   wxStaticText *top_label, *bottom_label;
   wxToggleButton *button;
 };
@@ -48,9 +52,9 @@ private:
 };
 
 // }}}
-// {{{ class WordButtons : public wxBoxSizer
+// {{{ class WordButtons : public wxPanel
 
-class WordButtons : public wxBoxSizer
+class WordButtons : public wxPanel
 {
 public:
   WordButtons(wxWindow *parent);
@@ -59,6 +63,7 @@ public:
   void EnableButton(bool enbl);
 
 private:
+  wxBoxSizer *sizer;
   static char *labels[16];
   BitButton *buttons[16];
   ClearButton *clearbutton;
@@ -66,9 +71,9 @@ private:
 
 // }}}
 
-// {{{ class OnOff : public wxBoxSizer
+// {{{ class OnOff : public wxBoxPanel
 
-class OnOff : public wxBoxSizer
+class OnOff : public wxPanel
 {
 public:
   OnOff(wxWindow *parent);
@@ -76,14 +81,15 @@ public:
   void SetValue(bool value);
 
 private:
+  wxBoxSizer *sizer;
   wxRadioButton *off;
   wxRadioButton *on;
 };
 
 // }}}
-// {{{ class SenseButton : public wxBoxSizer
+// {{{ class SenseButton : public wxPanel
 
-class SenseButton : public wxBoxSizer
+class SenseButton : public wxPanel
 {
 public:
   SenseButton(wxWindow *parent, int num);
@@ -91,6 +97,7 @@ public:
   void SetValue(bool value);
 
 private:
+  wxBoxSizer *sizer;
   enum ID {
     ID_OFF = 10000,
     ID_ON
@@ -99,23 +106,24 @@ private:
 };
 
 // }}}
-// {{{ class Sense : public wxStaticBoxSizer
+// {{{ class Sense : public wxPanel
 
-class Sense : public wxStaticBoxSizer
+class Sense : public wxPanel
 {
 public:
   Sense( wxWindow *parent );
 private:
+  wxStaticBoxSizer *sizer;
   SenseButton *ss[4];
 };
 
 // }}}
-// {{{ class RegButtons : public wxStaticBoxSizer
+// {{{ class RegButtons : public wxPanel
 
-class RegButtons : public wxStaticBoxSizer
+class RegButtons : public wxPanel
 {
 public:
-  RegButtons( wxWindow *parent );
+  RegButtons( wxWindow *parent, CPU cpu_type );
 
   // {{{ enum RB
 
@@ -135,6 +143,8 @@ public:
   enum RB GetValue();
 
 private:
+  CPU cpu_type;
+  wxStaticBoxSizer *sizer;
   static char flags[RB_NUM];
   // {{{ enum FLAGS
 
@@ -153,24 +163,25 @@ private:
 };
 
 // }}}
-// {{{ class MasterClear : public wxBoxSizer
+// {{{ class MasterClear : public wxPanel
 
-class MasterClear : public wxBoxSizer
+class MasterClear : public wxPanel
 {
 public:
   MasterClear(wxWindow *parent);
   void EnableButton(bool enbl);
 
 private:
+  wxBoxSizer *sizer;
   wxStaticText *toptext;
   wxButton *button;
   wxStaticText *bottomtext;
 };
 
 // }}}
-// {{{ class FetchStore : public wxBoxSizer
+// {{{ class FetchStore : public wxPanel
 
-class FetchStore : public wxBoxSizer
+class FetchStore : public wxPanel
 {
 public:
   FetchStore(wxWindow *parent);
@@ -178,6 +189,7 @@ public:
   void SetValue(bool value);
 
 private:
+  wxBoxSizer *sizer;
   enum ID {
     ID_FETCH = 10000,
     ID_STORE
@@ -185,9 +197,9 @@ private:
 };
 
 // }}}
-// {{{ class P_PP1 : public wxBoxSizer
+// {{{ class P_PP1 : public wxPanel
 
-class P_PP1 : public wxBoxSizer
+class P_PP1 : public wxPanel
 {
 public:
   P_PP1(wxWindow *parent);
@@ -195,6 +207,7 @@ public:
   void SetValue(bool value);
 
 private:
+  wxBoxSizer *sizer;
   enum ID {
     ID_PP1 = 10000,
     ID_P
@@ -208,9 +221,9 @@ private:
 };
 
 // }}}
-// {{{ class MaSiRun : public wxBoxSizer
+// {{{ class MaSiRun : public wxPanel
 
-class MaSiRun : public wxBoxSizer
+class MaSiRun : public wxPanel
 {
 public:
   MaSiRun(wxWindow *parent);
@@ -226,38 +239,43 @@ public:
   enum MSR GetValue();
 
 private:
+  wxBoxSizer *sizer;
   wxRadioButton *button[MSR_NUM];
   static char *label[MSR_NUM];
 };
 
 // }}}
-// {{{ class Start : public wxBoxSizer
+// {{{ class Start : public wxPanel
 
-class Start : public wxBoxSizer
+class Start : public wxPanel
 {
 public:
   Start(wxWindow *parent);
   void EnableButton(bool enbl);
 
 private:
+  wxBoxSizer *sizer;
   wxStaticText *toptext;
-  wxButton *button;
+  wxToggleButton *button;
 };
 
 // }}}
-// {{{ class ControlButtons : public wxBoxSizer
+// {{{ class ControlButtons : public wxPanel
 
-class ControlButtons : public wxBoxSizer
+class ControlButtons : public wxPanel
 {
 public:
-  ControlButtons(wxWindow *parent);
+  ControlButtons(wxWindow *parent, CPU cpu_type);
   bool GetOnOff();
+  void SetOnOff(bool b);
   enum RegButtons::RB GetRegisterButton();
   enum MaSiRun::MSR GetMaSiRun();
 
   void DisableButtons(int flags);
 
 private:
+  CPU cpu_type;
+  wxBoxSizer *sizer;
   OnOff *onoff;
   Sense *sense;
   RegButtons *regbuttons;
@@ -277,26 +295,34 @@ private:
 // {{{ BitButton::BitButton(wxWindow *parent, int num, char *label)
 
 BitButton::BitButton(wxWindow *parent, int num, char *label)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
-  char str[20]; // Use C++ strings - loose printf()
+  sizer = new wxBoxSizer(wxVERTICAL);
 
-  sprintf(str, "%d", num);
-  
-  top_label = new wxStaticText(parent, -1, str);
+  //char str[20]; // Use C++ strings - loose printf()
+  wxString str;
 
-  button = new wxToggleButton(parent, -1, "",
+  //sprintf(str, "%d", num);
+  str << num;
+
+  top_label = new wxStaticText(this, -1, str);
+
+  button = new wxToggleButton(this, -1, "",
 			      wxDefaultPosition,
 			      wxSize(BUTTON_SIZE, BUTTON_SIZE));
 
-  bottom_label = new wxStaticText(parent, -1, label);
+  bottom_label = new wxStaticText(this, -1, label);
 
-  sprintf(str, "%d", num);
-  
-  Add( top_label, 0, wxALIGN_CENTRE);
-  Add( button,
-       0, wxALIGN_CENTRE);
-  Add( bottom_label, 0, wxALIGN_CENTRE);
+  sizer->Add( top_label, 1, wxALIGN_CENTRE);
+  sizer->Add( button,
+	      0, wxALIGN_CENTRE);
+  sizer->Add( bottom_label, 1, wxALIGN_CENTRE);
+
+  // Kludge around wxMSW bug...
+  sizer->Add( BUTTON_SIZE, BUTTON_SIZE/2, 1, wxALIGN_CENTRE);
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);
 
   SetValue(0);
 }
@@ -377,20 +403,22 @@ char *WordButtons::labels[16] =
 // {{{ WordButtons::WordButtons(wxWindow *parent)
 
 WordButtons::WordButtons(wxWindow *parent)
-  : wxBoxSizer( wxHORIZONTAL )
+  : wxPanel( parent )
 {
   int i;
+
+  sizer = new wxBoxSizer( wxHORIZONTAL );
 
   /*
    * Add a space at the left
    */
-  Add(BUTTON_SIZE/2, 0, 0);
+  sizer->Add(BUTTON_SIZE/2, 0, 0);
 
   for (i=15; i>=0; i--)
     {
-      buttons[i] = new BitButton(parent, (16-i), labels[i]);
+      buttons[i] = new BitButton(this, (16-i), labels[i]);
 
-      Add(buttons[i], 0, wxALIGN_TOP);
+      sizer->Add(buttons[i], 0, wxALIGN_TOP);
 
       /*
        * If the button is the last of a group of three
@@ -399,15 +427,19 @@ WordButtons::WordButtons(wxWindow *parent)
        * space that doesn't grow.
        */
       if ((i % 3) == 0)
-	Add(BUTTON_SIZE, 0, 1);
+	sizer->Add(BUTTON_SIZE, 0, 1);
       else
-	Add(BUTTON_SIZE/2, 0, 0);
+	sizer->Add(BUTTON_SIZE/2, 0, 0);
     }
 
-  clearbutton = new ClearButton(parent);
-  Add(clearbutton, 0, wxALIGN_TOP);
+  clearbutton = new ClearButton(this);
+  sizer->Add(clearbutton, 0, wxALIGN_TOP);
 
-  Add(BUTTON_SIZE/2, 0, 0);
+  sizer->Add(BUTTON_SIZE/2, 0, 0);
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);
+
 }
 
 // }}}
@@ -453,15 +485,20 @@ void WordButtons::EnableButton(bool enbl)
 // {{{ OnOff::OnOff(wxWindow *parent)
 
 OnOff::OnOff(wxWindow *parent)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
-  off = new wxRadioButton(parent, FrontPanel::ID_Off, "OFF",
+  sizer = new wxBoxSizer( wxVERTICAL );
+
+  off = new wxRadioButton(this, FrontPanel::ID_Off, "OFF",
                           wxDefaultPosition, wxDefaultSize,
                           wxRB_GROUP);
-  on = new wxRadioButton(parent, FrontPanel::ID_On, "ON");
+  on = new wxRadioButton(this, FrontPanel::ID_On, "ON");
 
-  Add( off, 0, wxALIGN_LEFT );
-  Add( on,  0, wxALIGN_LEFT );
+  sizer->Add( off, 0, wxALIGN_LEFT );
+  sizer->Add( on,  0, wxALIGN_LEFT );
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);  
 }
 
 // }}}
@@ -486,54 +523,71 @@ void OnOff::SetValue(bool value)
 // {{{ SenseButton::SenseButton(wxWindow *parent, int num)
 
 SenseButton::SenseButton(wxWindow *parent, int num)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
+  sizer = new wxBoxSizer( wxVERTICAL );
+
   wxString s;
 
   wxRadioButton *on, *off;
   wxStaticText *t;
 
   s << num;
-  t = new wxStaticText(parent, -1, s);
+  t = new wxStaticText(this, -1, s);
 
-  off = new wxRadioButton(parent, ID_OFF, "",
+  off = new wxRadioButton(this, ID_OFF, "",
                           wxDefaultPosition, wxDefaultSize,
                           wxRB_GROUP);
-  on = new wxRadioButton(parent, ID_ON, "");
+  on = new wxRadioButton(this, ID_ON, "");
 
-  Add( t,   0, wxALIGN_CENTRE );
-  Add( off, 0, wxALIGN_CENTRE );
-  Add( on,  0, wxALIGN_CENTRE );
+  sizer->Add( t,   0, wxALIGN_CENTRE );
+  sizer->Add( off, 0, wxALIGN_CENTRE );
+  sizer->Add( on,  0, wxALIGN_CENTRE );
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);
+
 }
 
 // }}}
 // {{{ Sense::Sense( wxWindow *parent )
 
 Sense::Sense( wxWindow *parent )
-  : wxStaticBoxSizer( new wxStaticBox( parent, -1, "Sense" ),
-                      wxHORIZONTAL )
+  : wxPanel( parent )
 {
   int i;
 
+  sizer = new wxStaticBoxSizer( new wxStaticBox( this, -1, "Sense" ),
+				wxHORIZONTAL );
+
   for (i=1; i<=4; i++)
     {
-      ss[i-1] = new SenseButton(parent, i);
-      Add(ss[i-1], 1, wxALIGN_CENTRE);
+      ss[i-1] = new SenseButton(this, i);
+      if (i!=1)
+	sizer->Add( BUTTON_SIZE/2, 0, 1, wxALIGN_CENTRE);
+      sizer->Add(ss[i-1], 0, wxALIGN_CENTRE);
     }
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);
+
 }
 
 // }}}
 // {{{ RegButtons
 
-// {{{ RegButtons::RegButtons( wxWindow *parent )
+// {{{ RegButtons::RegButtons( wxWindow *parent, CPU cpu_type )
 
-RegButtons::RegButtons( wxWindow *parent )
-  : wxStaticBoxSizer( new wxStaticBox( parent, -1, "Register" ),
-                      wxHORIZONTAL )
+RegButtons::RegButtons( wxWindow *parent, CPU cpu_type )
+  : wxPanel( parent ),
+    cpu_type( cpu_type )
 {
   int i;
   bool first = true;
-  int processor = FLAG_316;
+  int processor = (1 << (static_cast<int>(cpu_type)-static_cast<int>(CPU_116)));
+
+  sizer = new wxStaticBoxSizer( new wxStaticBox( this, -1, "Register" ),
+		  wxHORIZONTAL );
 
   wxBoxSizer *vsizer;
 			
@@ -544,24 +598,31 @@ RegButtons::RegButtons( wxWindow *parent )
 
 	  vsizer = new wxBoxSizer(wxVERTICAL);
 
-	  vsizer->Add(new wxStaticText(parent, -1,
+	  vsizer->Add(new wxStaticText(this, -1,
 				       labels[i],
 				       wxDefaultPosition, wxDefaultSize,
 				       wxALIGN_CENTRE),
 		      1, wxALIGN_CENTRE);
           
-          button[i] = new wxRadioButton(parent, FrontPanel::ID_X+i,
+          button[i] = new wxRadioButton(this, FrontPanel::ID_X+i,
 					"", wxDefaultPosition, wxDefaultSize,
 					(first) ? wxRB_GROUP : 0),
           vsizer->Add(button[i], 1, wxALIGN_CENTRE);
 
-	  Add(vsizer, 1, wxALIGN_CENTRE);
+	  if (!first)
+	    sizer->Add( BUTTON_SIZE/2, 0, 1, wxALIGN_CENTRE);
+
+	  sizer->Add(vsizer, 0, wxALIGN_CENTRE);
 
           first = false;
         }
       else
         button[i] = 0;
     }
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);
+
 }
 
 // }}}
@@ -616,29 +677,35 @@ enum RegButtons::RB RegButtons::GetValue()
 // {{{ MasterClear::MasterClear(wxWindow *parent)
 
 MasterClear::MasterClear(wxWindow *parent)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
-  toptext = new wxStaticText(parent, -1,
+  sizer = new wxBoxSizer( wxVERTICAL );
+  
+  toptext = new wxStaticText(this, -1,
                              "MSTR",
                              wxDefaultPosition, wxDefaultSize,
                              wxALIGN_CENTRE);
-  Add(toptext, 0, wxALIGN_CENTRE);
+  sizer->Add(toptext, 0, wxALIGN_CENTRE);
+  
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
-  Add( 0, 0, 1, wxALIGN_CENTRE);
-
-  button = new wxButton(parent, FrontPanel::ID_MasterClear, "",
+  button = new wxButton(this, FrontPanel::ID_MasterClear, "",
 			wxDefaultPosition,
 			wxSize(BUTTON_SIZE, BUTTON_SIZE));
 
-  Add( button, 0, wxALIGN_CENTRE );
-
-  Add( 0, 0, 1, wxALIGN_CENTRE);
-
-  bottomtext = new wxStaticText(parent, -1,
+  sizer->Add( button, 0, wxALIGN_CENTRE );
+  
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
+  
+  bottomtext = new wxStaticText(this, -1,
                                 "CLEAR",
                                 wxDefaultPosition, wxDefaultSize,
                                 wxALIGN_CENTRE);
-  Add(bottomtext, 0, wxALIGN_CENTRE);
+  sizer->Add(bottomtext, 0, wxALIGN_CENTRE);
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);
+
 }
 
 // }}}
@@ -657,65 +724,75 @@ void MasterClear::EnableButton(bool enbl)
 // {{{ FetchStore::FetchStore(wxWindow *parent)
 
 FetchStore::FetchStore(wxWindow *parent)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
   wxRadioButton *fetch, *store;
 
-  fetch = new wxRadioButton(parent, ID_FETCH, "",
+  sizer = new wxBoxSizer( wxVERTICAL );
+
+  fetch = new wxRadioButton(this, ID_FETCH, "",
 			    wxDefaultPosition, wxDefaultSize,
 			    wxRB_GROUP);
-  store = new wxRadioButton(parent, ID_STORE, "");
+  store = new wxRadioButton(this, ID_STORE, "");
 
-  Add( new wxStaticText(parent, -1,
-			"FETCH",
-			wxDefaultPosition, wxDefaultSize,
-			wxALIGN_CENTRE),
-       0, wxALIGN_CENTRE);
+  sizer->Add( new wxStaticText(this, -1,
+			       "FETCH",
+			       wxDefaultPosition, wxDefaultSize,
+			       wxALIGN_CENTRE),
+	      0, wxALIGN_CENTRE);
 
-  Add( 0, 0, 1, wxALIGN_CENTRE);
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
-  Add( fetch, 0, wxALIGN_CENTRE );
-  Add( store,  0, wxALIGN_CENTRE );
+  sizer->Add( fetch, 0, wxALIGN_CENTRE );
+  sizer->Add( store,  0, wxALIGN_CENTRE );
 
-  Add( 0, 0, 1, wxALIGN_CENTRE);
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
-  Add( new wxStaticText(parent, -1,
-			"STORE",
-			wxDefaultPosition, wxDefaultSize,
-			wxALIGN_CENTRE),
-       0, wxALIGN_CENTRE);
+  sizer->Add( new wxStaticText(this, -1,
+			       "STORE",
+			       wxDefaultPosition, wxDefaultSize,
+			       wxALIGN_CENTRE),
+	      0, wxALIGN_CENTRE);
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);  
 }
 
 // }}}
 // {{{ P_PP1::P_PP1(wxWindow *parent)
 
 P_PP1::P_PP1(wxWindow *parent)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
-  label_PP1 = new wxStaticText(parent, -1, "P+1",
+  sizer = new wxBoxSizer( wxVERTICAL );
+
+  label_PP1 = new wxStaticText(this, -1, "P+1",
                                wxDefaultPosition, wxDefaultSize,
                                wxALIGN_CENTRE);
 
-  button_PP1 = new wxRadioButton(parent, ID_PP1, "",
+  button_PP1 = new wxRadioButton(this, ID_PP1, "",
                                  wxDefaultPosition, wxDefaultSize,
                                  wxRB_GROUP);
 
-  button_P = new wxRadioButton(parent, ID_P, "");
+  button_P = new wxRadioButton(this, ID_P, "");
   
-  label_P = new wxStaticText(parent, -1, "P",
+  label_P = new wxStaticText(this, -1, "P",
                              wxDefaultPosition, wxDefaultSize,
                              wxALIGN_CENTRE);
 
-  Add( label_PP1, 0, wxALIGN_CENTRE);
+  sizer->Add( label_PP1, 0, wxALIGN_CENTRE);
 
-  Add( 0, 0, 1, wxALIGN_CENTRE);
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
-  Add( button_PP1, 0, wxALIGN_CENTRE );
-  Add( button_P,  0, wxALIGN_CENTRE );
+  sizer->Add( button_PP1, 0, wxALIGN_CENTRE );
+  sizer->Add( button_P,  0, wxALIGN_CENTRE );
 
-  Add( 0, 0, 1, wxALIGN_CENTRE);
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
-  Add( label_P, 0, wxALIGN_CENTRE);
+  sizer->Add( label_P, 0, wxALIGN_CENTRE);
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);  
 }
 
 // }}}
@@ -727,17 +804,22 @@ char *MaSiRun::label[MSR_NUM] =
 // {{{ MaSiRun::MaSiRun(wxWindow *parent)
 
 MaSiRun::MaSiRun(wxWindow *parent)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
   int i;
 
+  sizer = new wxBoxSizer( wxVERTICAL );
+
   for (i=0; i<MSR_NUM; i++)
     {
-      button[i] = new wxRadioButton(parent, FrontPanel::ID_MA+i, label[i],
+      button[i] = new wxRadioButton(this, FrontPanel::ID_MA+i, label[i],
                                     wxDefaultPosition, wxDefaultSize,
                                     (i==0) ? wxRB_GROUP : 0);
-      Add( button[i], 0, wxALIGN_LEFT );
+      sizer->Add( button[i], 0, wxALIGN_LEFT );
     }
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);  
 }
 
 // }}}
@@ -764,25 +846,29 @@ enum MaSiRun::MSR MaSiRun::GetValue()
 // {{{ Start::Start(wxWindow *parent)
 
 Start::Start(wxWindow *parent)
-  : wxBoxSizer( wxVERTICAL )
+  : wxPanel( parent )
 {
+  sizer = new wxBoxSizer( wxVERTICAL );
 
-  toptext = new wxStaticText(parent, -1,
-			"START",
-			wxDefaultPosition, wxDefaultSize,
+  toptext = new wxStaticText(this, -1,
+			     "START",
+			     wxDefaultPosition, wxDefaultSize,
                              wxALIGN_CENTRE);
+  
+  sizer->Add(toptext, 0, wxALIGN_CENTRE);
+  
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
+  
+  button = new wxToggleButton(this, FrontPanel::ID_Start, "",
+			      wxDefaultPosition,
+			      wxSize(BUTTON_SIZE*2, BUTTON_SIZE*2));
+  
+  sizer->Add( button, 0, wxALIGN_CENTRE );
+  
+  sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
-  Add(toptext, 0, wxALIGN_CENTRE);
-
-  Add( 0, 0, 1, wxALIGN_CENTRE);
-
-  button = new wxButton(parent, -1, "",
-			wxDefaultPosition,
-			wxSize(BUTTON_SIZE*2, BUTTON_SIZE*2));
-
-  Add( button, 0, wxALIGN_CENTRE );
-
-  Add( 0, 0, 1, wxALIGN_CENTRE);
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);  
 }
 
 // }}}
@@ -800,48 +886,59 @@ void Start::EnableButton(bool enbl)
 
 // {{{ ControlButtons
 
-// {{{ ControlButtons::ControlButtons(wxWindow *parent)
+// {{{ ControlButtons::ControlButtons(wxWindow *parent, CPU cpu_type)
 
-ControlButtons::ControlButtons(wxWindow *parent)
-  : wxBoxSizer( wxHORIZONTAL )
+ControlButtons::ControlButtons(wxWindow *parent, CPU cpu_type)
+  : wxPanel( parent ),
+    cpu_type( cpu_type )
 {
+
+  sizer = new wxBoxSizer( wxHORIZONTAL );
   /*
    * Add a space at the left
    */
-  Add(BUTTON_SIZE/2, 0, 0);
+  sizer->Add(BUTTON_SIZE/2, 0, 0);
 
-  onoff = new OnOff(parent);
-  Add( onoff, 0, wxALIGN_CENTRE );
-  Add(BUTTON_SIZE/2, 0, 1);
+  onoff = new OnOff(this);
+  sizer->Add( onoff, 0, wxALIGN_CENTRE );
+  sizer->Add(BUTTON_SIZE/2, 0, 1);
   
-  sense = new Sense(parent);
-  Add ( sense, 0, wxGROW );
-  Add(BUTTON_SIZE/2, 0, 1);
+  if (cpu_type == CPU_416)
+    sense = 0;
+  else
+    {
+      sense = new Sense(this);
+      sizer->Add ( sense, 0, wxGROW );
+      sizer->Add(BUTTON_SIZE/2, 0, 1);
+    };
+
+  regbuttons = new RegButtons(this, cpu_type);
+  sizer->Add( regbuttons, 0, wxGROW );
+  sizer->Add(BUTTON_SIZE/2, 0, 1);
   
-  regbuttons = new RegButtons(parent);
-  Add( regbuttons, 0, wxGROW );
-  Add(BUTTON_SIZE/2, 0, 1);
+  masterclear = new MasterClear(this);
+  sizer->Add (masterclear, 0, wxGROW );
+  sizer->Add(BUTTON_SIZE/2, 0, 1);
   
-  masterclear = new MasterClear(parent);
-  Add (masterclear, 0, wxGROW );
-  Add(BUTTON_SIZE/2, 0, 1);
-  
-  fetchstore = new FetchStore(parent);
-  Add (fetchstore, 0, wxGROW );
-  Add(BUTTON_SIZE/2, 0, 1);
+  fetchstore = new FetchStore(this);
+  sizer->Add (fetchstore, 0, wxGROW );
+  sizer->Add(BUTTON_SIZE/2, 0, 1);
 
-  p_pp1 = new P_PP1(parent);
-  Add (p_pp1, 0, wxGROW );
-  Add(BUTTON_SIZE/2, 0, 1);
+  p_pp1 = new P_PP1(this);
+  sizer->Add (p_pp1, 0, wxGROW );
+  sizer->Add(BUTTON_SIZE/2, 0, 1);
 
-  ma_si_run = new MaSiRun(parent);
-  Add (ma_si_run, 0, wxALIGN_CENTRE );
-  Add(BUTTON_SIZE/2, 0, 1);
+  ma_si_run = new MaSiRun(this);
+  sizer->Add (ma_si_run, 0, wxALIGN_CENTRE );
+  sizer->Add(BUTTON_SIZE/2, 0, 1);
 
-  start = new Start(parent);
-  Add (start, 0, wxGROW );
+  start = new Start(this);
+  sizer->Add (start, 0, wxGROW );
 
-  Add(BUTTON_SIZE/2, 0, 0);
+  sizer->Add(BUTTON_SIZE/2, 0, 0);
+
+  SetSizer(sizer);
+  sizer->SetSizeHints(this);  
 }
 
 // }}}
@@ -853,22 +950,27 @@ bool ControlButtons::GetOnOff()
 }
 
 // }}}
+// {{{ void ControlButtons::SetOnOff(bool b)
+
+void ControlButtons::SetOnOff(bool b)
+{
+  onoff->SetValue(b);
+}
+
+// }}}
 // {{{ void ControlButtons::DisableButtons(int flags)
 
 void ControlButtons::DisableButtons(int flags)
 {
-  bool b;
-
   /*
    * In ControlButtons only the
    * MasterClear and the Start buttons
    * are disabled
    */
 
-  b = ( (flags & FrontPanel::DSBL_OFF) ||
-        (flags & FrontPanel::DSBL_SI_RUN) );
-  masterclear->EnableButton(!b);
-  start->EnableButton(!b);
+  masterclear->EnableButton(!( (flags & FrontPanel::DISABLE_OFF) ||
+			       (flags & FrontPanel::DISABLE_SI_RUN)) );
+  start->EnableButton(!(flags & FrontPanel::DISABLE_OFF));
 }
 
 // }}}
@@ -891,15 +993,15 @@ enum RegButtons::RB ControlButtons::GetRegisterButton()
 
 // }}}
 
-// {{{ FrontPanel::FrontPanel(wxWindow *parent)
+// {{{ FrontPanel::FrontPanel(wxWindow *parent, enum CPU cpu_type)
 
-FrontPanel::FrontPanel(wxWindow *parent)
+FrontPanel::FrontPanel(wxWindow *parent, enum CPU cpu_type)
   : wxPanel(parent)
 {
   wxBoxSizer *ts = new wxBoxSizer( wxVERTICAL );
   
   wb = new WordButtons(this);
-  cb = new ControlButtons(this);
+  cb = new ControlButtons(this, cpu_type);
   
   ts->Add( wb, 2, wxGROW );
   ts->Add( new wxStaticLine( this, -1), 0, wxGROW);
@@ -908,6 +1010,11 @@ FrontPanel::FrontPanel(wxWindow *parent)
   SetSizer(ts);
   ts->SetSizeHints(this);
   
+  /*
+   * Start with the machine turned on
+   */
+  cb->SetOnOff(true);
+
   Refresh();
 }
 
@@ -931,6 +1038,9 @@ BEGIN_EVENT_TABLE(FrontPanel, wxPanel)
   EVT_RADIOBUTTON(ID_MA, FrontPanel::OnMaSiRun)
   EVT_RADIOBUTTON(ID_SI, FrontPanel::OnMaSiRun)
   EVT_RADIOBUTTON(ID_RUN, FrontPanel::OnMaSiRun)
+
+  EVT_TOGGLEBUTTON(ID_Start, FrontPanel::OnStart)
+
 END_EVENT_TABLE()
 
   // }}}
@@ -948,13 +1058,13 @@ void FrontPanel::EnableButtons()
   int flags = 0;
 
   if (!cb->GetOnOff())
-    flags |= DSBL_OFF;
+    flags |= DISABLE_OFF;
   
   if (cb->GetRegisterButton() == RegButtons::RB_OP)
-    flags |= DSBL_OP;
+    flags |= DISABLE_OP;
   
   if (cb->GetMaSiRun() != MaSiRun::MSR_MA)
-    flags |= DSBL_SI_RUN;
+    flags |= DISABLE_SI_RUN;
 
   cb->DisableButtons(flags);
 
@@ -1030,5 +1140,31 @@ void FrontPanel::OnRegisterButton(wxCommandEvent& event)
 }
 
 // }}}
+// {{{ void FrontPanel::OnStart(wxCommandEvent& WXUNUSED(event))
 
+void FrontPanel::OnStart(wxCommandEvent& WXUNUSED(event))
+{
+  std::cout << "Start" << std::endl;
 
+  H16Cmd *cmd = new H16Cmd(H16Cmd::GO);
+
+  Dispatch(*cmd);
+}
+
+// }}}
+
+// {{{ bool FrontPanel::Destroy()
+
+bool FrontPanel::Destroy()
+{
+ return wxWindow::Destroy();
+}
+
+// }}}
+
+void FrontPanel::Dispatch(H16Cmd &cmd)
+{
+  GUI *gui = static_cast<GUI *>(GetParent());
+  
+  gui->QueueCommand(cmd);
+}
