@@ -65,27 +65,28 @@ struct CmdTab
 
 struct CmdTab Monitor::commands[] =
   {
-    {"a",          2, 0, 1, "Get/Set A register",        &Monitor::a},
-    {"b",          2, 0, 1, "Get/Set B register",        &Monitor::b},
-    {"x",          2, 0, 1, "Get/Set X register",        &Monitor::x},
-    {"m",          1, 1, 2, "Get/Set memory",            &Monitor::m},
-    {"quit",       1, 0, 0, "Quit emulation",            &Monitor::quit},
-    {"continue",   1, 0, 0, "Continue",                  &Monitor::cont},
-    {"stop",       1, 0, 0, "Stop",                      &Monitor::cont},
-    {"go",         0, 0, 1, "Start execution",           &Monitor::go},
-    {"ss",         1, 1, 2, "Get/Set Sense Switch",      &Monitor::ss},
-    {"ptr",        1, 1, 1, "Set PTR filename",          &Monitor::ptr},
-    {"ptp",        1, 1, 1, "Set PTP filename",          &Monitor::ptp},
-    {"asr_ptr",    1, 1, 1, "Set ASR PTR filename",      &Monitor::asr_ptr},
-    {"asr_ptp",    1, 1, 1, "Set ASR PTP filename",      &Monitor::asr_ptp},
-    {"clear",      1, 0, 0, "Master clear",              &Monitor::clear},
-    {"help",       1, 0, 0, "Print this help",           &Monitor::help},
-    {"trace",      1, 0, 2, "trace [filename] [,lines]", &Monitor::trace},
-    {"disassemble",1, 1, 3, "disassemble [filename] first [,last]",
-     &Monitor::disassemble},
-    {"license",    1, 0, 0, "Print license information", &Monitor::license},
-    {"warranty",   1, 0, 0, "Statement of no warranty",  &Monitor::warranty},
-    {NULL,         0, 0, 0, NULL,                        NULL}
+    {"a",          2, 0, 1, "[data] : Get/Set A register",                  &Monitor::a},
+    {"b",          2, 0, 1, "[data] : Get/Set B register",                  &Monitor::b},
+    {"x",          2, 0, 1, "[data] : Get/Set X register",                  &Monitor::x},
+    {"m",          1, 1, 2, "addr [data] : Get/Set memory",                 &Monitor::m},
+    {"quit",       1, 0, 0, "Quit emulation",                               &Monitor::quit},
+    {"continue",   1, 0, 0, "Continue",                                     &Monitor::cont},
+    {"stop",       1, 0, 0, "Stop",                                         &Monitor::cont},
+    {"go",         0, 0, 1, "[addr] Start execution",                       &Monitor::go},
+    {"ss",         1, 1, 2, "num [0/1] Get/Set Sense Switch",               &Monitor::ss},
+    {"ptr",        1, 1, 1, "filename : Set Papertape Reader filename",     &Monitor::ptr},
+    {"ptp",        1, 1, 1, "filename : Set Papertape Punch filename",      &Monitor::ptp},
+    {"lpt",        1, 1, 1, "filename : Set Lineprinter filename",          &Monitor::lpt},
+    {"asr_ptr",    1, 1, 1, "filename : Set ASR Papertape Reader filename", &Monitor::asr_ptr},
+    {"asr_ptp",    1, 1, 1, "filename : Set ASR Papertape Punch filename",  &Monitor::asr_ptp},
+    {"asr_ptp_on", 1, 0, 1, "[filename] : Turn on ASR Papertape Punch",     &Monitor::asr_ptp_on},
+    {"clear",      1, 0, 0, "Master clear",                                 &Monitor::clear},
+    {"help",       1, 0, 0, "Print this help",                              &Monitor::help},
+    {"trace",      1, 0, 2, "[filename] [,lines] : Save trace file",        &Monitor::trace},
+    {"disassemble",1, 1, 3, "[filename] first [,last] : Save disassembly",  &Monitor::disassemble},
+    {"license",    1, 0, 0, "Print license information",                    &Monitor::license},
+    {"warranty",   1, 0, 0, "Statement of no warranty",                     &Monitor::warranty},
+    {NULL,         0, 0, 0, NULL, NULL}
   };
 
 Monitor::Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv)
@@ -430,6 +431,15 @@ bool Monitor::ptp(bool &run, int words, char **cmd)
   return ok;
 }
 
+bool Monitor::lpt(bool &run, int words, char **cmd)
+{
+  bool ok = 1;
+
+  p->set_lpt_filename(cmd[1]);
+
+  return ok;
+}
+
 bool Monitor::asr_ptr(bool &run, int words, char **cmd)
 {
   bool ok = 1;
@@ -444,6 +454,15 @@ bool Monitor::asr_ptp(bool &run, int words, char **cmd)
   bool ok = 1;
   
   p->set_asr_ptp_filename(cmd[1]);
+
+  return ok;
+}
+
+bool Monitor::asr_ptp_on(bool &run, int words, char **cmd)
+{
+  bool ok = 1;
+  
+  p->asr_ptp_on(((words>0) ? cmd[1] : 0));
 
   return ok;
 }

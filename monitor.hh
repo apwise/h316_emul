@@ -65,6 +65,7 @@ class Monitor
   bool lpt(bool &run, int words, char **cmd);
   bool asr_ptr(bool &run, int words, char **cmd);
   bool asr_ptp(bool &run, int words, char **cmd);
+  bool asr_ptp_on(bool &run, int words, char **cmd);
   bool a(bool &run, int words, char **cmd);
   bool b(bool &run, int words, char **cmd);
   bool x(bool &run, int words, char **cmd);
