@@ -1,6 +1,5 @@
-
-/* Honeywell Series 16 emulator $Id: lpt.cc,v 1.1 2004/04/21 21:20:27 adrian Exp $
- * Copyright (C) 1997, 1998, 1999  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 2004, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +16,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
  *
- * $Log: lpt.cc,v $
- * Revision 1.1  2004/04/21 21:20:27  adrian
- * Initial revision
- *
- *
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -37,10 +31,10 @@
 #define SMK_MASK (1 << (16-14))
 
 enum LPT_REASON
-{
-  LPT_REASON_DUMMY,
-  LPT_REASON_NUM
-};
+  {
+    LPT_REASON_DUMMY,
+    LPT_REASON_NUM
+  };
 
 static char *ptp_reason[LPT_REASON_NUM] __attribute__ ((unused)) =
 {
@@ -190,10 +184,10 @@ void LPT::ocp(unsigned short instr)
       if (line_number != 0)
         {
           /*
-          while (line_number != 0)
+	    while (line_number != 0)
             {
-              fprintf(fp, "\n");
-              next_line();
+	    fprintf(fp, "\n");
+	    next_line();
             }
           */
           line_number = 0;

@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: iodev.cc,v 1.3 2004/04/21 21:20:27 adrian Exp $
- * Copyright (C) 1997, 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,17 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: iodev.cc,v $
- * Revision 1.3  2004/04/21 21:20:27  adrian
- * Batch operation and line-printer
- *
- * Revision 1.2  1999/02/25 06:54:55  adrian
- * Removed Printf, Fprintf etc.
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
- *
  *
  */
 #include <stdlib.h>

@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: ptr.hh,v 1.3 2001/06/09 22:12:02 adrian Exp $
- * Copyright (C) 1997, 1998, 1999  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 1999, 2004, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,14 +16,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
  *
- * $Log: ptr.hh,v $
- * Revision 1.3  2001/06/09 22:12:02  adrian
- * Various bug fixes
- *
- * Revision 1.2  1999/09/01 18:00:54  adrian
- * Cludge to allow reading a new tape if EOT reached (DAP16)
- *
- *
  */
 
 class Proc;
@@ -31,7 +23,7 @@ class STDTTY;
 
 class PTR : public IODEV
 {
- public:
+public:
   PTR(Proc *p, STDTTY *stdtty);
   bool ina(unsigned short instr, signed short &data);
   void ocp(unsigned short instr);
@@ -42,7 +34,7 @@ class PTR : public IODEV
   void event(int reason);
   void set_filename(char *filename);
 
- private:
+private:
   void master_clear(void);
   void open_file(void);
   void start_reader(void);

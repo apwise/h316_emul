@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: instr.hh,v 1.4 2001/06/09 22:12:02 adrian Exp $
- * Copyright (C) 1997, 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,19 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: instr.hh,v $
- * Revision 1.4  2001/06/09 22:12:02  adrian
- * Various bug fixes
- *
- * Revision 1.3  2000/01/15 06:26:17  adrian
- * Generic shift and group A instructions
- *
- * Revision 1.2  1999/06/04 07:57:21  adrian
- * *** empty log message ***
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
  *
  */
 
@@ -48,16 +35,16 @@
 class Proc;
 
 enum INSTR_TYPE 
-{
-  UNDEFINED,
-  GB, // Generic type B
-  SH, // Shift
-  SK, // Skip
-  GA, // Generic type A
-  MR, // Memory reference
-  IO, // IO intructions
-  IOG // IO instuction pretending to be Generic
-};
+  {
+    UNDEFINED,
+    GB, // Generic type B
+    SH, // Shift
+    SK, // Skip
+    GA, // Generic type A
+    MR, // Memory reference
+    IO, // IO intructions
+    IOG // IO instuction pretending to be Generic
+  };
 
 class Instr
 {
@@ -86,9 +73,9 @@ public:
   // to do the action of the instruction it is passed
   //
   static inline void (Proc::*dispatch(unsigned short instr))(unsigned short instr)
-    { return dispatch_table[instr]->exec; };
+  { return dispatch_table[instr]->exec; };
   static inline bool defined(unsigned short instr)
-    { return dispatch_table[instr]->type != UNDEFINED; };
+  { return dispatch_table[instr]->type != UNDEFINED; };
 
 private:
   static Instr standard[];

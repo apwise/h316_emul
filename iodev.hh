@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: iodev.hh,v 1.2 2004/04/21 21:20:27 adrian Exp $
- * Copyright (C) 1997, 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 2005  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
  *
- * $Log: iodev.hh,v $
- * Revision 1.2  2004/04/21 21:20:27  adrian
- * Batch operation and line-printer
- *
- * Revision 1.1  1999/02/20 00:06:35  adrian
- * Initial revision
- *
  */
 
 class Proc;
@@ -35,7 +28,7 @@ class STDTTY;
 
 class IODEV
 {
- public:
+public:
   virtual bool ina(unsigned short instr, signed short &data);
   virtual void ocp(unsigned short instr);
   virtual bool sks(unsigned short instr);

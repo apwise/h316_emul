@@ -258,7 +258,7 @@ void wxPaperTape::AllocateBitmaps()
     }
   start_type[wxPT_num_types] = j;
 
-  bitmaps = new (wxBitmap *)[start_type[wxPT_num_types]];
+  bitmaps = new wxBitmap *[start_type[wxPT_num_types]];
   
   for (i=0; i<start_type[wxPT_num_types]; i++)
     bitmaps[i] = 0;
