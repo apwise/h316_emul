@@ -197,7 +197,8 @@ void ASR::echo_asrch(char c, bool from_serial)
       if (ascii_file[ASR_PTP])
         {
           k = c & 0x7f;
-          if (k != 015) // ignore Carriage Return
+          if ((k != 015) && // ignore Carriage Return
+	      (k != 0))     // ignore null
             {
               if (k == 012) // LF is newline
                 k = '\n';
