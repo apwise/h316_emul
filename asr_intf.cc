@@ -45,7 +45,7 @@ static char *asr_reason[ASR_REASON_NUM] __attribute__ ((unused)) =
 {
   "Dummy cycle",
   "Output",
-  "Input",
+  "Input"
 };
 
 ASR_INTF::ASR_INTF(Proc *p, STDTTY *stdtty)

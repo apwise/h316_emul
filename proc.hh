@@ -21,7 +21,7 @@
 #include "instr.hh" // To get GENERIC_GROUP_A
 
 class STDTTY;
-struct INSTR;
+class InstrTable;
 class IODEV;
 struct Btrace;
 struct FP_INTF;
@@ -85,7 +85,7 @@ public:
   void start_button();
   void goto_monitor();
   
-  char *dis();
+  const char *dis();
   void flush_events();
   void set_ptr_filename(char *filename);
   void set_ptp_filename(char *filename);
@@ -144,6 +144,11 @@ private:
   bool fetched; // flag to say that an instruction has been fetched
 
   unsigned long half_cycles;
+
+  /*
+   * Instruction decode & dispatch
+   */
+  InstrTable instr_table;
 
   /*
    * devices

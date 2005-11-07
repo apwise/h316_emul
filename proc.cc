@@ -129,6 +129,7 @@ static unsigned short keyin[] =
 // {{{ Proc::Proc(STDTTY *stdtty)
 
 Proc::Proc(STDTTY *stdtty)
+  : instr_table()
 {
   long i;
 
@@ -148,11 +149,6 @@ Proc::Proc(STDTTY *stdtty)
 
   for (i=1; i<020; i++)
     core[i] = keyin[i-1];
-
-  /*
-   * Build the instruction dispatch tables
-   */
-  Instr::build_instr_tables();
 
   /*
    * Front-panel sense switches
@@ -232,8 +228,8 @@ void Proc::dump_trace(char *filename, int n)
                   (btrace_buf[i].b & 0xffff),
                   (btrace_buf[i].x & 0xffff),
                   (btrace_buf[i].c & 1),
-                  Instr::disassemble(btrace_buf[i].p, btrace_buf[i].instr,
-                                     btrace_buf[i].brk));
+                  instr_table.disassemble(btrace_buf[i].p, btrace_buf[i].instr,
+					  btrace_buf[i].brk));
         }
       i = (i+1) % TRACE_BUF;
     } while (trace_ptr != i);
@@ -266,9 +262,9 @@ void Proc::dump_disassemble(char *filename, int first, int last)
   for (i=first; i<=last; i++)
     {
       instr = core[i];
-      if (Instr::defined(instr))
+      if (instr_table.defined(instr))
         fprintf(fp, "%s\n", 
-                Instr::disassemble(i, instr, false));
+                instr_table.disassemble(i, instr, false));
       else
         fprintf(fp, "%06o  %06o    %s\n", i, instr, "???");       
     }
@@ -499,7 +495,7 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
           instr = 0120063; // JST *'63
           
           p -= 1; // so that when JST adds 1 we store correct address
-          (this->*Instr::dispatch(instr))(instr);
+          (this->*instr_table.dispatch(instr))(instr);
           
           dp = 0xffff;
           btrace_buf[trace_ptr].brk = 1; // It was a break
@@ -517,7 +513,7 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
            * Now simply jump to the routine that handles
            * this instruction.
            */
-          (this->*Instr::dispatch(instr))(instr);
+          (this->*instr_table.dispatch(instr))(instr);
           
           btrace_buf[trace_ptr].brk = 0; // It was a normal instruction
         }
@@ -789,7 +785,7 @@ void Proc::dump_memory()
 
           instr = core[i];
           fprintf(fp, "%s\n",
-                  Instr::disassemble(i, instr, 0));
+                  instr_table.disassemble(i, instr, 0));
           j = i;
         }
     }
@@ -840,10 +836,10 @@ void Proc::goto_monitor()
   goto_monitor_flag = 1;
 }
 
-char *Proc::dis()
+const char *Proc::dis()
 {
   unsigned short instr = core[p];
-  return Instr::disassemble(p, instr, 0);
+  return instr_table.disassemble(p, instr, 0);
 }
 
 void Proc::flush_events()
