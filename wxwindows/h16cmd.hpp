@@ -1,5 +1,5 @@
-#ifndef _H16CMD_HH_
-#define _H16CMD_HH_
+#ifndef _H16CMD_HPP_
+#define _H16CMD_HPP_
 
 /*
  * Commands produced by user interfaces

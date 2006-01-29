@@ -1,5 +1,5 @@
 /*
- * fp.cc
+ * fp.cpp
  * Hx16 front-panel
  * Adrian Wise
  */
@@ -12,10 +12,10 @@
 #include <wx/statline.h>
 #include <iostream>
 
-#include "gui_types.hh"
-#include "gui.hh"
-#include "h16cmd.hh"
-#include "fp.hh"
+#include "gui_types.hpp"
+#include "gui.hpp"
+#include "h16cmd.hpp"
+#include "fp.hpp"
 
 // }}}
 
@@ -95,15 +95,22 @@ public:
   SenseButton(wxWindow *parent, int num);
   bool GetValue();
   void SetValue(bool value);
+  void OnOnOff(wxCommandEvent& event);
 
 private:
   wxBoxSizer *sizer;
+  wxRadioButton *on, *off;
   enum ID {
-    ID_OFF = 10000,
-    ID_ON
+    ID_Off = 11000,
+    ID_On
   };
-      
+  DECLARE_EVENT_TABLE()      
 };
+
+BEGIN_EVENT_TABLE(SenseButton, wxPanel)
+  EVT_RADIOBUTTON(ID_On, SenseButton::OnOnOff)
+  EVT_RADIOBUTTON(ID_Off, SenseButton::OnOnOff)
+END_EVENT_TABLE()
 
 // }}}
 // {{{ class Sense : public wxPanel
@@ -112,6 +119,9 @@ class Sense : public wxPanel
 {
 public:
   Sense( wxWindow *parent );
+  unsigned int GetValue();
+  void SetValue(unsigned int bitfield);
+  void Sense::Changed();
 private:
   wxStaticBoxSizer *sizer;
   SenseButton *ss[4];
@@ -520,6 +530,9 @@ void OnOff::SetValue(bool value)
 // }}}
 
 // }}}
+
+// {{{ SenseButton
+
 // {{{ SenseButton::SenseButton(wxWindow *parent, int num)
 
 SenseButton::SenseButton(wxWindow *parent, int num)
@@ -529,16 +542,15 @@ SenseButton::SenseButton(wxWindow *parent, int num)
 
   wxString s;
 
-  wxRadioButton *on, *off;
   wxStaticText *t;
 
   s << num;
   t = new wxStaticText(this, -1, s);
 
-  off = new wxRadioButton(this, ID_OFF, "",
+  off = new wxRadioButton(this, ID_Off, "",
                           wxDefaultPosition, wxDefaultSize,
                           wxRB_GROUP);
-  on = new wxRadioButton(this, ID_ON, "");
+  on = new wxRadioButton(this, ID_On, "");
 
   sizer->Add( t,   0, wxALIGN_CENTRE );
   sizer->Add( off, 0, wxALIGN_CENTRE );
@@ -550,6 +562,38 @@ SenseButton::SenseButton(wxWindow *parent, int num)
 }
 
 // }}}
+// {{{ void SenseButton::OnOnOff(wxCommandEvent& event)
+
+void SenseButton::OnOnOff(wxCommandEvent& event)
+{
+  std::cout << "Sense button On/Off" << std::endl;
+  Sense *parent = dynamic_cast<Sense *>(GetParent());
+  if (parent)
+    parent->Changed();
+}
+
+// }}}
+// {{{ bool SenseButton::GetValue()
+
+bool SenseButton::GetValue()
+{
+  return on->GetValue();
+}
+
+// }}}
+// {{{ void SenseButton::SetValue(bool value)
+
+void SenseButton::SetValue(bool value)
+{
+  off->SetValue(!value);
+  on->SetValue(value);
+}
+
+// }}}
+
+// }}}
+// {{{ Sense
+
 // {{{ Sense::Sense( wxWindow *parent )
 
 Sense::Sense( wxWindow *parent )
@@ -572,6 +616,41 @@ Sense::Sense( wxWindow *parent )
   sizer->SetSizeHints(this);
 
 }
+
+// }}}
+// {{{ unsigned int Sense::GetValue()
+
+unsigned int Sense::GetValue()
+{
+  int i;
+  unsigned int bitfield = 0;
+  for (i=0; i<4 ; i++)
+    bitfield |= ((ss[i]->GetValue() ? 1 : 0) << (3-i));
+  return bitfield;
+}
+
+// }}}
+// {{{ void Sense::SetValue(unsigned int bitfield)
+
+void Sense::SetValue(unsigned int bitfield)
+{
+  int i;
+  std::cout << "SetValue(" << bitfield << ")" << std::endl;
+  
+  for (i=0; i<4; i++)
+    ss[i]->SetValue((bitfield >> (3-i)) & 1);
+}
+
+// }}}
+// {{{ void Sense::Changed()
+
+void Sense::Changed()
+{
+  unsigned int bitfield = GetValue();
+  std::cout << "Sense changed to " << bitfield << std::endl;
+}
+
+// }}}
 
 // }}}
 // {{{ RegButtons
@@ -883,7 +962,6 @@ void Start::EnableButton(bool enbl)
 // }}}
 
 // }}}
-
 // {{{ ControlButtons
 
 // {{{ ControlButtons::ControlButtons(wxWindow *parent, CPU cpu_type)
@@ -1044,7 +1122,6 @@ BEGIN_EVENT_TABLE(FrontPanel, wxPanel)
 END_EVENT_TABLE()
 
   // }}}
-
 // {{{ void FrontPanel::EnableButtons()
 
 void FrontPanel::EnableButtons()
@@ -1072,7 +1149,6 @@ void FrontPanel::EnableButtons()
 }
 
 // }}}
-
 // {{{ void FrontPanel::OnClear(wxCommandEvent& WXUNUSED(event))
 
 void FrontPanel::OnClear(wxCommandEvent& WXUNUSED(event))
@@ -1152,7 +1228,6 @@ void FrontPanel::OnStart(wxCommandEvent& WXUNUSED(event))
 }
 
 // }}}
-
 // {{{ bool FrontPanel::Destroy()
 
 bool FrontPanel::Destroy()
@@ -1161,6 +1236,7 @@ bool FrontPanel::Destroy()
 }
 
 // }}}
+// {{{ void FrontPanel::Dispatch(H16Cmd &cmd)
 
 void FrontPanel::Dispatch(H16Cmd &cmd)
 {
@@ -1168,3 +1244,5 @@ void FrontPanel::Dispatch(H16Cmd &cmd)
   
   gui->QueueCommand(cmd);
 }
+
+// }}}

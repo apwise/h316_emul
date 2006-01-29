@@ -1,9 +1,9 @@
-#ifndef _GUI_HH_
-#define _GUI_HH_
+#ifndef _GUI_HPP_
+#define _GUI_HPP_
 
 #include <list>
 
-#include "h16cmd.hh"
+#include "h16cmd.hpp"
 
 class FrontPanel;
 
