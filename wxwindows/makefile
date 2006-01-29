@@ -11,43 +11,45 @@ LDFLAGS := $(WXGTK_LIBS)
 
 LINK.C := g++
 
-CXXSOURCE := draw.cc papertape.cc papertapereader.cc
-CXXSOURCE2 := fp.cc gui.cc
+#CXXSOURCE := draw.cc papertape.cc papertapereader.cc
+CXXSOURCE2 := fp.cpp gui.cpp
 CXXSOURCE3 := message.cpp h16cmd.cpp
 
-CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
-OBJECTS := $(CXXOBJECTS)
+#CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
+#OBJECTS := $(CXXOBJECTS)
 
-CXXOBJECTS2 := $(CXXSOURCE2:%.cc=%.o)
+CXXOBJECTS2 := $(CXXSOURCE2:%.cpp=%.o)
 CXXOBJECTS3 := $(CXXSOURCE3:%.cpp=%.o)
 OBJECTS2 := $(CXXOBJECTS2) $(CXXOBJECTS3)
 
+#all:	gui draw
 all:	gui draw
 
-#hello:	$(OBJECTS)
+#hello:	hello.o
 #	$(LINK.C) -o $@ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^
-#
+
 #hello.o: hello.cc
 
-draw:	$(OBJECTS)
-	$(LINK.C) -o $@ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^
+#draw:	$(OBJECTS)
+#	$(LINK.C) -o $@ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^
+#
+#draw.o: draw.cc papertapereader.hh
 
-draw.o: draw.cc papertapereader.hh
+#papertape.o: papertape.cc papertape.hh
 
-papertape.o: papertape.cc papertape.hh
-
-papertapereader.o: papertapereader.cc papertapereader.hh papertape.hh
+#papertapereader.o: papertapereader.cc papertapereader.hh papertape.hh
 
 gui:	$(OBJECTS2)
 	$(LINK.C) -o $@ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^
 
-gui.o: gui.cc gui.hh fp.hh h16cmd.hh
+gui.o: gui.cpp gui.hpp fp.hpp h16cmd.hpp
 
-fp.o: fp.cc gui.hh fp.hh h16cmd.hh
+fp.o: fp.cpp gui.hpp fp.hpp h16cmd.hpp
 
-h16cmd.o: h16cmd.cpp h16cmd.hh
+h16cmd.o: h16cmd.cpp h16cmd.hpp
 
 clean:	FORCE
-	rm -f hello $(OBJECTS)
+#	rm -f hello $(OBJECTS)
+	rm -f gui $(OBJECTS2)
 
 FORCE:

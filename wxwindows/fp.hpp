@@ -1,8 +1,8 @@
 
-#ifndef _FP_HH_
-#define _FP_HH_
+#ifndef _FP_HPP_
+#define _FP_HPP
 
-#include "h16cmd.hh"
+#include "h16cmd.hpp"
 
 class WordButtons;
 class ControlButtons;
@@ -27,6 +27,11 @@ public:
 
       ID_Clear,
       ID_MasterClear,
+
+      ID_SS1,
+      ID_SS2,
+      ID_SS3,
+      ID_SS4,
 
       ID_X,
       ID_A,

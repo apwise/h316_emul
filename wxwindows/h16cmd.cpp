@@ -1,4 +1,4 @@
-#include "h16cmd.hh"
+#include "h16cmd.hpp"
 
 H16Cmd::H16Cmd(H16Cmd::TYPE type)
   : type(type),

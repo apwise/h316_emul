@@ -7,6 +7,8 @@
 #include <wx/tglbtn.h>
 #include <wx/stattext.h>
 
+#include "button.xpm"
+
 class MyApp: public wxApp
 {
     virtual bool OnInit();
@@ -64,7 +66,11 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 
     /* Adrian */
 
+    wxBitmap *bitmap = new wxBitmap( button_xpm );
+    wxBitmapButton *bb = new wxBitmapButton( this, -1, *bitmap );
+
     wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+    sizer->Add(bb, 0, wxALIGN_CENTRE);
     sizer->Add(new wxStaticText(this, -1, "1"), 0, wxALIGN_CENTRE);
 
     wxToggleButton *button = new wxToggleButton(this, 42, " ");
