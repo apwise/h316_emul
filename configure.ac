@@ -7,7 +7,7 @@ AC_INIT(h16, 1.4.1, adrian@adrianwise.co.uk)
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997, 1998, 1999, 2004, 2005 Adrian Wise])
+AC_COPYRIGHT([Copyright (c) 1997, 1998, 1999, 2004, 2005, 2006 Adrian Wise])
 AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADER([config.h])
 

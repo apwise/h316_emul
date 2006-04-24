@@ -28,6 +28,8 @@
 #include "proc.hh"
 #include "lpt.hh"
 
+#include <iostream>
+
 #define SMK_MASK (1 << (16-14))
 
 enum LPT_REASON
