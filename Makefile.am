@@ -29,18 +29,19 @@ h16_SOURCES = 	asr_intf.cc \
 		ptr.hh \
 		tree.hh \
 		gpl.h \
-		version.h \
 		gtk/fp.h \
 		gtk/menu.h
 
-nodist_h16_SOURCES = date.h
+nodist_h16_SOURCES = version.h
 
-BUILT_SOURCES = date.h
+BUILT_SOURCES = version.h
 
 h16_CPPFLAGS = $(GTK_CFLAGS) -I gtk
 
 h16_LDADD = $(GTK_LIBS)
 
-date.h: $(h16_SOURCES)
-	@echo "#define DATE \"`date`\"" > $@
-
+version.h: $(h16_SOURCES)
+	@echo "#define NAME \"$(PACKAGE_NAME)\"" > $@
+	@echo "#define VERSION \"$(PACKAGE_VERSION)\"" >> $@
+	@echo "#define COPYRIGHT \"`grep '^Copyright.*Wise$' configure`\"" >> $@
+	@echo "#define DATE \"`date`\"" >> $@

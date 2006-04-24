@@ -37,8 +37,6 @@ AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([floor strdup strtol])
 
-dnl AC_CONFIG_FILES([Makefile
-dnl		gtk/Makefile])
 AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
