@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2006  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,31 +18,25 @@
  *
  */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
-#ifndef NO_READLINE
-#ifndef USE_READLINE
-#define USE_READLINE
-#endif
-#endif
-
-#define HAVE_O_NDELAY
-
+#include <stdlib.h>
 #include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-//#include <ioctls.h>
-#include <termios.h>
 #include <stdarg.h>
 
-#include <stdlib.h>
-#include <iostream>
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
+
 #include <signal.h>
 
-#ifdef USE_READLINE
+#include <iostream>
+
+#include "config.h"
+
+#ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>
+#endif
+
+#ifdef HAVE_READLINE_HISTORY_H
 #include <readline/history.h>
 #endif
 
@@ -86,7 +80,7 @@
  * 
  */
 
-/* Use this varIable to remember original terminal attributes. */
+/* Use this variable to remember original terminal attributes. */
 struct termios *STDTTY::saved_attributes = NULL;
 bool STDTTY::cannonical;
 
@@ -298,7 +292,7 @@ void STDTTY::putch(const char &c)
  * get user input
  */
 
-#ifndef USE_READLINE
+#ifndef HAVE_LIBREADLINE
 
 #define NRL_BUFLEN 256
 
@@ -348,7 +342,7 @@ void STDTTY::get_input(char *prompt, char *str, int len, bool more)
 
   set_cannonical();
 
-#ifdef USE_READLINE
+#ifdef HAVE_LIBREADLINE
   ptr = readline(prompt);
 #else
   ptr = no_readline(prompt);
@@ -368,7 +362,7 @@ void STDTTY::get_input(char *prompt, char *str, int len, bool more)
       for (i=0; i<n; i++)
         str[i]=ptr[i];
 
-#ifdef USE_READLINE
+#ifdef HAVE_LIBREADLINE
       if (str[0])
         add_history(ptr);//Add including the trailing space
 #endif
@@ -377,7 +371,7 @@ void STDTTY::get_input(char *prompt, char *str, int len, bool more)
     n = 0;
 
   str[n] = '\0';
-#ifdef USE_READLINE
+#ifdef HAVE_LIBREADLINE
   free(ptr);
 #endif
 
@@ -415,11 +409,8 @@ void STDTTY::install_handler()
   
   saved_flags = flags; // Save to restore at exit
 
-#ifdef HAVE_O_NDELAY
-  flags |= O_NDELAY;
-#else
-  flags |= O_ASYNC;
-#endif
+  flags |= O_NONBLOCK;
+
   (void) fcntl_perror("STDTTY::install_handler() F_SETFL",
                       STDIN_FILENO, F_SETFL, flags);
 

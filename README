@@ -1,0 +1,43 @@
+Generic instructions for installing code can be found in INSTALL.
+
+h16 provides one optional feature - whether or not to compile with
+the GUI. The default is to compile with the GUI. However, if this is
+not desired (or GTK is not available) then the emulator may be
+compiled without the GUI as follows:
+
+./configure --disable-gui
+
+Even if the emulator is compiled with the GUI it may be used in
+text mode by passing the -t as the first argument:
+
+h16 -t
+
+'help' may be typed at the "MON>" prompt:
+
+MON> help
+           a [data] : Get/Set A register
+           b [data] : Get/Set B register
+           x [data] : Get/Set X register
+           m addr [data] : Get/Set memory
+        quit Quit emulation
+    continue Continue
+        stop Stop
+          go [addr] Start execution
+          ss num [0/1] Get/Set Sense Switch
+         ptr filename : Set Papertape Reader filename
+         ptp filename : Set Papertape Punch filename
+         lpt filename : Set Lineprinter filename
+     asr_ptr filename : Set ASR Papertape Reader filename
+     asr_ptp filename : Set ASR Papertape Punch filename
+  asr_ptp_on [filename] : Turn on ASR Papertape Punch
+       clear Master clear
+        help Print this help
+       trace [filename] [,lines] : Save trace file
+ disassemble [filename] first [,last] : Save disassembly
+     license Print license information
+    warranty Statement of no warranty
+
+In text mode (but not when using the GUI) a filename may be passed
+which is used to supply commands to the monitor. This allows simple
+batch processing scripts to be constructed.
+

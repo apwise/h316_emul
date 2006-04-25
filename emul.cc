@@ -26,7 +26,12 @@
 #include "proc.hh"
 #include "instr.hh"
 #include "monitor.hh"
+
+#include "config.h"
+
+#ifdef ENABLE_GUI
 #include "gtk/fp.h"
+#endif
 
 /* FP_UPDATE sets how many machine instructions to execute
  * before refreshing the GUI. It is basically a compromise
@@ -36,7 +41,7 @@
  * is in a tight loop. */
 #define FP_UPDATE 9753
 
-#ifndef NO_GTK
+#ifdef ENABLE_GUI
 /* fp_run() is the routine that is called by the GUI
  * front-panel to have the machine 'run'. It is installed
  * either as an idle routine, when the machine is
@@ -130,6 +135,24 @@ int main(int argc, char **argv)
   bool front_panel = 1;
   int arg = 1;
 
+  if ((argc>arg) &&
+      ((strncmp(argv[arg], "-h", 2)==0) ||
+       (strncmp(argv[arg], "--h", 3)==0)))
+    {
+      printf("Usage: %s [-h|--h] [-t [<script-file]]\n", argv[0]);
+      printf("     : [-h|--h] Prints this help\n");
+      printf("     : -t Selects text-only mode. %s\n",
+#ifdef ENABLE_GUI
+	     "(Disables the GUI)"
+#else
+	     "(Assumed, because compiled without GUI support)"
+#endif
+	     );
+      printf("     : type \"help\" at \"MON>\" prompt in text-only mode for help on script file commands\n");
+
+      exit(0);
+    }
+
   /*
    * If the very first option is "-t" then operate
    * in non-GUI mode (text mode) even if compiled with
@@ -142,7 +165,7 @@ int main(int argc, char **argv)
       arg++;
     }
 
-#ifndef NO_GTK
+#ifdef ENABLE_GUI
   /* Let GTK look at the options */
   if (front_panel)
     process_args(&argc, &argv);
@@ -173,7 +196,7 @@ int main(int argc, char **argv)
   p = new Proc(stdtty);
   stdtty->set_proc(p, call_special_chars);
 
-#ifndef NO_GTK  
+#ifdef ENABLE_GUI
   if (front_panel)
     {
       /*

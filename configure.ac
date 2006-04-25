@@ -14,9 +14,16 @@ AC_CONFIG_HEADER([config.h])
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_CXX
-# AC_PROG_LIBTOOL
 
-AM_PATH_GTK([1.2.10])
+
+AC_ARG_ENABLE([gui],
+              AS_HELP_STRING([--disable-gui],[Compile a text-only version with no GUI]),
+	      [], [enable_gui=yes])
+AM_CONDITIONAL([ENABLE_GUI], [test x$enable_gui = xyes])
+if test x$enable_gui = xyes; then
+  AC_DEFINE_UNQUOTED([ENABLE_GUI], [1], [Define to 1 to compile with the GUI])
+  AM_PATH_GTK([1.2.10])
+fi
 
 # Checks for libraries.
 AC_CHECK_LIB([termcap], [tgoto])
