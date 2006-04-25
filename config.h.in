@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 to compile with the GUI */
+#undef ENABLE_GUI
+
 /* Define to 1 if you have the `floor' function. */
 #undef HAVE_FLOOR
 

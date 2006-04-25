@@ -14,8 +14,6 @@ h16_SOURCES = 	asr_intf.cc \
 		asr.cc \
 		stdtty.cc \
 		gpl.c \
-		gtk/fp.c \
-		gtk/menu.c \
 		asr.hh \
 		event.hh \
 		iodev.hh \
@@ -28,20 +26,27 @@ h16_SOURCES = 	asr_intf.cc \
 		proc.hh \
 		ptr.hh \
 		tree.hh \
-		gpl.h \
+		gpl.h
+
+if ENABLE_GUI
+
+h16_SOURCES += 	gtk/fp.c \
+		gtk/menu.c \
 		gtk/fp.h \
 		gtk/menu.h
-
-nodist_h16_SOURCES = version.h
-
-BUILT_SOURCES = version.h
 
 h16_CPPFLAGS = $(GTK_CFLAGS) -I gtk
 
 h16_LDADD = $(GTK_LIBS)
 
+endif
+
+nodist_h16_SOURCES = version.h
+
+BUILT_SOURCES = version.h
+
 version.h: $(h16_SOURCES)
 	@echo "#define NAME \"$(PACKAGE_NAME)\"" > $@
 	@echo "#define VERSION \"$(PACKAGE_VERSION)\"" >> $@
-	@echo "#define COPYRIGHT \"`grep '^Copyright.*Wise$' configure`\"" >> $@
+	@echo "#define COPYRIGHT \"`grep ^Copyright.*Wise$$ configure`\"" >> $@
 	@echo "#define DATE \"`date`\"" >> $@
