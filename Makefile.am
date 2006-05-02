@@ -1,3 +1,5 @@
+SUBDIRS=utils
+
 bin_PROGRAMS = h16
 
 h16_SOURCES = 	asr_intf.cc \
