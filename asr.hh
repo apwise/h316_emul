@@ -46,14 +46,14 @@ private:
 
   bool tape_char_received;
   bool xoff_received;
-  void ASR::clear_ptp_flags();
-  void ASR::open_punch_file();
+  void clear_ptp_flags();
+  void open_punch_file();
 
   bool insert_lf;
   bool stop_after_next;
   bool xoff_read;
-  void ASR::clear_ptr_flags();
-  void ASR::open_reader_file();
+  void clear_ptr_flags();
+  void open_reader_file();
 
   void get_filename(bool asr_ptp);
   void close_file(bool asr_ptp);

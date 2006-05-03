@@ -47,6 +47,4 @@ AC_CHECK_FUNCS([floor strdup strtol])
 
 AC_CONFIG_FILES([Makefile])
 
-AC_CONFIG_SUBDIRS([utils])
-
 AC_OUTPUT
