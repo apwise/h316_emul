@@ -30,8 +30,8 @@
 
 #include <gtk/gtk.h>
 #include <stdio.h>
-#include "../gpl.h"
-#include "../version.h"
+#include "gpl.h"
+#include "version.h"
 #include "menu.h"
 
 enum ABOUT_SECTIONS
