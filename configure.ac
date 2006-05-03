@@ -2,7 +2,6 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-dnl AC_INIT(h16, 1.4.1, adrian@adrianwise.co.uk)
 AC_INIT(h16, 1.4.x, adrian@adrianwise.co.uk)
 
 AM_INIT_AUTOMAKE
