@@ -243,35 +243,35 @@ public:
   /*
    * NPL group A
    */
-  void Proc::do_ad1(unsigned short instr);
-  void Proc::do_ad1_15(unsigned short instr);
-  void Proc::do_adc(unsigned short instr);
-  void Proc::do_adc_15(unsigned short instr);
-  void Proc::do_cm1(unsigned short instr);
-  void Proc::do_ltr(unsigned short instr);
-  void Proc::do_btr(unsigned short instr);
-  void Proc::do_btl(unsigned short instr);
-  void Proc::do_rtl(unsigned short instr);
-  void Proc::do_rcb_ssp(unsigned short instr);
-  void Proc::do_cpy(unsigned short instr);
-  void Proc::do_btb(unsigned short instr);
-  void Proc::do_bcl(unsigned short instr);
-  void Proc::do_bcr(unsigned short instr);
-  void Proc::do_ld1(unsigned short instr);
-  void Proc::do_isg(unsigned short instr);
-  void Proc::do_cma_aca(unsigned short instr);
-  void Proc::do_cma_aca_c(unsigned short instr);
-  void Proc::do_a2a(unsigned short instr);
-  void Proc::do_a2c(unsigned short instr);
-  void Proc::do_ics(unsigned short instr);
-  void Proc::do_scb_a2a(unsigned short instr);
-  void Proc::do_scb_aoa(unsigned short instr);
-  void Proc::do_a2c_scb(unsigned short instr);
-  void Proc::do_aca_scb(unsigned short instr);
-  void Proc::do_icr_scb(unsigned short instr);
-  void Proc::do_rtl_scb(unsigned short instr);
-  void Proc::do_btb_scb(unsigned short instr);
-  void Proc::do_noa(unsigned short instr);
+  void do_ad1(unsigned short instr);
+  void do_ad1_15(unsigned short instr);
+  void do_adc(unsigned short instr);
+  void do_adc_15(unsigned short instr);
+  void do_cm1(unsigned short instr);
+  void do_ltr(unsigned short instr);
+  void do_btr(unsigned short instr);
+  void do_btl(unsigned short instr);
+  void do_rtl(unsigned short instr);
+  void do_rcb_ssp(unsigned short instr);
+  void do_cpy(unsigned short instr);
+  void do_btb(unsigned short instr);
+  void do_bcl(unsigned short instr);
+  void do_bcr(unsigned short instr);
+  void do_ld1(unsigned short instr);
+  void do_isg(unsigned short instr);
+  void do_cma_aca(unsigned short instr);
+  void do_cma_aca_c(unsigned short instr);
+  void do_a2a(unsigned short instr);
+  void do_a2c(unsigned short instr);
+  void do_ics(unsigned short instr);
+  void do_scb_a2a(unsigned short instr);
+  void do_scb_aoa(unsigned short instr);
+  void do_a2c_scb(unsigned short instr);
+  void do_aca_scb(unsigned short instr);
+  void do_icr_scb(unsigned short instr);
+  void do_rtl_scb(unsigned short instr);
+  void do_btb_scb(unsigned short instr);
+  void do_noa(unsigned short instr);
 #endif
 
   void do_EXA(unsigned short instr);
@@ -287,14 +287,14 @@ public:
   void do_SGL(unsigned short instr);
   void do_iab_sca(unsigned short instr);
 
-  void Proc::generic_shift(unsigned short instr);
-  void Proc::generic_skip(unsigned short instr);
+  void generic_shift(unsigned short instr);
+  void generic_skip(unsigned short instr);
 #ifdef TEST_GENERIC_SKIP
-  void Proc::test_generic_skip();
+  void test_generic_skip();
 #endif
-  void Proc::generic_group_A(unsigned short instr);
+  void generic_group_A(unsigned short instr);
 #ifdef TEST_GENERIC_GROUP_A
-  void Proc::test_generic_group_A();
+  void test_generic_group_A();
 #endif
 
   static signed short ex_sc(unsigned short instr);
