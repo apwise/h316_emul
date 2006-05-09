@@ -55,4 +55,21 @@ h16_tabs_SOURCES = utils/h16-tabs.c
 
 h16_pdap_SOURCES = utils/h16-pdap.cc
 
-dist_pkgdata_DATA = utils/pkgdata/m4h_defines.m4
+EXTRA_DIST = data/m4h_defines.m4 data/main.css data/dap.css scripts/h16-script.in
+
+install-data-local:
+	test -z "$(DESTDIR)$(pkgdatadir)/data" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/data"
+	$(INSTALL_DATA) $(srcdir)/data/m4h_defines.m4 $(DESTDIR)$(pkgdatadir)/data
+	$(INSTALL_DATA) $(srcdir)/data/main.css $(DESTDIR)$(pkgdatadir)/data
+	$(INSTALL_DATA) $(srcdir)/data/dap.css $(DESTDIR)$(pkgdatadir)/data
+
+CLEANFILES = h16-script
+
+do_subst = sed -e 's,[@]pkgdatadir[@],$(pkgdatadir),g'
+
+h16-script: $(srcdir)/scripts/h16-script.in Makefile
+	$(do_subst) < $< > $@
+
+install-exec-local: h16-script
+	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
+	$(INSTALL_PROGRAM) h16-script $(DESTDIR)$(pkgdatadir)/scripts

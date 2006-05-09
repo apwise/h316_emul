@@ -1,0 +1,24 @@
+span.N {color:olive;}  /* Source line-number */
+span.E {color:red;}    /* Error code */
+span.A {color:gray;}   /* Address */
+span.O {color:gray;}   /* Object code */
+span.L {color:maroon;} /* Label */
+span.I {color:blue;}   /* Instruction (mnemonic) */
+span.C {color:olive;}  /* Comment */
+span.S {color:blue; text-decoration:none;}   /* Symbol */
+span.U {color:red;}    /* Undefined symbol */
+
+div.code a {
+  color: inherit;
+}
+
+td a { 
+  color: inherit;
+}
+
+div.code h1 {
+  font-size: inherit;
+  font-style: normal;
+  font-weight: bold;
+  color:blue;
+}
