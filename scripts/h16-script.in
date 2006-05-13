@@ -1,4 +1,84 @@
 #! /bin/sh
 
-set pkgdatadir=@pkgdatadir@
+pkgdatadir=@pkgdatadir@
 
+#
+# For testing - if the substitution hasn't happened
+#
+if [ `echo $pkgdatadir | sed 's/[^@]//g'` != "" ]; then
+  pkgdatadir=./
+fi
+
+m4_dir=$pkgdatadir/scripts
+tape_dir=$pkgdatadir/tapes
+
+unknown=0
+m4_filename=""
+needs_filename=0
+filename=""
+slstnam=""
+
+case `basename $0` in
+
+    (h16-as)
+      m4_filename=h16-as.m4
+      slstnam=dap-16_mod2_slst.ptp
+      needs_filename=1
+    ;;
+
+    (h16-script*)
+      echo Should not be executed directly - use a symbolic link to me
+      exit 1
+    ;;
+
+    (*) unknown=1
+    ;;
+
+esac
+
+if [ $unknown -ne 0 ]; then 
+  echo "unrecognized name"
+  exit 1
+fi
+
+if [ $needs_filename -ne 0 ]; then
+  if [ "$#" -ne 1 ] ; then
+    echo usage: $0 filename
+    exit 1
+  else
+    filename=$1
+  fi
+fi
+
+tmpnam=`mktemp -t h16-commands.XXXXXX`
+
+dirnam=`dirname $filename`
+basnam=`echo fred.jim | sed 's/\.[^.]*$//'`
+
+srcnam=$filename
+lstnam=$dirnam/$basnam.lst
+objnam=$dirnam/$basnam.obj
+
+case `basename $0` in
+
+    (h16-as)
+      tabnam=`mktemp -t h16-tab-$basnam.XXXXX` &&
+      h16-tabs -o $tabnam $srcnam &&
+      m4 -DSLSTNAM=$tape_dir/$slstnam -DTABNAM=$tabnam -DLSTNAM=$lstnam -DOBJNAM=$objnam $m4_dir/$m4_filename > $tmpnam &&
+      h16 -t $tmpnam &&
+      errors=`awk -- '/WARNING OR ERROR FLAGS/{print $1}' $lstnam` &&
+      echo $errors errors &&
+      status=$errors
+      rm -f $tabnam
+    ;;
+
+    (*)
+      echo Why am I here?
+      exit 1
+    ;;
+
+esac
+
+rm -f $tmpnam
+
+exit $status
