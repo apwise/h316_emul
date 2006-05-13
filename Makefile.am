@@ -55,7 +55,11 @@ h16_tabs_SOURCES = utils/h16-tabs.c
 
 h16_pdap_SOURCES = utils/h16-pdap.cc
 
-EXTRA_DIST = data/m4h_defines.m4 data/main.css data/dap.css scripts/h16-script.in
+EXTRA_DIST = 	data/m4h_defines.m4 \
+		data/main.css \
+		data/dap.css \
+		scripts/h16-script.in \
+		tapes/dap-16_mod2_slst.ptp
 
 install-data-local:
 	test -z "$(DESTDIR)$(pkgdatadir)/data" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/data"
@@ -73,3 +77,5 @@ h16-script: $(srcdir)/scripts/h16-script.in Makefile
 install-exec-local: h16-script
 	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
 	$(INSTALL_PROGRAM) h16-script $(DESTDIR)$(pkgdatadir)/scripts
+	test -z "$(DESTDIR)$(pkgdatadir)/tapes" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/tapes"
+	$(INSTALL_DATA) dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes

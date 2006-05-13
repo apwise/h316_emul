@@ -113,13 +113,15 @@ void Monitor::get_line(char *prompt, FILE **fp, char *buffer, int buf_size)
   if (!*fp)
     stdtty->get_input(prompt, buffer, buf_size, 1);
 
-  p=buffer;
+  /*
+    p=buffer;
   while (*p)
     {
       if ((*p >= 'A') && (*p <= 'Z'))
         *p += ('a'-'A');
       p++;
     }
+  */
 }
 
 void Monitor::do_commands(bool &run, FILE **fp)
