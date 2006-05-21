@@ -1,4 +1,4 @@
-bin_PROGRAMS = h16 h16-tabs h16-pdap
+bin_PROGRAMS = h16 h16-tabs h16-pdap h16-asctotty h16-ttytoasc
 
 h16_SOURCES = 	asr_intf.cc \
 		emul.cc \
@@ -55,10 +55,15 @@ h16_tabs_SOURCES = utils/h16-tabs.c
 
 h16_pdap_SOURCES = utils/h16-pdap.cc
 
+h16_asctotty_SOURCES = utils/h16-asctotty.c
+
+h16_ttytoasc_SOURCES = utils/h16-ttytoasc.c
+
 EXTRA_DIST = 	data/m4h_defines.m4 \
 		data/main.css \
 		data/dap.css \
-		scripts/h16-script.in \
+		scripts/h16-as.in \
+		scripts/h16-as.m4 \
 		tapes/dap-16_mod2_slst.ptp
 
 install-data-local:
@@ -67,15 +72,17 @@ install-data-local:
 	$(INSTALL_DATA) $(srcdir)/data/main.css $(DESTDIR)$(pkgdatadir)/data
 	$(INSTALL_DATA) $(srcdir)/data/dap.css $(DESTDIR)$(pkgdatadir)/data
 
-CLEANFILES = h16-script
+CLEANFILES = h16-as
 
 do_subst = sed -e 's,[@]pkgdatadir[@],$(pkgdatadir),g'
 
-h16-script: $(srcdir)/scripts/h16-script.in Makefile
+h16-as: $(srcdir)/scripts/h16-as.in Makefile
 	$(do_subst) < $< > $@
 
-install-exec-local: h16-script
+install-exec-local: h16-as
 	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
-	$(INSTALL_PROGRAM) h16-script $(DESTDIR)$(pkgdatadir)/scripts
+	$(INSTALL_PROGRAM) h16-as $(DESTDIR)$(pkgdatadir)/scripts
+	$(INSTALL_DATA) $(srcdir)/scripts/h16-as.m4 $(DESTDIR)$(pkgdatadir)/scripts
+	rm -f $(bindir)/h16-as && { ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-as $(bindir)/h16-as || $(INSTALL_PROGRAM) h16-as $(bindir); }
 	test -z "$(DESTDIR)$(pkgdatadir)/tapes" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/tapes"
-	$(INSTALL_DATA) dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
+	$(INSTALL_DATA) $(srcdir)/tapes/dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes

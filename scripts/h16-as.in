@@ -3,10 +3,10 @@
 pkgdatadir=@pkgdatadir@
 
 #
-# For testing - if the substitution hasn't happened
+# For development - if the substitution hasn't happened
 # and there are still '@' characters in the value above
 #
-if [ `echo $pkgdatadir | sed 's/[^@]//g'` != "" ]; then
+if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
   pkgdatadir=./
 fi
 #
@@ -29,26 +29,32 @@ h16prog="${H16PROG-h16}"
 #
 # help and usage information
 #
-usage="Usage: $0 [--help] [-o <object-file>] [-a] <src-file>" 
+usage="Usage: $0 [--help] [-o <object-file>] [-a <listing-file>] <source-file>" 
 help="Options:
 --help     display this help and exit.
 -o         Specify object filename
-           (default: src-file with extension replaced by \".obj\")
--a         Request a listing file
-           (filename: src-file with extension replaced by \".lst\")"
+           (default: source-file with extension replaced by \".obj\")
+-a         Specify listing filename
+           (default: source-file with extension replaced by \".lst\")"
 
 #
 # flags and values from argument parsing
 #
-listing=false
 have_srcnam=false
 have_objnam=false
+have_lstnam=false
 
 while test -n "$1"; do
   case $1 in
-    -a) listing=true
-        shift
-        continue;;
+    -a) if [ "$#" -gt 2 ]; then
+          have_lstnam=true
+          lstnam=$2
+	  shift
+	  shift
+        else
+          echo "$usage"; exit 1
+	fi
+	continue;;
 
     -o) if [ "$#" -gt 2 ]; then
           have_objnam=true
@@ -77,12 +83,6 @@ if [ $have_srcnam = false ]; then
   echo "$usage"; exit 1
 fi
 
-if [ $listing = false ]; then
-aflags=100220
-else
-aflags=100223
-fi
-
 #
 # Files used by this script
 #
@@ -95,15 +95,17 @@ slstnam=$tape_dir/dap-16_mod2_slst.ptp
 dirnam=`dirname $srcnam`
 basnam=`echo $srcnam | $sedprog 's/\.[^.]*$//'`
 
-lstnam=$dirnam/$basnam.lst
-
 if [ $have_objnam = false ]; then
   objnam=$dirnam/$basnam.obj
 fi
 
+if [ $have_lstnam = false ]; then
+  lstnam=$dirnam/$basnam.lst
+fi
+
 tmpnam=`$mktmpprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
 
-$m4prog -DAFLAGS=$aflags -DSLSTNAM=$slstnam -DSRCNAM=$srcnam -DLSTNAM=$lstnam -DOBJNAM=$objnam $m4_filename > $tmpnam && \
+$m4prog -DSLSTNAM=$slstnam -DSRCNAM=$srcnam -DLSTNAM=$lstnam -DOBJNAM=$objnam $m4_filename > $tmpnam && \
 $h16prog -t $tmpnam && \
 errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{print $1}' $lstnam` && \
 echo $errors errors && \
