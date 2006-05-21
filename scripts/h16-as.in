@@ -4,81 +4,111 @@ pkgdatadir=@pkgdatadir@
 
 #
 # For testing - if the substitution hasn't happened
+# and there are still '@' characters in the value above
 #
 if [ `echo $pkgdatadir | sed 's/[^@]//g'` != "" ]; then
   pkgdatadir=./
 fi
-
+#
+# Directories based upon pkgdata
+#
 m4_dir=$pkgdatadir/scripts
 tape_dir=$pkgdatadir/tapes
 
-unknown=0
-m4_filename=""
-needs_filename=0
-filename=""
-slstnam=""
+#
+# Some programs this script uses...
+#
+sedprog="${SEDPROG-sed}"
+awkprog="${AWKPROG-awk}"
+rmprog="${RMPROG-rm}"
+mktmpprog="${MKTMPPROG-mktmp}"
+m4prog="${M4PROG-m4}"
 
-case `basename $0` in
+h16prog="${H16PROG-h16}"
 
-    (h16-as)
-      m4_filename=h16-as.m4
-      slstnam=dap-16_mod2_slst.ptp
-      needs_filename=1
-    ;;
+#
+# help and usage information
+#
+usage="Usage: $0 [--help] [-o <object-file>] [-a] <src-file>" 
+help="Options:
+--help     display this help and exit.
+-o         Specify object filename
+           (default: src-file with extension replaced by \".obj\")
+-a         Request a listing file
+           (filename: src-file with extension replaced by \".lst\")"
 
-    (h16-script*)
-      echo Should not be executed directly - use a symbolic link to me
-      exit 1
-    ;;
+#
+# flags and values from argument parsing
+#
+listing=false
+have_srcnam=false
+have_objnam=false
 
-    (*) unknown=1
-    ;;
+while test -n "$1"; do
+  case $1 in
+    -a) listing=true
+        shift
+        continue;;
 
-esac
+    -o) if [ "$#" -gt 2 ]; then
+          have_objnam=true
+          objnam=$2
+	  shift
+	  shift
+        else
+          echo "$usage"; exit 1
+	fi
+	continue;;
 
-if [ $unknown -ne 0 ]; then 
-  echo "unrecognized name"
-  exit 1
+    --help) echo "$usage"; echo "$help"; exit 0;;
+
+    *)  if [ "$#" -eq 1 ]; then
+          srcnam=$1
+          have_srcnam=true
+          shift
+	else
+          echo "$usage"; exit 1
+	fi
+	break;;
+  esac
+done
+
+if [ $have_srcnam = false ]; then
+  echo "$usage"; exit 1
 fi
 
-if [ $needs_filename -ne 0 ]; then
-  if [ "$#" -ne 1 ] ; then
-    echo usage: $0 filename
-    exit 1
-  else
-    filename=$1
-  fi
+if [ $listing = false ]; then
+aflags=100220
+else
+aflags=100223
 fi
 
-tmpnam=`mktemp -t h16-commands.XXXXXX`
+#
+# Files used by this script
+#
+m4_filename=$m4_dir/h16-as.m4
+slstnam=$tape_dir/dap-16_mod2_slst.ptp
 
-dirnam=`dirname $filename`
-basnam=`echo fred.jim | sed 's/\.[^.]*$//'`
+#
+# Compute filenames
+#
+dirnam=`dirname $srcnam`
+basnam=`echo $srcnam | $sedprog 's/\.[^.]*$//'`
 
-srcnam=$filename
 lstnam=$dirnam/$basnam.lst
-objnam=$dirnam/$basnam.obj
 
-case `basename $0` in
+if [ $have_objnam = false ]; then
+  objnam=$dirnam/$basnam.obj
+fi
 
-    (h16-as)
-      tabnam=`mktemp -t h16-tab-$basnam.XXXXX` &&
-      h16-tabs -o $tabnam $srcnam &&
-      m4 -DSLSTNAM=$tape_dir/$slstnam -DTABNAM=$tabnam -DLSTNAM=$lstnam -DOBJNAM=$objnam $m4_dir/$m4_filename > $tmpnam &&
-      h16 -t $tmpnam &&
-      errors=`awk -- '/WARNING OR ERROR FLAGS/{print $1}' $lstnam` &&
-      echo $errors errors &&
-      status=$errors
-      rm -f $tabnam
-    ;;
+tmpnam=`$mktmpprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
 
-    (*)
-      echo Why am I here?
-      exit 1
-    ;;
+$m4prog -DAFLAGS=$aflags -DSLSTNAM=$slstnam -DSRCNAM=$srcnam -DLSTNAM=$lstnam -DOBJNAM=$objnam $m4_filename > $tmpnam && \
+$h16prog -t $tmpnam && \
+errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{print $1}' $lstnam` && \
+echo $errors errors && \
+status=$errors
 
-esac
-
-rm -f $tmpnam
+$rmprog -f $tmpnam
 
 exit $status
