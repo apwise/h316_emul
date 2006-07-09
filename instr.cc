@@ -22,14 +22,15 @@
 #include <string.h>
 #include "stdtty.hh"
 
-#include "proc.hh"
-#include "instr.hh"
-
 #ifdef NO_DO_PROCS
-#define PD(proc) ((ExecFunc_pt) NULL)
+class Proc;
+#define PD(proc) 0
 #else
+#include "proc.hh"
 #define PD(proc) &Proc::proc
 #endif
+
+#include "instr.hh"
 
 InstrTable::Instr::Instr(char *mnemonic,
 			 INSTR_TYPE type,
@@ -473,6 +474,18 @@ const char *InstrTable::disassemble(unsigned short addr, unsigned short instr,
   return dispatch_table[instr]->disassemble(addr, instr, brk);
 }
 
+InstrTable::Instr *InstrTable::lookup(const char *mnemonic) const
+{
+  int i = 0;
+  while (dispatch_table[i])
+    {
+      const char *m = dispatch_table[i]->get_mnemonic();
+      if (strcmp(mnemonic, m) == 0)
+	return dispatch_table[i];
+      i++;
+    }
+  return 0;
+}
 
 #if ((!defined(GENERIC_GROUP_A)) || defined(TEST_GENERIC_GROUP_A))
 #define LAST ((unsigned short) 0177777)
@@ -839,6 +852,5 @@ void InstrTable::apply_aliases()
   for (aa=0; aliases[aa]; aa++)
     apply_one_alias(aliases[aa]);
 }
-
 
 #endif

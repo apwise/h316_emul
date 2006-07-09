@@ -99,6 +99,8 @@ public:
   { return dispatch_table[instr]->get_type() != Instr::UNDEFINED; };
 
   const char *disassemble(unsigned short addr, unsigned short instr, bool brk);
+
+  Instr *lookup(const char *mnemonic) const;
     
 private:
   Instr **dispatch_table;
