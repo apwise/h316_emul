@@ -21,7 +21,7 @@ tape_dir=$pkgdatadir/tapes
 sedprog="${SEDPROG-sed}"
 awkprog="${AWKPROG-awk}"
 rmprog="${RMPROG-rm}"
-mktmpprog="${MKTMPPROG-mktmp}"
+mktempprog="${MKTEMPPROG-mktemp}"
 m4prog="${M4PROG-m4}"
 
 h16prog="${H16PROG-h16}"
@@ -103,7 +103,7 @@ if [ $have_lstnam = false ]; then
   lstnam=$dirnam/$basnam.lst
 fi
 
-tmpnam=`$mktmpprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
+tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
 
 $m4prog -DSLSTNAM=$slstnam -DSRCNAM=$srcnam -DLSTNAM=$lstnam -DOBJNAM=$objnam $m4_filename > $tmpnam && \
 $h16prog -t $tmpnam && \
