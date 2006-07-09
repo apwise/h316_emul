@@ -478,14 +478,23 @@ InstrTable::Instr *InstrTable::lookup(const char *mnemonic) const
 {
   // This could be much more efficient, but for now...
   int i;
+
   for (i=0; i<65536; i++)
     {
       const char *m = dispatch_table[i]->get_mnemonic();
       if ((m) && (strcmp(mnemonic, m) == 0))
 	return dispatch_table[i];
-      i++;
     }
   return 0;
+}
+
+void InstrTable::dump_dispatch_table() const
+{
+  int i;
+  for (i=0; i<65536; i++)
+    {
+      printf("%06o %s\n", i, dispatch_table[i]->get_mnemonic());
+    }
 }
 
 #if ((!defined(GENERIC_GROUP_A)) || defined(TEST_GENERIC_GROUP_A))

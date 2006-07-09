@@ -101,7 +101,8 @@ public:
   const char *disassemble(unsigned short addr, unsigned short instr, bool brk);
 
   Instr *lookup(const char *mnemonic) const;
-    
+  void dump_dispatch_table() const;
+  
 private:
   Instr **dispatch_table;
 

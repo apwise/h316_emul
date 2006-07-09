@@ -86,7 +86,10 @@ static void process_line(char i_buffer[], char o_buffer[])
   char word[MAX_LINE];
 
   if (!instr_table)
-    instr_table = new InstrTable();
+    {
+      instr_table = new InstrTable();
+      //instr_table->dump_dispatch_table();
+    }
 
   /* Clip any trailing spaces */
   int k=strlen(i_buffer)-1;
@@ -126,6 +129,7 @@ static void process_line(char i_buffer[], char o_buffer[])
 	  word[j] = '\0';
 	  
 	  InstrTable::Instr *instr = instr_table->lookup(word);
+
 	  if (instr)
 	    {
 	      is_instr = true;
