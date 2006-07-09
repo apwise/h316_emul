@@ -476,11 +476,12 @@ const char *InstrTable::disassemble(unsigned short addr, unsigned short instr,
 
 InstrTable::Instr *InstrTable::lookup(const char *mnemonic) const
 {
-  int i = 0;
-  while (dispatch_table[i])
+  // This could be much more efficient, but for now...
+  int i;
+  for (i=0; i<65536; i++)
     {
       const char *m = dispatch_table[i]->get_mnemonic();
-      if (strcmp(mnemonic, m) == 0)
+      if ((m) && (strcmp(mnemonic, m) == 0))
 	return dispatch_table[i];
       i++;
     }

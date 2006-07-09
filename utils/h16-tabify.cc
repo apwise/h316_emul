@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "instr.hh"
 
@@ -22,51 +23,53 @@ struct Pseudos
   bool operands;
 };
 
-static Pseudos
+static Pseudos pseudos[] = 
 {
-  {"CF1", false};
-  {"CF3", false};
-  {"CF4", false};
-  {"CF5", false};
-  {"REL", false};
-  {"ABS", false};
-  {"LOAD", };
-  {"ORG", true};
-  {"FIN", false};
-  {"MOR", false};
-  {"END", false};
-  {"EJCT", false};
-  {"LIST", false};
-  {"NLST", false};
-  {"EXD", false};
-  {"LXD", false};
-  {"SETB", true};
-  {"EQU", true};
-  {"SET", true};
-  {"DAC", true};
-  {"DEC", true};
-  {"DBP", true};
-  {"OCT", true};
-  {"HEX", true};
-  {"BCI", true};
-  {"VFD", true};
-  {"BSS", true};
-  {"BES", true};
-  {"BSZ", true};
-  {"COMN", true};
-  {"SETC", true};
-  {"ENT", true};
-  {"SUBR", true};
-  {"EXT", true};
-  {"XAC", true};
-  {"CALL", true};
-  {"IFP", true};
-  {"IFM", true};
-  {"IFZ", true};
-  {"IFN", true};
-  {"", true};
-  {"", true};
-  {"", true};
+  {"CF1",  false},
+  {"CF3",  false},
+  {"CF4",  false},
+  {"CF5",  false},
+  {"REL",  false},
+  {"ABS",  false},
+  {"LOAD", false},
+  {"ORG",  true},
+  {"FIN",  false},
+  {"MOR",  false},
+  {"END",  true},
+  {"EJCT", false},
+  {"LIST", false},
+  {"NLST", false},
+  {"EXD",  false},
+  {"LXD",  false},
+  {"SETB", true},
+  {"EQU",  true},
+  {"SET",  true},
+  {"DAC",  true},
+  {"DEC",  true},
+  {"DBP",  true},
+  {"OCT",  true},
+  {"HEX",  true},
+  {"BCI",  true},
+  {"VFD",  true},
+  {"BSS",  true},
+  {"BES",  true},
+  {"BSZ",  true},
+  {"COMN", true},
+  {"SETC", true},
+  {"ENT",  true},
+  {"SUBR", true},
+  {"EXT",  true},
+  {"XAC",  true},
+  {"CALL", true},
+  {"IFP",  true},
+  {"IFM",  true},
+  {"IFZ",  true},
+  {"IFN",  true},
+  {"ENDC", false},
+  {"ELSE", false},
+  {"FAIL", false},
+  {"***",  true},
+  {"PZE",  true},
 
   {0, false}
 };
@@ -79,10 +82,16 @@ static void process_line(char i_buffer[], char o_buffer[])
 {
   int ib = 0;
   int ob = 0;
+  int pending_tabs=0;
   char word[MAX_LINE];
 
   if (!instr_table)
     instr_table = new InstrTable();
+
+  /* Clip any trailing spaces */
+  int k=strlen(i_buffer)-1;
+  while ((k>0) && (isspace(i_buffer[k])))
+    i_buffer[k--] = '\0';
 
   /* Find first non-blank character */
   while (isspace(i_buffer[ib]))
@@ -97,72 +106,160 @@ static void process_line(char i_buffer[], char o_buffer[])
     }
   else
     {
-      int i = ib;
-      int j = 0;
-      while (i_buffer[i] && isalnum(i_buffer[i]))
+      bool is_instr = false;
+      bool is_mr = false;
+      bool operands = false;
+      int j;
+      int instr_count;
+
+      for (instr_count=0; instr_count<2; instr_count++)
 	{
-	  word[j++] = i_buffer[i];
-	  i++;
+	  while (i_buffer[ib] && isspace(i_buffer[ib]))
+	    ib++; // Discard leading space
+	  j = 0;
+
+	  while (i_buffer[ib] && isalnum(i_buffer[ib]))
+	    {
+	      word[j++] = i_buffer[ib];
+	      ib++;
+	    }
+	  word[j] = '\0';
+	  
+	  InstrTable::Instr *instr = instr_table->lookup(word);
+	  if (instr)
+	    {
+	      is_instr = true;
+	      InstrTable::Instr::INSTR_TYPE type = instr->get_type();
+	      if (type == InstrTable::Instr::MR)
+		is_mr = operands = true;
+	      else if ((type == InstrTable::Instr::SH) ||
+		       (type == InstrTable::Instr::IO) ||
+		       (type == InstrTable::Instr::IOG))
+		operands = true;
+	    }
+	  else
+	    {
+	      /* Is it a pseudo-op ? */
+	      int k = 0;
+	      while (pseudos[k].mnemonic)
+		{
+		  if (strcmp(pseudos[k].mnemonic, word)==0)
+		    {
+		      is_instr = true;
+		      operands = pseudos[k].operands;
+		      break;
+		    }
+		  k++;
+		}
+	    }
+	  
+	  if (is_instr)
+	    {
+	      /* Word is an instruction.
+	       * If it's a memory-reference it might be indirect,
+	       * and so followed by an asterix */
+	      if (is_mr && (i_buffer[ib] == '*'))
+		{
+		  word[j++] = i_buffer[ib++];
+		  word[j] = '\0';
+		}
+	      
+	      o_buffer[ob++] = tab_char;
+	      int k=0;
+	      while (word[k])
+		o_buffer[ob++] = word[k++];
+	      break;
+	    }
+	  else
+	    {
+	      /* Word isn't an instruction - 
+	       * if first time through loop assume it's a label
+	       * if second time - confused put space separator before */
+	      if (instr_count==1)
+		o_buffer[ob++] = ' ';
+	      int k=0;
+	      while (word[k])
+		o_buffer[ob++] = word[k++];
+	    }
 	}
-      word[j] = '\0';
 
-      /* word is the first continuous span of alphanumeric characters
-       * is it a mnemonic? */
-
-      InstrTable::Instr *instr = instr_table->lookup(word);
-
-      if (instr)
-	printf("\"%s\" is a menmonic\n", word);
+      if (is_instr)
+	pending_tabs++;
       else
-	printf("\"%s\"\n", word);
+	o_buffer[ob++] = ' ';
+
+      if (is_instr && operands)
+	{
+	  while (i_buffer[ib] && isspace(i_buffer[ib]))
+	    ib++; // Discard leading space
+
+	  while (i_buffer[ib] && (!isspace(i_buffer[ib])))
+	    {
+	      while (pending_tabs)
+		{
+		  o_buffer[ob++] = tab_char;
+		  pending_tabs--;
+		}
+	      o_buffer[ob++] = i_buffer[ib++];
+	    }
+	}
+
+      if (is_instr)
+	pending_tabs++;
+      else
+	o_buffer[ob++] = ' ';
+
+      while (i_buffer[ib] && isspace(i_buffer[ib]))
+	ib++; // Discard leading space
       
+      while (i_buffer[ib])
+	{
+	  while (pending_tabs)
+	    {
+	      o_buffer[ob++] = tab_char;
+	      pending_tabs--;
+	    }
+	  o_buffer[ob++] = i_buffer[ib++];
+	}      
     }
+  o_buffer[ob] = '\0';
 }
 
 static void tabify(FILE *in_file, FILE *out_file)
 {
-  int c = 0;
   char i_buffer[MAX_LINE];
   char o_buffer[MAX_LINE];
   int b;
-
-  do
-    {
-      c = fgetc(in_file);
-
-      if (c==EOF)
-        {
-          /* Do nothing */
-        }
-      else
-        {
-	  /* Read a line into the line buffer */
-	  b = 0;
-	  while ((b < (MAX_LINE-1)) && (c != EOF) && (c != '\n'))
-	    {
-	      if (c != '\0')
-		i_buffer[b++] = c;
-	      c = fgetc(in_file);
-	    }
-
-	  if (c == '\n')
-	    c = fgetc(in_file); /* Discard line end character */
-
-	  i_buffer[b] = '\0';
-
-	  process_line(i_buffer, o_buffer);
-
-	  /* Write output characters to output file */
-	  b = 0;
-	  while ((b < MAX_LINE) && o_buffer[b])
-	    {
-	      fputc(o_buffer[b], out_file);
-	      b++;
-	    }
-	  fputc('\n', out_file);
-        }
-
-    } while (c!=EOF);
+  int c = fgetc(in_file);
+  
+  while (c!=EOF)
+  {
+    /* Read a line into the line buffer */
+    b = 0;
+    while ((b < (MAX_LINE-1)) && (c != EOF) && (c != '\n'))
+      {
+	if (c != '\0')
+	  i_buffer[b++] = c;
+	c = fgetc(in_file);
+      }
+      
+    if (c == '\n')
+	c = fgetc(in_file); /* Discard line end character */
+    
+    i_buffer[b] = '\0';
+    
+    process_line(i_buffer, o_buffer);
+    
+      /* Write output characters to output file */
+    b = 0;
+    while ((b < MAX_LINE) && o_buffer[b])
+      {
+	fputc(o_buffer[b], out_file);
+	b++;
+      }
+      fputc('\n', out_file);
+  }
+  
 }
 
 int main(int argc, char **argv)
