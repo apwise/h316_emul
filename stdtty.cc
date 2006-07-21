@@ -18,19 +18,29 @@
  *
  */
 
+#include "config.h"
+
+#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef HAVE_ERRNO_H
+#include <errno.h>
+#endif
+
 #include <fcntl.h>
 #include <termios.h>
 
 #include <signal.h>
 
 #include <iostream>
-
-#include "config.h"
 
 #ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>

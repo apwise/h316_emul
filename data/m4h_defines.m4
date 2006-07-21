@@ -10,6 +10,11 @@ m4_define(`M4H_BUTTON_EMPTY',`<TD class="head">&nbsp;</TD>') m4_dnl
 m4_define(`M4H_LINK_START',`<LINK ') m4_dnl
 m4_define(`M4H_LINK_STOP',`>') m4_dnl
 m4_dnl
+m4_define(`M4H_TOC_TABLE_START',`<table class="simple" width="100%"><col><col><col><thead><tr><th>Title</th><th>M4H_SINGLE_PAGE</th><th>M4H_MULTIPLE_PAGES</th></tr></thead><tbody>') m4_dnl
+m4_define(`M4H_TOC_TABLE_STOP',`</tbody></table>') m4_dnl
+m4_define(`M4H_TOC_ROW_START',`<tr>') m4_dnl
+m4_define(`M4H_TOC_ROW_STOP',`</tr>') m4_dnl
+m4_dnl
 m4_define(`M4H_NEXT_PAGE',`Next&nbsp;Page') m4_dnl
 m4_define(`M4H_PREVIOUS_PAGE',`Previous&nbsp;Page') m4_dnl
 m4_define(`M4H_NEXT_FILE',`Next&nbsp;File') m4_dnl
