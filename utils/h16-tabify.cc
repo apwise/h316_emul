@@ -21,55 +21,56 @@ struct Pseudos
 {
   const char *mnemonic;
   bool operands;
+  bool is_mr;
 };
 
 static Pseudos pseudos[] = 
 {
-  {"CF1",  false},
-  {"CF3",  false},
-  {"CF4",  false},
-  {"CF5",  false},
-  {"REL",  false},
-  {"ABS",  false},
-  {"LOAD", false},
-  {"ORG",  true},
-  {"FIN",  false},
-  {"MOR",  false},
-  {"END",  true},
-  {"EJCT", false},
-  {"LIST", false},
-  {"NLST", false},
-  {"EXD",  false},
-  {"LXD",  false},
-  {"SETB", true},
-  {"EQU",  true},
-  {"SET",  true},
-  {"DAC",  true},
-  {"DEC",  true},
-  {"DBP",  true},
-  {"OCT",  true},
-  {"HEX",  true},
-  {"BCI",  true},
-  {"VFD",  true},
-  {"BSS",  true},
-  {"BES",  true},
-  {"BSZ",  true},
-  {"COMN", true},
-  {"SETC", true},
-  {"ENT",  true},
-  {"SUBR", true},
-  {"EXT",  true},
-  {"XAC",  true},
-  {"CALL", true},
-  {"IFP",  true},
-  {"IFM",  true},
-  {"IFZ",  true},
-  {"IFN",  true},
-  {"ENDC", false},
-  {"ELSE", false},
-  {"FAIL", false},
-  {"***",  true},
-  {"PZE",  true},
+  {"CF1",  false,  false},
+  {"CF3",  false,  false},
+  {"CF4",  false,  false},
+  {"CF5",  false,  false},
+  {"REL",  false,  false},
+  {"ABS",  false,  false},
+  {"LOAD", false,  false},
+  {"ORG",  true,   false},
+  {"FIN",  false,  false},
+  {"MOR",  false,  false},
+  {"END",  true,   false},
+  {"EJCT", false,  false},
+  {"LIST", false,  false},
+  {"NLST", false,  false},
+  {"EXD",  false,  false},
+  {"LXD",  false,  false},
+  {"SETB", true,   false},
+  {"EQU",  true,   false},
+  {"SET",  true,   false},
+  {"DAC",  true,   true },
+  {"DEC",  true,   false},
+  {"DBP",  true,   false},
+  {"OCT",  true,   false},
+  {"HEX",  true,   false},
+  {"BCI",  true,   false},
+  {"VFD",  true,   false},
+  {"BSS",  true,   false},
+  {"BES",  true,   false},
+  {"BSZ",  true,   false},
+  {"COMN", true,   false},
+  {"SETC", true,   false},
+  {"ENT",  true,   false},
+  {"SUBR", true,   false},
+  {"EXT",  true,   false},
+  {"XAC",  true,   true },
+  {"CALL", true,   false},
+  {"IFP",  true,   false},
+  {"IFM",  true,   false},
+  {"IFZ",  true,   false},
+  {"IFN",  true,   false},
+  {"ENDC", false,  false},
+  {"ELSE", false,  false},
+  {"FAIL", false,  false},
+  {"***",  true,   true },
+  {"PZE",  true,   true },
 
   {0, false}
 };
@@ -121,7 +122,9 @@ static void process_line(char i_buffer[], char o_buffer[])
 	    ib++; // Discard leading space
 	  j = 0;
 
-	  while (i_buffer[ib] && isalnum(i_buffer[ib]))
+	  while (i_buffer[ib] &&
+		 (isalnum(i_buffer[ib]) ||
+		  ((i_buffer[ib]=='*') && (j<3)))) // Pseudo could be "***"
 	    {
 	      word[j++] = i_buffer[ib];
 	      ib++;
@@ -151,6 +154,7 @@ static void process_line(char i_buffer[], char o_buffer[])
 		    {
 		      is_instr = true;
 		      operands = pseudos[k].operands;
+		      is_mr    = pseudos[k].is_mr;
 		      break;
 		    }
 		  k++;

@@ -40,6 +40,11 @@
 #define LINK_START     "M4H_LINK_START"
 #define LINK_STOP      "M4H_LINK_STOP"
 
+#define TOC_TABLE_START "M4H_TOC_TABLE_START"
+#define TOC_TABLE_STOP "M4H_TOC_TABLE_STOP"
+#define TOC_ROW_START  "M4H_TOC_ROW_START"
+#define TOC_ROW_STOP   "M4H_TOC_ROW_STOP"
+
 #define NEXT_PAGE      "M4H_NEXT_PAGE"
 #define PREVIOUS_PAGE  "M4H_PREVIOUS_PAGE"
 #define NEXT_FILE      "M4H_NEXT_FILE"
@@ -314,12 +319,14 @@ class Line
 class File
 {
  public:
-  File(const char *filename);
+  File(const char *filename, bool is_toc=false);
   string read_line(FILE *fp, bool &ok);
   bool get_end_read(){return end_read;};
   bool get_end_really_read(){return end_really_read;};
+  bool get_is_toc(){return is_toc;};
   void set_end_read(){end_read=true;};
   void set_end_really_read(){end_really_read=true;};
+  void set_is_toc(){is_toc=true;};
   void render();
   void incr_pages(){pages++;};
   Symbol *lookup(string name);
@@ -350,6 +357,7 @@ class File
   list<Line *> lines;
   string heading_line;
 
+  bool is_toc;
   bool use_comment_as_title;
   bool use_supplied_title;
   string supplied_title;
@@ -407,8 +415,6 @@ class Symbol
 
 static File **files;
 static int n_files;
-static char *toc_filename;
-static char *toc_title;
 
 // {{{ Annotation::Annotation(enum A type, int first, int len)
 
@@ -544,16 +550,20 @@ void Line::analyze()
               type = LINE_SRC;
             }
           else
-            {
-              file->set_end_really_read();
-
+            { 
               ok = number(src_line, n, ST_ADDR, ST_ADDR_LEN, 8);
               if (ok)
-                type = LINE_SYMBOL;
+		{
+		  file->set_end_really_read();
+		  type = LINE_SYMBOL;
+		}
               else if (src_line[SLN] == ' ')
                 type = LINE_HEAD;
               else
-                type = LINE_INFO;     
+		{
+		  file->set_end_really_read();
+		  type = LINE_INFO;
+		}     
             }         
         }
       else
@@ -1324,36 +1334,42 @@ int Line::find_sub_field(int first, SF_TYPE type,
 // }}}
 
 map<string, Symbol *> File::global_symbol_table;
-// {{{ File::File(const char *filename)
+// {{{ File::File(const char *filename, bool is_toc)
 
-File::File(const char *xfilename)
-  : filename(xfilename),
+File::File(const char *filename, bool is_toc)
+  : filename(filename),
     end_read(false),
     end_really_read(false),
     pages(0),
     use_comment_as_title(false),
-    use_supplied_title(false)
+    use_supplied_title(false),
+    is_toc(is_toc)
 {
-  FILE *fp = fopen(xfilename, "r");
+  FILE *fp;
   string str;
   Line *line;
 
-  if (!fp)
+  if (!is_toc)
     {
-      cerr << "Could not open <" << filename << "> for reading" << endl;
-      exit(1);
+      fp = fopen(filename, "r");
+      
+      if (!fp)
+	{
+	  cerr << "Could not open <" << filename << "> for reading" << endl;
+	  exit(1);
+	}
+      
+      bool ok = true;
+      while (ok)
+	{
+	  str = read_line(fp, ok);
+	  line = new Line(str, this, pages);
+	  lines.push_back(line);
+	  line->analyze();
+	}
+      
+      fclose(fp);
     }
-
-  bool ok = true;
-  while (ok)
-    {
-      str = read_line(fp, ok);
-      line = new Line(str, this, pages);
-      lines.push_back(line);
-      line->analyze();
-    }
-
-  fclose(fp);
 
   render_state = RS_WAIT_HEAD;
 }
@@ -1402,16 +1418,8 @@ string File::get_html_name(int page)
 
 string File::find_first_file_name(bool html_per_page, string &title_str)
 {
-  if (toc_filename)
-    {
-      title_str = toc_title;
-      return toc_filename;
-    }
-  else
-    {
-      title_str = files[0]->title;
-      return files[0]->get_html_name((html_per_page) ? 1 : 0);
-    }
+  title_str = files[0]->title;
+  return files[0]->get_html_name((html_per_page && (!is_toc)) ? 1 : 0);
 }
 
 // }}}
@@ -1490,21 +1498,13 @@ string File::find_file_name(bool previous, bool html_per_page, int page, string 
 
   if (!f)
     {
-     if (toc_filename && previous)
-        {
-          title_str = toc_title;
-          return toc_filename;
-       }
-      else
-        {
-          title_str = "";
-          return "";
-        }
+      title_str = "";
+      return "";
     }
 
   title_str = f->title;
 
-  if (html_per_page)
+  if (html_per_page && (!f->is_toc))
     {
       if (page > 0)
         {
@@ -1561,9 +1561,10 @@ void File::links(FILE *fp, bool html_per_page, int page)
     fprintf(fp, "%s rel=\"last\" href=\"%s\" title=\"%s\" %s\n",
             LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
 
-  if (toc_filename)
+  l_filename = find_first_file_name(html_per_page, title_str);
+  if ((files[0]->is_toc) && (l_filename.size()>0))
     fprintf(fp, "%s rel=\"contents\" href=\"%s\" title=\"%s\" %s\n",
-	    LINK_START, toc_filename, toc_title, LINK_STOP);
+	    LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
 
   int i;
   i = 0;
@@ -1571,11 +1572,11 @@ void File::links(FILE *fp, bool html_per_page, int page)
     {
       l_filename = files[i]->get_html_name((html_per_page) ? 1 : 0);
       title_str = files[i]->title;
-
-      if (l_filename.size()>0)
+      
+      if ((l_filename.size()>0) && ((i>0) || (!files[i]->is_toc)))
         fprintf(fp, "%s rel=\"chapter\" href=\"%s\" title=\"%s\" %s\n",
-            LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
-
+		LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
+      
       i++;
     }
 
@@ -1590,7 +1591,7 @@ void File::link_buttons(FILE *fp, bool html_per_page, int page)
 
   fprintf(fp, "%s\n", TABLE_START);
 
-  if ((n_files > 1) || (toc_filename))
+  if (n_files > 1)
     link_button(fp, find_file_name(true, html_per_page, 0, title_str), PREVIOUS_FILE, title_str);
   else
     fprintf(fp, "%s\n", BUTTON_EMPTY);
@@ -1610,7 +1611,7 @@ void File::link_buttons(FILE *fp, bool html_per_page, int page)
   else
     fprintf(fp, "%s\n", BUTTON_EMPTY);
   
-  if ((n_files > 1) || (toc_filename))
+  if (n_files > 1)
     link_button(fp, find_file_name(false, html_per_page, 0, title_str), NEXT_FILE, title_str);
   else
     fprintf(fp, "%s\n", BUTTON_EMPTY);
@@ -1690,8 +1691,11 @@ void File::file_start(FILE *fp, bool html_per_page, int page)
   fprintf(fp, "%s\n", HEAD1);
   links(fp, html_per_page, page);
   fprintf(fp, "%s\n", HEAD2);
-  link_buttons(fp, html_per_page, page);
-  fprintf(fp, "%s\n", HEAD3);
+  if (!is_toc)
+    {
+      link_buttons(fp, html_per_page, page);
+      fprintf(fp, "%s\n", HEAD3);
+    }
 }
 
 // }}}
@@ -1699,8 +1703,11 @@ void File::file_start(FILE *fp, bool html_per_page, int page)
 
 void File::file_stop(FILE *fp, bool html_per_page, int page)
 {
-  fprintf(fp, "%s\n", TAIL1);
-  link_buttons(fp, html_per_page, page);
+  if (!is_toc)
+    {    
+      fprintf(fp, "%s\n", TAIL1);
+      link_buttons(fp, html_per_page, page);
+    }
   fprintf(fp, "%s\n", TAIL2);
 }
 
@@ -1729,40 +1736,63 @@ void File::render()
 
   file_start(fp, false, page);
 
-  list<Line *>::iterator i = lines.begin();
-
-  while (i!=lines.end())
+  if (is_toc)
     {
-      Line::LINE_TYPE type = (*i)->get_type();
+      fprintf(fp, "%s\n", TOC_TABLE_START);
 
-      if (type == Line::LINE_HEAD)
-        {
-          if (fp2)
-            {
-              file_stop(fp2, true, page);
-              fclose(fp2);
-            }
-          sprintf(buf, "%d", ++page);
+      int i;
+      for (i=1; i<n_files; i++)
+	{
+	  string single_filename = files[i]->get_html_name(0);
+	  string multi_filename = files[i]->get_html_name(1);
+	  string title_str = files[i]->title;
 
-          out_filename2 = basename(filename)+"_"+buf+".m4h";
-          fp2 = fopen(out_filename2.c_str(), "w");
+	  fprintf(fp, "%s", TOC_ROW_START);
+	  fprintf(fp, "<td>%s</td>", title_str.c_str());
+	  fprintf(fp, "<td><a href=\"%s\">%s</a></td>", single_filename.c_str(), SINGLE_PAGE);
+	  fprintf(fp, "<td><a href=\"%s\">%s</a></td>", multi_filename.c_str(), MULTIPLE_PAGES);
+	  fprintf(fp, "%s\n", TOC_ROW_STOP);
+	}
 
-          if (!fp2)
-            {
-              fprintf(stderr, "Could not open <%s> for writing\n",
-                      out_filename2.c_str());
-              exit(1);
-            }
-          file_start(fp2, true, page);
-       }
-  
-      (*i)->render(fp, false);
-      if (fp2)
-        (*i)->render(fp2, true);
-
-      i++;
+      fprintf(fp, "%s\n", TOC_TABLE_STOP);
     }
-
+  else
+    {
+      list<Line *>::iterator i = lines.begin();
+      
+      while (i!=lines.end())
+	{
+	  Line::LINE_TYPE type = (*i)->get_type();
+	  
+	  if (type == Line::LINE_HEAD)
+	    {
+	      if (fp2)
+		{
+		  file_stop(fp2, true, page);
+		  fclose(fp2);
+		}
+	      sprintf(buf, "%d", ++page);
+	      
+	      out_filename2 = basename(filename)+"_"+buf+".m4h";
+	      fp2 = fopen(out_filename2.c_str(), "w");
+	      
+	      if (!fp2)
+		{
+		  fprintf(stderr, "Could not open <%s> for writing\n",
+			  out_filename2.c_str());
+		  exit(1);
+		}
+	      file_start(fp2, true, page);
+	    }
+	  
+	  (*i)->render(fp, false);
+	  if (fp2)
+	    (*i)->render(fp2, true);
+	  
+	  i++;
+	}
+    }
+  
   if (fp2)
     {
       file_stop(fp2, true, page);
@@ -1973,9 +2003,6 @@ int main (int argc, char **argv)
   bool tc = false;
   char *title = 0;
 
-  toc_filename = 0;
-  toc_title = DEFAULT_TOC_TITLE;
-
   files = new File *[argc+1]; // Can't be more files than that
   for (i=0; i<(argc+1); i++)
     files[i] = 0;
@@ -2002,14 +2029,24 @@ int main (int argc, char **argv)
 	    }
 	  else if (strcmp(argv[a], "-i") == 0)
 	    {
+	      if (n_files > 0)
+		{
+		  cerr << "-i must occur before other filenames" << endl;
+		  exit(1);
+		}
 	      a++;
-	      toc_filename = argv[a];
-	      
+
+	      files[n_files] = new File(argv[a], true);
+
 	      if (title)
-		toc_title = title;
+		files[n_files]->supply_title(title);
+	      else
+		files[n_files]->supply_title(DEFAULT_TOC_TITLE);
 
 	      tc = false;
 	      title = 0;
+
+	      n_files++;
 	    }
 	}
       else
