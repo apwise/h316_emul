@@ -5,7 +5,7 @@ a'100223
 ptr &SRCNAM
 g'400
 ptr &SRCNAM
-ptp &OBJNAM
+ptp OBJNAM
 lpt &LSTNAM
 g
 q
