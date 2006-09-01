@@ -1,0 +1,13 @@
+#include <stdio.h>
+#include "proc.hh"
+#include "asr.hh"
+
+Proc::Proc(ASR *asr)
+{
+	this->asr = asr;
+}
+
+bool Proc::special(char k)
+{
+	return asr->special(k);
+}
