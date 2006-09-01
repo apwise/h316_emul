@@ -1,4 +1,6 @@
-bin_PROGRAMS = h16 h16-tabs h16-pdap h16-asctotty h16-ttytoasc h16-tabify
+bin_PROGRAMS = h16 \
+		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
+		h16-tabify h16-asr
 
 h16_SOURCES = 	asr_intf.cc \
 		emul.cc \
@@ -61,6 +63,10 @@ h16_ttytoasc_SOURCES = utils/h16-ttytoasc.c
 
 h16_tabify_SOURCES = utils/h16-tabify.cc instr.cc
 h16_tabify_CXXFLAGS = -DNO_DO_PROCS
+
+h16_asr_SOURCES = utils/h16-asr_app.cc utils/serial.cc utils/serial.hh \
+		utils/dummy_proc.cc utils/dummy_proc.hh \
+		asr.cc asr.hh stdtty.cc stdtty.hh
 
 EXTRA_DIST = 	data/m4h_defines.m4 \
 		data/main.css \
