@@ -27,6 +27,10 @@
 
 // }}}
 
+#define MAX_LEN_QUOTE 20
+#define DEFAULT_LEFT_QUOTE "`"
+#define DEFAULT_RIGHT_QUOTE "'"
+
 #define DEFAULT_HEADING "M4H_DEFAULT_HEADING"
 #define DEFAULT_TOC_TITLE "M4H_DEFAULT_TOC_TITLE"
 
@@ -415,6 +419,8 @@ class Symbol
 
 static File **files;
 static int n_files;
+static char left_quote[MAX_LEN_QUOTE+1];
+static char right_quote[MAX_LEN_QUOTE+1];
 
 // {{{ Annotation::Annotation(enum A type, int first, int len)
 
@@ -1683,10 +1689,18 @@ void File::file_start(FILE *fp, bool html_per_page, int page)
   time_t t;
   char buf[100];
 
-  fprintf(fp, "m4_define(`%s\',`%s\')\n", HTML_HEADING, title.c_str());
+  fprintf(fp, "m4_define(%s%s%s, %s%s%s)\n",
+	  left_quote, HTML_HEADING,  right_quote,
+	  left_quote, title.c_str(), right_quote);
   
   (void) time(&t);
-  fprintf(fp, "m4_define(`%s\',`%s\')\n", HTML_TIME, ctime_r(&t, buf));
+  ctime_r(&t, buf);
+  if ((*buf) && (buf[strlen(buf)-1]=='\n'))
+    buf[strlen(buf)-1]='\0';
+
+  fprintf(fp, "m4_define(%s%s%s, %s%s%s)\n",
+	  left_quote, HTML_TIME, right_quote,
+	  left_quote, buf,       right_quote);
 
   fprintf(fp, "%s\n", HEAD1);
   links(fp, html_per_page, page);
@@ -2003,6 +2017,9 @@ int main (int argc, char **argv)
   bool tc = false;
   char *title = 0;
 
+  strcpy(left_quote, DEFAULT_LEFT_QUOTE);
+  strcpy(right_quote, DEFAULT_RIGHT_QUOTE);
+
   files = new File *[argc+1]; // Can't be more files than that
   for (i=0; i<(argc+1); i++)
     files[i] = 0;
@@ -2014,7 +2031,38 @@ int main (int argc, char **argv)
 	{
 	  if ((strncmp(argv[a], "-h", 2) == 0) || (strncmp(argv[a], "--h", 3) == 0))
 	    {
-	      cerr << "Usage : " << argv[0] << " [-h|--help] [[-t <title>] -i <TOC-name>] ([-tc|-t <title>] <filename>)*" << endl;
+	      cerr << "Usage : " << argv[0] << " [-h|--help] [-q<l>,<r>] [[-t <title>] -i <TOC-name>] ([-tc|-t <title>] <filename>)*" << endl;
+	    }
+	  else if (strncmp(argv[a], "-q", 2) == 0)
+	    {
+	      char *p, *l, *r;
+	      p = &argv[a][2];
+	      l = r = 0;
+
+	      while ((*p) && ((*p)!=','))
+		p++;
+
+	      if (*p)
+		{
+		  // Have found a ','
+		  if (p > l)
+		    l = &argv[a][2];
+		  *p = '\0'; // Terminate left quote
+		  r = p+1; // right starts in next character
+		  if (!(*r))
+		    r = 0;
+		}
+
+	      if ((strlen(l)>MAX_LEN_QUOTE) || (strlen(r)>MAX_LEN_QUOTE))
+		{
+		  cerr << "Quote chars <" << ((l)?l:"[none]") << ">, <"
+		       << ((r)?r:"[none]") << "> are too long. (Max: "
+		       << MAX_LEN_QUOTE << "characters)" << endl;
+		  exit(1);
+		}
+
+	      strcpy(left_quote,  ((l) ? l : DEFAULT_LEFT_QUOTE ));
+	      strcpy(right_quote, ((r) ? r : DEFAULT_RIGHT_QUOTE));
 	    }
 	  else if (strcmp(argv[a], "-t") == 0)
 	    {
