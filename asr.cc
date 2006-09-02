@@ -177,7 +177,7 @@ void ASR::echo_asrch(char c, bool from_serial)
       if (tape_char_received)
         {
           tape_char_received = false;
-          open_punch_file();
+          //open_punch_file();
           if ((c & 0xff) == RUBOUT)
             return; // RUBOUT is not punched
         }
