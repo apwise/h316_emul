@@ -3,34 +3,100 @@
 #include <string.h>
 
 #include <iostream>
+#include <fstream>
 
 #include "instr.hh"
 
-#define TAPE_INITIAL_BUFFER_SIZE 256
+#define TAPE_INITIAL_BUFFER_SIZE 1024
 
 class Tape
 {
 public:
-  Tape();
+  Tape(char *filename=0);
   ~Tape();
+
+  void read_file(char *filename);
 
 private:
   unsigned char *buffer;
   unsigned long buffer_size;
   unsigned long buffer_used;
+  void double_buffer_size();
+  void add_to_buffer(unsigned char c);
 };
 
-Tape::Tape()
-  : buffer_size(TAPE_INITIAL_BUFFER_SIZE),
+// {{{ Tape::Tape(char *filename)
+
+Tape::Tape(char *filename)
+  : buffer(0),
+    buffer_size(0),
     buffer_used(0)
 {
   buffer = new unsigned char [buffer_size];
+
+  if (filename)
+    read_file(filename);
 }
+
+// }}}
+// {{{ Tape::~Tape()
 
 Tape::~Tape()
 {
-  delete [] buffer;
+  if (buffer)
+    delete [] buffer;
 }
+
+// }}}
+
+// {{{ void Tape::double_buffer_size()
+
+void Tape::double_buffer_size()
+{
+  unsigned char *new_buffer = 0;
+  unsigned long p = 0;
+
+  buffer_size = (buffer_size) ? (buffer_size * 2) : TAPE_INITIAL_BUFFER_SIZE;
+  new_buffer = new unsigned char [buffer_size];
+
+  if (buffer)
+    {
+      for (p=0; p<buffer_used; p++)
+	new_buffer[p] = buffer[p];
+      
+      delete [] buffer;
+    }
+  
+  buffer = new_buffer;
+}
+
+// }}}
+// {{{ void Tape::add_to_buffer(unsigned char c)
+
+void Tape::add_to_buffer(unsigned char c)
+{
+  if (buffer_used >= buffer_size)
+    double_buffer_size();
+
+  buffer[buffer_used++] = c;
+}
+
+// }}}
+// {{{ void Tape::read_file(char *filename)
+
+void Tape::read_file(char *filename)
+{
+  unsigned char c;
+
+  std::ifstream ifs(filename);
+
+  while (ifs.good())
+    add_to_buffer(ifs.get());
+
+  ifs.close();
+}
+
+// }}}
 
 static InstrTable instr_table;
 
@@ -402,6 +468,8 @@ int main(int argc, char **argv)
         argv[a]);
       exit(1);
     }
+
+  Tape tape(argv[a]);
 
   skip_leader(fp);
   read_expected(fp, 020);

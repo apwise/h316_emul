@@ -1,7 +1,7 @@
 m4_define(`M4H_DEFAULT_HEADING', `DAP-16 Code') m4_dnl
 m4_define(`M4H_DEFAULT_TOC_TITLE', `Table of Contents') m4_dnl
-m4_define(`M4H_HEAD_TAG', `h1') m4_dnl
-m4_define(`M4H_HEAD_TAG_END', `/h1') m4_dnl
+m4_define(`M4H_HEAD_TAG', `<h1>') m4_dnl
+m4_define(`M4H_HEAD_TAG_END', `</h1>') m4_dnl
 m4_define(`M4H_TABLE_START',`<TABLE WIDTH="100%" class="simple"> <col WIDTH="20%"><col WIDTH="20%"><col WIDTH="20%"><col WIDTH="20%"><col WIDTH="20%"> <tbody> <TR>') m4_dnl
 m4_define(`M4H_TABLE_STOP',`</TR> </tbody> </table>') m4_dnl
 m4_define(`M4H_BUTTON_START',`<TD class="head">') m4_dnl
