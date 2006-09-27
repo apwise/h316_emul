@@ -952,7 +952,7 @@ void Line::render(FILE *fp, bool html_per_page)
             
     case LINE_HEAD:
       print_line = true;
-      fprintf(fp, "<%s>", HEAD_TAG);
+      fprintf(fp, "%s", HEAD_TAG);
       if (state == File::RS_WAIT_HEAD)
         state=File::RS_AFTER_HEAD;
       break;
@@ -1098,7 +1098,7 @@ void Line::render(FILE *fp, bool html_per_page)
         }
     
       if (type == LINE_HEAD)
-        fprintf(fp, "<%s>", HEAD_TAG_END);
+        fprintf(fp, "%s", HEAD_TAG_END);
         
       render_char(fp, '\n');
     }
