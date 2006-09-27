@@ -28,6 +28,8 @@
  *
  */
 
+#define GTK_ENABLE_BROKEN
+
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include "gpl.h"

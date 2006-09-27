@@ -15,15 +15,34 @@ AC_CONFIG_HEADER([config.h])
 AC_PROG_CC
 AC_PROG_CXX
 
-
 AC_ARG_ENABLE([gui],
               AS_HELP_STRING([--disable-gui],[Compile a text-only version with no GUI]),
 	      [], [enable_gui=yes])
 AM_CONDITIONAL([ENABLE_GUI], [test x$enable_gui = xyes])
 if test x$enable_gui = xyes; then
   AC_DEFINE_UNQUOTED([ENABLE_GUI], [1], [Define to 1 to compile with the GUI])
-  AM_PATH_GLIB([1.2.10])
-  AM_PATH_GTK([1.2.10])
+  ifdef([PKG_CHECK_MODULES],
+	[
+  	  PKG_CHECK_MODULES(GTK,
+	    [gtk+-2.0 >= 2.2 glib-2.0 >= 2.2],
+	    [],	
+	    [
+	      ifdef([AM_PATH_GLIB],
+                    [
+                      AM_PATH_GLIB([1.2.10])
+                    ], [:])
+	      ifdef([AM_PATH_GTK],
+                    [
+                      AM_PATH_GTK([1.2.10])
+                    ], [:])
+	    ])
+        ],
+	[
+          AM_PATH_GLIB([1.2.10])
+          AM_PATH_GTK([1.2.10])
+	])
+  AC_SUBST(GTK_CFLAGS)
+  AC_SUBST(GTK_LIBS)
 fi
 
 # Checks for libraries.
