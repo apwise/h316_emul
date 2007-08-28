@@ -19,7 +19,7 @@ public:
                int orient = wxVERTICAL,
                enum wxPT_direction direction = wxPT_TopToBottom,
                bool mirror = false,
-               const wxString& name = "paperTape" );
+               const wxString& name = wxT("paperTape") );
   ~wxPaperTape( );
 
   void Load(const char *buffer, long size);

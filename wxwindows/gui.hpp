@@ -33,7 +33,7 @@ private:
 
   struct CpuMenuItem
   {
-    char *menu_string;
+    wxString menu_string;
     enum CPU cpu_type;
   };
   static struct CpuMenuItem cpu_items[];

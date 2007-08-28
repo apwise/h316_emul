@@ -6,17 +6,17 @@
 WXGTK_CXXFLAGS := $(shell wx-config --cxxflags)
 WXGTK_LIBS := $(shell wx-config --libs)
 
-CXXFLAGS := $(WXGTK_CXXFLAGS)
+CXXFLAGS := $(WXGTK_CXXFLAGS) -g -O0
 LDFLAGS := $(WXGTK_LIBS)
 
 LINK.C := g++
 
-#CXXSOURCE := draw.cc papertape.cc papertapereader.cc
+CXXSOURCE := draw.cc papertape.cc papertapereader.cc
 CXXSOURCE2 := fp.cpp gui.cpp
 CXXSOURCE3 := message.cpp h16cmd.cpp
 
-#CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
-#OBJECTS := $(CXXOBJECTS)
+CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
+OBJECTS := $(CXXOBJECTS)
 
 CXXOBJECTS2 := $(CXXSOURCE2:%.cpp=%.o)
 CXXOBJECTS3 := $(CXXSOURCE3:%.cpp=%.o)
@@ -30,14 +30,14 @@ all:	gui draw
 
 #hello.o: hello.cc
 
-#draw:	$(OBJECTS)
-#	$(LINK.C) -o $@ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^
-#
-#draw.o: draw.cc papertapereader.hh
+draw:	$(OBJECTS)
+	$(LINK.C) -o $@ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^
 
-#papertape.o: papertape.cc papertape.hh
+draw.o: draw.cc papertapereader.hh
 
-#papertapereader.o: papertapereader.cc papertapereader.hh papertape.hh
+papertape.o: papertape.cc papertape.hh
+
+papertapereader.o: papertapereader.cc papertapereader.hh papertape.hh
 
 gui:	$(OBJECTS2)
 	$(LINK.C) -o $@ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^
