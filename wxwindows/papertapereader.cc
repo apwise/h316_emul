@@ -27,13 +27,13 @@ PaperTapeReader::PaperTapeReader(wxWindow* parent)
   wxBoxSizer *button_sizer = new wxBoxSizer( wxHORIZONTAL );
 
   button_sizer->Add(
-     new wxButton( this, PTR_ID_LOAD, "Load" ),
+		    new wxButton( this, PTR_ID_LOAD, wxT("Load") ),
      0,           // make horizontally unstretchable
      wxALL,       // make border all around (implicit top alignment)
      10 );        // set border width to 10
 
   button_sizer->Add(
-		    new wxButton( this, PTR_ID_REWIND, "Rewind" ),
+		    new wxButton( this, PTR_ID_REWIND, wxT("Rewind") ),
 		    0,           // make horizontally unstretchable
 		    wxALL,       // make border all around (implicit top alignment)
 		    10 );        // set border width to 10
@@ -77,8 +77,8 @@ int PaperTapeReader::Read()
 
 void PaperTapeReader::OnLoad(wxCommandEvent& WXUNUSED(event))
 {
-  wxFileDialog fd(this, "Select papertape file", "", "",
-                  "Papertape files (*.ptp)|*.ptp|Text Files (*.txt)|*.txt",
+  wxFileDialog fd(this, wxT("Select papertape file"), wxT(""), wxT(""),
+                  wxT("Papertape files (*.ptp)|*.ptp|Text Files (*.txt)|*.txt"),
                   wxOPEN | wxCHANGE_DIR);
 
   if (fd.ShowModal() == wxID_OK)
@@ -87,7 +87,7 @@ void PaperTapeReader::OnLoad(wxCommandEvent& WXUNUSED(event))
 
       //std::cout << "Selected " << filename << std::endl;
 
-      wxFFile file(filename.c_str(), "r");
+      wxFFile file(filename.c_str(), wxT("r"));
 
       if (file.IsOpened())
         {

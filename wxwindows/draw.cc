@@ -62,7 +62,7 @@ IMPLEMENT_APP(MyApp)
 
 bool MyApp::OnInit()
 {
-    MyFrame *frame = new MyFrame( "Hello World", wxPoint(50,50), wxSize(450,340) );
+  MyFrame *frame = new MyFrame( wxT("Hello World"), wxPoint(50,50), wxSize(450,340) );
     frame->Show(TRUE);
     SetTopWindow(frame);
     return TRUE;
@@ -74,18 +74,18 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 {
     wxMenu *menuFile = new wxMenu;
 
-    menuFile->Append( ID_About, "&About..." );
-    menuFile->Append( ID_Read, "&Read..." );
+    menuFile->Append( ID_About, wxT("&About...") );
+    menuFile->Append( ID_Read, wxT("&Read...") );
     menuFile->AppendSeparator();
-    menuFile->Append( ID_Quit, "E&xit" );
+    menuFile->Append( ID_Quit, wxT("E&xit") );
 
     wxMenuBar *menuBar = new wxMenuBar;
-    menuBar->Append( menuFile, "&File" );
+    menuBar->Append( menuFile, wxT("&File") );
 
     SetMenuBar( menuBar );
 
     CreateStatusBar();
-    SetStatusText( "Welcome to wxWindows!" );
+    SetStatusText( wxT("Welcome to wxWindows!") );
 
     /* Adrian */
 
@@ -101,8 +101,8 @@ void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-    wxMessageBox("This is a wxWindows Hello world sample",
-        "About Hello World", wxOK | wxICON_INFORMATION, this);
+  wxMessageBox(wxT("This is a wxWindows Hello world sample"),
+	       wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
 }
 
 void MyFrame::OnRead(wxCommandEvent& WXUNUSED(event))

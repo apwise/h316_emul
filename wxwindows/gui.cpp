@@ -11,12 +11,12 @@ using namespace std;
 
 struct GUI::CpuMenuItem GUI::cpu_items[] =
   {
-    {"DDP-116", CPU_116},
-    {"H316",    CPU_316},
-    {"DDP-416", CPU_416},
-    {"DDP-516", CPU_516},
-    {"H716",    CPU_716},
-    {0,CPU_NONE}
+    {wxT("DDP-116"), CPU_116},
+    {wxT("H316"),    CPU_316},
+    {wxT("DDP-416"), CPU_416},
+    {wxT("DDP-516"), CPU_516},
+    {wxT("H716"),    CPU_716},
+    {wxT(""),        CPU_NONE}
   };
 
 GUI::GUI(const wxString& title,
@@ -29,12 +29,12 @@ GUI::GUI(const wxString& title,
   menuCPU  = new wxMenu;
   int i;
 
-  menuFile->Append( ID_About, "&About..." );
+  menuFile->Append( ID_About, wxT("&About...") );
   menuFile->AppendSeparator();
-  menuFile->Append( ID_Quit, "E&xit" );
+  menuFile->Append( ID_Quit, wxT("E&xit") );
   
   i=0;
-  while (cpu_items[i].menu_string)
+  while (cpu_items[i].menu_string.size()>0)
     {
       menuCPU->AppendCheckItem( ID_CPU_BASE+i, cpu_items[i].menu_string );
 
@@ -46,13 +46,13 @@ GUI::GUI(const wxString& title,
     };
 
   wxMenuBar *menuBar = new wxMenuBar;
-  menuBar->Append( menuFile, "&File" );
-  menuBar->Append( menuCPU, "&CPU" );
+  menuBar->Append( menuFile, wxT("&File") );
+  menuBar->Append( menuCPU, wxT("&CPU") );
   
   SetMenuBar( menuBar );
    
   CreateStatusBar();
-  SetStatusText( "Welcome to wxWindows!" );
+  SetStatusText( wxT("Welcome to wxWindows!") );
     
   wxBoxSizer *ts = new wxBoxSizer( wxHORIZONTAL );
   
@@ -82,8 +82,8 @@ void GUI::OnQuit(wxCommandEvent& WXUNUSED(event))
 
 void GUI::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-  wxMessageBox("This is a wxWindows Hello world sample",
-               "About Hello World", wxOK | wxICON_INFORMATION, this);
+  wxMessageBox(wxT("This is a wxWindows Hello world sample"),
+               wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
 }
 
 void GUI::OnCPU(wxCommandEvent& event)
@@ -96,7 +96,7 @@ void GUI::OnCPU(wxCommandEvent& event)
   CPU new_cpu_type;
 
   i=0;
-  while (cpu_items[i].menu_string)
+  while (cpu_items[i].menu_string.size()>0)
     {
       if ((ID_CPU_BASE+i) == id)
 	{
@@ -161,7 +161,7 @@ IMPLEMENT_APP(H16App)
 
 bool H16App::OnInit()
 {
-  GUI *gui = new GUI( "Hello World", wxDefaultPosition, wxSize(10,10) );
+  GUI *gui = new GUI( wxT("Hello World"), wxDefaultPosition, wxSize(10,10) );
   gui->Show(TRUE);
   SetTopWindow(gui);
   return TRUE;
