@@ -72,6 +72,7 @@ struct CmdTab Monitor::commands[] =
     {"help",       1, 0, 0, "Print this help",                              &Monitor::help},
     {"trace",      1, 0, 2, "[filename] [,lines] : Save trace file",        &Monitor::trace},
     {"disassemble",1, 1, 3, "[filename] first [,last] : Save disassembly",  &Monitor::disassemble},
+    {"vmem",       1, 1, 2, "filename [, exec-addr] : Save Verilog Mem.",   &Monitor::vmem},
     {"license",    1, 0, 0, "Print license information",                    &Monitor::license},
     {"warranty",   1, 0, 0, "Statement of no warranty",                     &Monitor::warranty},
     {NULL,         0, 0, 0, NULL, NULL}
@@ -652,6 +653,29 @@ bool Monitor::disassemble(bool &run, int words, char **cmd)
   if (ok)
     p->dump_disassemble(filename, first, last);
 
+  return ok;
+}
+
+bool Monitor::vmem(bool &run, int words, char **cmd)
+{
+  bool ok = true;
+  char *filename = NULL;
+  int exec_addr = 0;
+  
+  /*
+   * if cmd[1] is a number then it's assumed to be the
+   * number of lines rather than a filename.
+   * else treat it as the filename
+   */
+  if (words > 1)
+    filename = cmd[1];
+
+  if (words>2)
+    exec_addr = parse_number(cmd[2], ok);
+
+  if (ok)
+    p->dump_vmem(filename, exec_addr);
+  
   return ok;
 }
 

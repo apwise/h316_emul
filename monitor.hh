@@ -68,6 +68,7 @@ private:
   bool help(bool &run, int words, char **cmd);
   bool trace(bool &run, int words, char **cmd);
   bool disassemble(bool &run, int words, char **cmd);
+  bool vmem(bool &run, int words, char **cmd);
   bool license(bool &run, int words, char **cmd);
   bool warranty(bool &run, int words, char **cmd);
 };

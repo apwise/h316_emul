@@ -274,6 +274,73 @@ void Proc::dump_disassemble(char *filename, int first, int last)
 }
 
 // }}}
+
+void Proc::dump_vmem(char *filename, int exec_addr)
+{
+  int i;
+  unsigned short instr;
+  bool mod;
+  bool dac;
+  bool skip = true;
+  FILE *fp=stdout;
+  char buf[256];
+
+  //printf("dump_vmem(): %s %d\n", filename, exec_addr);
+
+  if (filename) {
+    fp = fopen(filename, "w");
+    if (!fp) {
+      fprintf(stderr, "Could not open <%s>\n", filename);
+      return;
+    }
+  }
+  
+  for (i=0; i<CORE_SIZE; i++) {
+    instr = core[i];
+    mod = modified[i];
+    dac = false;
+
+    //printf("dump_vmem(): %d\n", i);
+
+    if ((i == 0) && (exec_addr != 0)) {
+      if ((exec_addr & (~0777)) != 0)
+	// Not sector zero
+	instr = 0102020; // JMP *'20
+      else
+	instr = 0002000 | exec_addr; // JMP exec_addr
+      mod = true;
+    } else if ((i == 020) && ((exec_addr & (~0777)) != 0)) {
+      instr = exec_addr;
+      mod = true;
+      dac = true;
+    } else if ((i>0) && (i<020))
+      mod = true;
+
+    if (mod && skip) {
+      // Need an @ line
+      fprintf(fp, "@%04x\n", i);
+    }
+
+    if (mod) {
+      if (dac)
+        sprintf(buf, "%06o  %06o    DAC  '%06o", i, instr, i);       
+      else if (instr_table.defined(instr))
+        sprintf(buf, "%s", 
+                instr_table.disassemble(i, instr, false));
+      else
+        sprintf(buf, "%06o  %06o    %s", i, instr, "???");       
+      
+      fprintf(fp, "%04x // %s\n", i, buf);
+    }
+
+    skip = !mod;
+
+  }
+  
+  if (fp != stdout)
+    fclose(fp);
+}
+
 // {{{ void Proc::master_clear(void)
 
 /*****************************************************************
