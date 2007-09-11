@@ -81,6 +81,7 @@ public:
   void dump_memory();
   void dump_trace(char *filename, int n);
   void dump_disassemble(char *filename, int first, int last);
+  void dump_vmem(char *filename, int exec_addr);
   
   void start_button();
   void goto_monitor();

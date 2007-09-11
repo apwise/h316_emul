@@ -354,7 +354,7 @@ int main(int argc, char **argv)
 
   if (usage)
     {
-      fprintf(stderr, "usage: %s [-c<tab-char>] [-t[ ]<comma-separated-list>] [-o[ ]filename] [-] [<input-filename>]",
+      fprintf(stderr, "usage: %s [-c<tab-char>] [-t[ ]<comma-separated-list>] [-o[ ]filename] [-] [<input-filename>]\n",
 	      argv[0]);
       exit(1);
     }

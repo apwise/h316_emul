@@ -1126,6 +1126,10 @@ string Line::render_link(Symbol *s, bool html_per_page)
   n << s->get_serial_number();
   r = r + n.str();
 
+  //
+  // Isn't this returning a local on the stack?
+  // looks dangerous...
+  //
   return r;
 }
 
