@@ -62,6 +62,7 @@ public:
 	  char *description=NULL,
 	  ExecFunc_pt exec=NULL,
 	  bool alloc=false);
+    ~Instr();
     
     const char *disassemble(unsigned short addr,
 			    unsigned short instr,
@@ -79,10 +80,10 @@ public:
     bool get_alloc(){return alloc;};
 
   private:
-    const char *   mnemonic;
+    char *   mnemonic;
     INSTR_TYPE     type;
     unsigned short opcode;
-    const char *   description;
+    char *   description;
     ExecFunc_pt    exec;
     bool           alloc; // storage allocated with "new" (else static)
 
@@ -182,6 +183,13 @@ private:
 
   void build_one_instr_table(Instr itable[]);
   void build_instr_tables();
+  
+  //Common instructions
+  static Instr ui; // Unimplemented instruction
+  static Instr gskp;
+  static Instr gshf;
+  static Instr gena;
+
 
 };
 

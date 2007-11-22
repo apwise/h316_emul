@@ -384,6 +384,8 @@ class File
   void link_buttons(FILE *fp, bool html_per_page, int page);
   void file_start(FILE *fp, bool html_per_page, int page);
   void file_stop(FILE *fp, bool html_per_page, int page);
+  void quote_dollars(const string &in_str, string &out_str);
+
 };
 
 // }}}
@@ -844,10 +846,15 @@ void Line::analyze_src()
 
       if ((j < ((int)src_line.size())) && (src_line[j] != ' '))
         {
-          if (src_line[j] == ',')
-            comma = true;
+	  if ((src_line[j]=='+') || (src_line[j]=='-') ||
+	      (src_line[j]==',') || (src_line[j]==' ')) {
+	    if (src_line[j] == ',')
+	      comma = true;
+	    i = j+1;
+	  } else {
+	    i = j;
+	  }
           //printf("separator = <%c>\n", src_line[j]);
-          i = j+1;
           j = find_sub_field(i, type, symbol, literal, num, asterix);
         }
       else
@@ -1686,16 +1693,38 @@ void File::file_title()
 }
 
 // }}}
+// {{{ void File::quote_dollars(const string &in_str, string &out_str)
+
+void File::quote_dollars(const string &in_str, string &out_str)
+{
+  string::const_iterator i;
+  out_str.clear();
+  for (i=in_str.begin(); i!=in_str.end(); i++) {
+    if ((*i) == '$') {
+      out_str.append(left_quote);
+      out_str.append(1, (*i));
+      out_str.append(right_quote);
+    } else {
+      out_str.append(1, (*i));
+    }
+  }
+}
+
+// }}}
+
 // {{{ void File::file_start(FILE *fp, bool html_per_page, int page)
 
 void File::file_start(FILE *fp, bool html_per_page, int page)
 {
   time_t t;
   char buf[100];
+  string dollars_quoted;
+  quote_dollars(title, dollars_quoted);
 
+  // TODO - quote dollar signs
   fprintf(fp, "m4_define(%s%s%s, %s%s%s)\n",
 	  left_quote, HTML_HEADING,  right_quote,
-	  left_quote, title.c_str(), right_quote);
+	  left_quote, dollars_quoted.c_str(), right_quote);
   
   (void) time(&t);
   ctime_r(&t, buf);
