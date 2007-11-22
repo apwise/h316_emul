@@ -326,14 +326,14 @@ void Proc::dump_vmem(char *filename, int exec_addr)
 
     if (mod) {
       if (dac)
-        sprintf(buf, "%06o  %06o    DAC  '%06o", i, instr, i);       
+        sprintf(buf, "%06o  %06o    DAC  '%06o", i, instr, instr);       
       else if (instr_table.defined(instr))
         sprintf(buf, "%s", 
                 instr_table.disassemble(i, instr, false));
       else
         sprintf(buf, "%06o  %06o    %s", i, instr, "???");       
       
-      fprintf(fp, "%04x // %s\n", i, buf);
+      fprintf(fp, "%04x // %s\n", instr, buf);
     }
 
     skip = !mod;

@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2007  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "stdtty.hh"
+
+#include <iostream>
 
 #ifdef NO_DO_PROCS
 class Proc;
@@ -45,6 +47,14 @@ InstrTable::Instr::Instr(char *mnemonic,
     exec(exec),
     alloc(alloc)
 {
+}
+
+InstrTable::Instr::~Instr()
+{
+  if (alloc) {
+    free(mnemonic);
+    free(description);
+  }
 }
 
 const char *InstrTable::Instr::disassemble(unsigned short addr,
@@ -332,13 +342,21 @@ InstrTable::InstrTable()
 
 InstrTable::~InstrTable()
 {
-  unsigned long lim, i;
+  unsigned long lim, i, j;
 
   lim = 1 << 16;
 
-  for (i=0; i<lim; i++)
-    if (dispatch_table[i]->get_alloc())
+  for (i=0; i<lim; i++) {
+    //std::cerr << "i = " << i << std::endl;
+    if ((dispatch_table[i]) &&
+	(dispatch_table[i]->get_alloc())) {
+      for (j=i+1; j<lim; j++)
+      	if (dispatch_table[i] ==
+	    dispatch_table[j])
+	  dispatch_table[j] = 0;
       delete dispatch_table[i];
+    }
+  }
 
   delete [] dispatch_table;
   dispatch_table = NULL;
@@ -434,10 +452,15 @@ void InstrTable::build_one_instr_table(Instr itable[])
     } 
 }
 
+InstrTable::Instr InstrTable::ui("???", IT(UNDEFINED), 0, "Unimplemented", PD(unimplemented));
+InstrTable::Instr InstrTable::gskp("skip?", IT(SH), 0, "Generic skip", PD(generic_skip));
+InstrTable::Instr InstrTable::gshf("shft?", IT(SH), 0, "Generic shift", PD(generic_shift));
+InstrTable::Instr InstrTable::gena("gnrc?", IT(SH), 0, "Generic group A", PD(generic_group_A));
+
+
 void InstrTable::build_instr_tables()
 {
   unsigned long lim, i;
-  Instr *ui, *gskp, *gshf, *gena;
 
   lim = 1 << 16;
 
@@ -446,11 +469,8 @@ void InstrTable::build_instr_tables()
   // First set all instructions to unimplemented
   //
 
-  ui = new Instr("???", IT(UNDEFINED), 0, "Unimplemented", PD(unimplemented), true);
-
-
   for (i=0; i<lim; i++)
-    dispatch_table[i] = ui;
+    dispatch_table[i] = &ui;
   
   i = 0;
   while (instructions[i])
@@ -476,25 +496,19 @@ void InstrTable::build_instr_tables()
   //
 
   // Skip...
-  gskp = new Instr("skip?", IT(SH), 0, "Generic skip", PD(generic_skip), true);
-
   for (i=0x8000; i<0x8400; i++)
-    if (dispatch_table[i] == ui)
-      dispatch_table[i] = gskp;
+    if (dispatch_table[i] == &ui)
+      dispatch_table[i] = &gskp;
 
   // Shift...
-  gshf = new Instr("shft?", IT(SH), 0, "Generic shift", PD(generic_shift), true);
-
   for (i=0x4000; i<0x4400; i++)
-    if (dispatch_table[i] == ui)
-      dispatch_table[i] = gshf;
+    if (dispatch_table[i] == &ui)
+      dispatch_table[i] = &gshf;
 
   // Generic group A...
-  gena = new Instr("gnrc?", IT(SH), 0, "Generic group A", PD(generic_group_A), true);
-
   for (i=0xc000; i<0xc400; i++)
-    if (dispatch_table[i] == ui)
-      dispatch_table[i] = gena;
+    if (dispatch_table[i] == &ui)
+      dispatch_table[i] = &gena;
 }
 
 
@@ -814,9 +828,7 @@ void InstrTable::apply_one_alias( unsigned short alias[] )
   int a;
   unsigned short limit;
   unsigned short i, proper_i;
-  char temp[256];
-  char *new_mnemonic, *new_description;
-  Instr *new_instr;
+  char temp_mnemonic[256], temp_description[256];
   
   if ((alias[0] & 0140000) == 0140000)
     limit = B7; // This is a group A instruction
@@ -861,29 +873,22 @@ void InstrTable::apply_one_alias( unsigned short alias[] )
   // string to represent the mnemonic and description
   //
 
-  sprintf(temp, "(%s)", dispatch_table[proper_i]->get_mnemonic());
-  new_mnemonic = strdup(temp);
+  sprintf(temp_mnemonic, "(%s)", dispatch_table[proper_i]->get_mnemonic());
+  sprintf(temp_description, "(Alternative) %s", dispatch_table[proper_i]->get_description());
 
-  sprintf(temp, "(Alternative) %s", dispatch_table[proper_i]->get_description());
-  new_description = strdup(temp);
-
-  for (a=0; (alias[a] != LAST); a++)
-    {
-      for (i=alias[a]; i<=(alias[a]+limit); i+=B7)
-        if (i != proper_i)
-          {
-            // for all but the proper instruction
-            // create a new Instr structure
+  for (a=0; (alias[a] != LAST); a++) {
+    for (i=alias[a]; i<=(alias[a]+limit); i+=B7)
+      if (i != proper_i)
+	// for all but the proper instruction
+	// create a new Instr structure
             
-            new_instr = new Instr(new_mnemonic,
-				  dispatch_table[proper_i]->get_type(),
-				  i,
-				  new_description,
-				  dispatch_table[proper_i]->get_exec(),
-				  true);
+	dispatch_table[i] = new Instr(strdup(temp_mnemonic),
+				      dispatch_table[proper_i]->get_type(),
+				      i,
+				      strdup(temp_description),
+				      dispatch_table[proper_i]->get_exec(),
+				      true);
             
-            dispatch_table[i] = new_instr;
-          }
     }
   
 }
