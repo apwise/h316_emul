@@ -78,23 +78,31 @@ EXTRA_DIST = 	data/m4h_defines.m4 \
 		scripts/h16-as.m4 \
 		tapes/dap-16_mod2_slst.ptp
 
-install-data-local:
+install-data-local: h16-as
 	test -z "$(DESTDIR)$(pkgdatadir)/data" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/data"
 	$(INSTALL_DATA) $(srcdir)/data/m4h_defines.m4 $(DESTDIR)$(pkgdatadir)/data
 	$(INSTALL_DATA) $(srcdir)/data/main.css $(DESTDIR)$(pkgdatadir)/data
 	$(INSTALL_DATA) $(srcdir)/data/dap.css $(DESTDIR)$(pkgdatadir)/data
+	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
+	$(INSTALL_PROGRAM) h16-as $(DESTDIR)$(pkgdatadir)/scripts
+	$(INSTALL_DATA) $(srcdir)/scripts/h16-as.m4 $(DESTDIR)$(pkgdatadir)/scripts
+	test -z "$(DESTDIR)$(pkgdatadir)/tapes" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/tapes"
+	$(INSTALL_DATA) $(srcdir)/tapes/dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 
-CLEANFILES = h16-as
+CLEANFILES = h16-as version.h
 
 do_subst = sed -e 's,[@]pkgdatadir[@],$(pkgdatadir),g'
 
 h16-as: $(srcdir)/scripts/h16-as.in Makefile
 	$(do_subst) < $< > $@
 
-install-exec-local: h16-as
-	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
-	$(INSTALL_PROGRAM) h16-as $(DESTDIR)$(pkgdatadir)/scripts
-	$(INSTALL_DATA) $(srcdir)/scripts/h16-as.m4 $(DESTDIR)$(pkgdatadir)/scripts
-	rm -f $(bindir)/h16-as && { ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-as $(bindir)/h16-as || $(INSTALL_PROGRAM) h16-as $(bindir); }
-	test -z "$(DESTDIR)$(pkgdatadir)/tapes" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/tapes"
-	$(INSTALL_DATA) $(srcdir)/tapes/dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
+install-exec-local:
+	rm -f $(bindir)/h16-as && \
+	{ ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-as $(DESTDIR)$(bindir)/h16-as || \
+	  $(INSTALL_PROGRAM) h16-as $(DESTDIR)$(bindir); }
+
+uninstall-local:
+	rm -rf $(DESTDIR)$(pkgdatadir)/tapes
+	rm -rf $(DESTDIR)$(pkgdatadir)/data
+	rm -rf $(DESTDIR)$(pkgdatadir)/scripts
+	rm -f  $(DESTDIR)$(bindir)/h16-as
