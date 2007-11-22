@@ -63,7 +63,11 @@ public:
 	  ExecFunc_pt exec=NULL,
 	  bool alloc=false);
     
-    const char *disassemble(unsigned short addr, unsigned short instr, bool brk);
+    const char *disassemble(unsigned short addr,
+			    unsigned short instr,
+			    bool brk,
+			    unsigned short y = 0,
+			    bool y_valid = false);
 
     static signed short ex_sc(unsigned short instr);
 
@@ -82,7 +86,10 @@ public:
     ExecFunc_pt    exec;
     bool           alloc; // storage allocated with "new" (else static)
 
-    static const char *str_ea(unsigned short addr, unsigned short instr);    
+    static const char *str_ea(unsigned short addr,
+			      unsigned short instr,
+			      unsigned short y = 0,
+			      bool y_valid = false);
   };
 
 public:
@@ -98,7 +105,11 @@ public:
   inline bool defined(unsigned short instr)
   { return dispatch_table[instr]->get_type() != Instr::UNDEFINED; };
 
-  const char *disassemble(unsigned short addr, unsigned short instr, bool brk);
+  const char *disassemble(unsigned short addr,
+			  unsigned short instr,
+			  bool brk,
+			  unsigned short y = 0,
+			  bool y_valid = false);
 
   Instr *lookup(const char *mnemonic) const;
   void dump_dispatch_table() const;

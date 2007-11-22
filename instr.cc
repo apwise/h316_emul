@@ -47,8 +47,11 @@ InstrTable::Instr::Instr(char *mnemonic,
 {
 }
 
-const char *InstrTable::Instr::disassemble(unsigned short addr, unsigned short instr,
-			       bool brk)
+const char *InstrTable::Instr::disassemble(unsigned short addr,
+					   unsigned short instr,
+					   bool brk,
+					   unsigned short y,
+					   bool y_valid)
 {
   static char str[64];
   static char *p;
@@ -70,7 +73,7 @@ const char *InstrTable::Instr::disassemble(unsigned short addr, unsigned short i
 	      ((instr>>14) & 1), ((instr >> 10) & 0xf),
 	      (instr & 0x3ff), mnemonic,
 	      ((instr & 0x8000)?'*':' '),
-	      str_ea(addr, instr));
+	      str_ea(addr, instr, y, y_valid));
       break;
     case SH:
       sprintf(p, " %04o %02o   %s  '%02o",
@@ -101,15 +104,27 @@ signed short InstrTable::Instr::ex_sc(unsigned short instr)
   return res;
 }
 
-const char *InstrTable::Instr::str_ea(unsigned short addr, unsigned short instr)
+const char *InstrTable::Instr::str_ea(unsigned short addr,
+				      unsigned short instr,
+				      unsigned short y,
+				      bool y_valid)
 {
   unsigned short ea;
   static char str[64];
   char a[10];
+  char b[10];
   bool is_ldx = false;
-  
+  bool is_jmp = false;
+  bool full_ea = false;
+  bool indexed = false;
+  bool indirect = false;
+  bool print_y = false;
+
   if (((instr >> 10) & 037) == 035)
     is_ldx = true;
+  
+  if (((instr >> 10) & 017) == 001)
+    is_jmp = true;
   
   if (instr & 0x0200)
     ea = (addr & 0x7e00) | (instr & 0x01ff);
@@ -125,10 +140,25 @@ const char *InstrTable::Instr::str_ea(unsigned short addr, unsigned short instr)
     case 2: strcpy(a, "*+2"); break;
     default:
       sprintf(a, "'%06o", ea);
+      full_ea = true;
     }
   
-  sprintf(str, "%s%s", a,
-	  ((((instr & 0x4000)!=0) && (!is_ldx)) ? ",1" : ""));
+  if (((instr & 0x4000)!=0) && (!is_ldx))
+    indexed = true;
+
+  if ((instr & 0x8000)!=0)
+    indirect = true;
+
+  if ((indirect || indexed || ((!full_ea) && (!is_jmp))) &&
+      y_valid)
+    {
+      print_y = true;
+      sprintf(b, "='%06o", y);
+    }
+
+  sprintf(str, "%s%s%s", a,
+	  ((indexed) ? ",1" : ""),
+	  ((print_y) ? b : ""));
   
   return str;
 }
@@ -468,10 +498,13 @@ void InstrTable::build_instr_tables()
 }
 
 
-const char *InstrTable::disassemble(unsigned short addr, unsigned short instr,
-				    bool brk)
+const char *InstrTable::disassemble(unsigned short addr,
+				    unsigned short instr,
+				    bool brk,
+				    unsigned short y,
+				    bool y_valid)
 {
-  return dispatch_table[instr]->disassemble(addr, instr, brk);
+  return dispatch_table[instr]->disassemble(addr, instr, brk, y, y_valid);
 }
 
 InstrTable::Instr *InstrTable::lookup(const char *mnemonic) const
