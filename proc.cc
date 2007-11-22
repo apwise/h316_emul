@@ -66,7 +66,7 @@ struct Btrace
   unsigned long half_cycles;
   unsigned short a, b, x;
   bool c;
-  unsigned short p, instr;
+  unsigned short p, instr, y;
 };
 
 // }}}
@@ -228,8 +228,11 @@ void Proc::dump_trace(char *filename, int n)
                   (btrace_buf[i].b & 0xffff),
                   (btrace_buf[i].x & 0xffff),
                   (btrace_buf[i].c & 1),
-                  instr_table.disassemble(btrace_buf[i].p, btrace_buf[i].instr,
-					  btrace_buf[i].brk));
+                  instr_table.disassemble(btrace_buf[i].p,
+					  btrace_buf[i].instr,
+					  btrace_buf[i].brk,
+					  btrace_buf[i].y,
+					  true/*y_valid*/));
         }
       i = (i+1) % TRACE_BUF;
     } while (trace_ptr != i);
@@ -594,6 +597,7 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
       btrace_buf[trace_ptr].c = c;
       btrace_buf[trace_ptr].x = x;
       btrace_buf[trace_ptr].p = dp; // saved pc
+      btrace_buf[trace_ptr].y = y;  // EA of MR instructions
       btrace_buf[trace_ptr].instr = instr;
       
       trace_ptr = (trace_ptr + 1) % TRACE_BUF;
