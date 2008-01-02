@@ -1436,7 +1436,7 @@ string File::get_html_name(int page)
 string File::find_first_file_name(bool html_per_page, string &title_str)
 {
   title_str = files[0]->title;
-  return files[0]->get_html_name((html_per_page && (!is_toc)) ? 1 : 0);
+  return files[0]->get_html_name((html_per_page && (!files[0]->is_toc)) ? 1 : 0);
 }
 
 // }}}
