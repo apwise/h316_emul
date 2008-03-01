@@ -1,9 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <iostream>
 #include <fstream>
+
+#include <utility>
+#include <list>
+#include <set>
+#include <map>
 
 #include "instr.hh"
 
@@ -106,6 +112,8 @@ static int gc(FILE *fp)
 {
   int c = getc(fp);
 
+  //printf("gc(): c = %03o\n", c);
+
   if (c==EOF)
     {
       fprintf(stderr, "Unexpected EOF\n");
@@ -197,7 +205,7 @@ static int translate(int c, bool &xof)
   if (n & 0x60)
     {
       fprintf(stderr, "Channels 6 or 7 punched (%03o)\n", n);
-      //exit(1);
+      exit(1);
     }
 
   n = ((n&0x80)>>2) | (n & 0x1f);
@@ -215,6 +223,8 @@ static unsigned short read_silent(FILE *fp, bool &zero_flag, bool &xof)
   unsigned short n;
 
   c = gc(fp);
+  //printf("read_silent(): c = %03o\n", c);
+
   if (c == 0223)
     {
       xof = 1;
@@ -235,7 +245,7 @@ static unsigned short read_silent(FILE *fp, bool &zero_flag, bool &xof)
   if (c & 0x10)
     {
       fprintf(stderr, "Channel 5 punched in 4-bit character\n");
-      //exit(1);
+      exit(1);
     }
   n = (c << 12);
 
@@ -415,6 +425,56 @@ static void dissassemble_block(unsigned short *block, int size, int addr)
 #define K32 (1 << 15)
 #define K16 (1 << 14)
 
+enum WORD_INFO {
+  WI_NULL = 0,
+  WI_EXEC = 1  // Can be reached as code
+};
+
+static unsigned int instr_may_reach(uint16_t addr, uint16_t instr,
+				    uint16_t addresses[3])
+{
+  
+}
+
+static void control_flow_analysis(const uint16_t core[],
+				  const std::list<uint16_t> entry_points,
+				  std::map<uint16_t, WORD_INFO> &info)
+{
+  std::pair<std::set<uint16_t>::iterator, bool> sr;
+
+  // The set of addresses that need to be analysed...
+  std::set<uint16_t> analyse;
+
+  // Start by clearing the info structure
+  info.clear();
+
+  // Add all of the entry points
+  std::list<uint16_t>::const_iterator li;
+  for (li = entry_points.begin(); li != entry_points.end(); li++) {
+    sr = analyse.insert(*li);
+    if (!sr.second) {
+      std::cout << "Entry point <" 
+		<< std::oct << (*li) << std::dec 
+		<< "> already dealt with - duplicate ignored." 
+		<< std::endl;
+    }
+  }
+
+  std::set<uint16_t>::iterator ai;
+  ai = analyse.begin();
+  while (ai != analyse.end()) {
+
+    uint16_t instr = *ai;
+
+    // So (obviously) this address is reachable by the
+    // control flow
+    info[instr] = WI_EXEC;
+
+    ai = analyse.begin();
+  }
+
+}
+
 int main(int argc, char **argv)
 {
   FILE *fp;
@@ -509,3 +569,6 @@ int main(int argc, char **argv)
 }
 
 
+//Local variables:
+//folded-file: t
+//End:
