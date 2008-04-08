@@ -1,6 +1,6 @@
 bin_PROGRAMS = h16 \
 		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
-		h16-tabify h16-asr h16-tape
+		h16-tabify h16-asr h16-tape h16-ppl
 
 h16_SOURCES = 	asr_intf.cc \
 		emul.cc \
@@ -56,6 +56,8 @@ version.h: $(h16_SOURCES)
 h16_tabs_SOURCES = utils/h16-tabs.c
 
 h16_pdap_SOURCES = utils/h16-pdap.cc
+
+h16_ppl_SOURCES = utils/h16-ppl.c
 
 h16_asctotty_SOURCES = utils/h16-asctotty.c
 
