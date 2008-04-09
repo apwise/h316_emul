@@ -4,8 +4,14 @@
 #include <ctype.h>
 #include <time.h>
 
+#define MAX_LEN_QUOTE 20
+#define DEFAULT_LEFT_QUOTE "`"
+#define DEFAULT_RIGHT_QUOTE "'"
+
 static int single_file;
 static int target_lines;
+static char left_quote[MAX_LEN_QUOTE+1];
+static char right_quote[MAX_LEN_QUOTE+1];
 static char *input_filename;
 static char *output_root;
 static char *title;
@@ -1035,52 +1041,85 @@ static FILE *start_new_file(FILE *fp, int realy_open)
 static void usage(char *name)
 {
   fprintf(stderr,
-          "usage: %s [-s] [-lnum] <input filename> <output root> <title> [<css URL>]\n",
+          "usage: %s [-s] [-lnum] [-q<l>,<r>] <input filename> <output root> <title> [<css URL>]\n",
           name);
   exit(1);
 }
 
 static void args(int argc, char **argv)
 {
-  int i = 1;
+  int a;
   char *ptr;
 
   single_file = 0;
-  if ((i<argc) && (strcmp(argv[i], "-s") == 0))
-    { single_file = 1; i++; }
-
   target_lines = LINES_PER_FILE;
-  if ((i<argc) && (strncmp(argv[i], "-l", 2) == 0))
-    {
-      target_lines = strtol(&argv[i][2], &ptr, 0);
-      if (ptr == &argv[i][2])
-        usage(argv[0]);
-      i++;
-    }
+  strcpy(left_quote, DEFAULT_LEFT_QUOTE);
+  strcpy(right_quote, DEFAULT_RIGHT_QUOTE);
+
+  for (a=1; a<argc; a++) {
+    if (argv[a][0] == '-') {
+      
+      if (strcmp(argv[a], "-s") == 0)
+	single_file = 1;
+      else if ((strncmp(argv[a], "-l", 2) == 0)) {
+	target_lines = strtol(&argv[a][2], &ptr, 0);
+	if (ptr == &argv[a][2])
+	  usage(argv[0]);
+      }
+      else if (strncmp(argv[a], "-q", 2) == 0) {
+	char *p, *l, *r;
+	p = &argv[a][2];
+	l = r = 0;
+	
+	while ((*p) && ((*p)!=','))
+	  p++;
+	
+	if (*p) {
+	  // Have found a ','
+	  if (p > l)
+	    l = &argv[a][2];
+	  *p = '\0'; // Terminate left quote
+	  r = p+1; // right starts in next character
+	  if (!(*r))
+	    r = 0;
+	}
+	
+	if ((strlen(l)>MAX_LEN_QUOTE) || (strlen(r)>MAX_LEN_QUOTE)) {
+	  fprintf(stderr, "Quote chars <%s>, <%s> are too long. (Max: %d characters)\n",
+		  ((l)?l:"[none]"), ((r)?r:"[none]"), MAX_LEN_QUOTE);
+	  exit(1);
+	}
+	
+	strcpy(left_quote,  ((l) ? l : DEFAULT_LEFT_QUOTE ));
+	strcpy(right_quote, ((r) ? r : DEFAULT_RIGHT_QUOTE));
+      }
+    } else
+      break;
+  }
 
   input_filename = NULL;
-  if (i < argc)
-    input_filename = argv[i++];
+  if (a < argc)
+    input_filename = argv[a++];
   else
     usage(argv[0]);
 
   output_root = NULL;
-  if (i<argc)
-    output_root = argv[i++];
+  if (a<argc)
+    output_root = argv[a++];
   else
     usage(argv[0]);
 
   title = NULL;
-  if (i<argc)
-    title = argv[i++];
+  if (a<argc)
+    title = argv[a++];
   else
     usage(argv[0]);
 
   css_url = "main.css;code.css";
-  if (i<argc)
-    css_url = argv[i++];
+  if (a<argc)
+    css_url = argv[a++];
 
-  if (i<argc) usage(argv[0]);
+  if (a<argc) usage(argv[0]);
 }
 
 int main(int argc, char **argv)
