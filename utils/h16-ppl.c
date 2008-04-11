@@ -8,6 +8,44 @@
 #define DEFAULT_LEFT_QUOTE "`"
 #define DEFAULT_RIGHT_QUOTE "'"
 
+#define DEFAULT_HEADING "M4H_DEFAULT_HEADING"
+#define DEFAULT_TOC_TITLE "M4H_DEFAULT_TOC_TITLE"
+
+#define HEAD_TAG       "M4H_HEAD_TAG"
+#define HEAD_TAG_END   "M4H_HEAD_TAG_END"
+#define TABLE_START    "M4H_TABLE_START"
+#define TABLE_STOP     "M4H_TABLE_STOP"
+#define BUTTON_START   "M4H_BUTTON_START"
+#define BUTTON_STOP    "M4H_BUTTON_STOP"
+#define BUTTON_EMPTY   "M4H_BUTTON_EMPTY"
+#define LINK_START     "M4H_LINK_START"
+#define LINK_STOP      "M4H_LINK_STOP"
+
+#define TOC_TABLE_START "M4H_TOC_TABLE_START"
+#define TOC_TABLE_STOP "M4H_TOC_TABLE_STOP"
+#define TOC_ROW_START  "M4H_TOC_ROW_START"
+#define TOC_ROW_STOP   "M4H_TOC_ROW_STOP"
+
+#define NEXT_PAGE      "M4H_NEXT_PAGE"
+#define PREVIOUS_PAGE  "M4H_PREVIOUS_PAGE"
+/*
+#define NEXT_FILE      "M4H_NEXT_FILE"
+#define PREVIOUS_FILE  "M4H_PREVIOUS_FILE"
+#define SINGLE_PAGE    "M4H_SINGLE_PAGE"
+#define MULTIPLE_PAGES "M4H_MULTIPLE_PAGES"
+*/
+#define FIRST_PAGE      "M4H_FIRST_PAGE"
+#define LAST_PAGE       "M4H_LAST_PAGE"
+
+#define HTML_HEADING   "HTML_HEADING"
+#define HTML_TIME      "HTML_TIME"
+
+#define HEAD1 "M4H_HEAD1"
+#define HEAD2 "M4H_HEAD2"
+#define HEAD3 "M4H_HEAD3"
+#define TAIL1 "M4H_TAIL1"
+#define TAIL2 "M4H_TAIL2"
+
 static int single_file;
 static int target_lines;
 static char left_quote[MAX_LEN_QUOTE+1];
@@ -923,49 +961,54 @@ static char *output_file_name(int file_num)
 static void buttons(FILE *fp, int top)
 {
   int i;
+  char ref[1024];
+  char eref[10];
+
   if (!fp) return;
-
-/*   if (!top) */
-/*     fprintf(fp, "<HR>\n"); */
       
-  if (!single_file)
-    {
-      fprintf(fp, "<TABLE WIDTH=\"100%c\" class=\"simple\">\n", '%');
-
-      fprintf(fp, "  ");
-      for (i=0; i<5; i++)
-        fprintf(fp, "<col WIDTH=\"20%c\">", '%');
-      fprintf(fp, "\n");
-
-      fprintf(fp, "  <tbody>\n");
-      fprintf(fp, "    <TR>\n");
-      
-      if (file_number == 1)
-        fprintf(fp, "      <TD class=\"head\">First</TD>\n      <TD class=\"head\">Previous</TD>\n");
-      else
-        {
-          fprintf(fp, "     <TD class=\"head\"><A HREF=%s>First</A></TD>\n", output_file_name(1));
-          fprintf(fp, "     <TD class=\"head\"><A HREF=%s>Previous</A></TD>\n",
-                  output_file_name(file_number-1));
-        }
-      fprintf(fp, "      <TD class=\"head\">&nbsp;</TD>\n");
-      
-      if (file_number == max_file_number)
-        fprintf(fp, "      <TD class=\"head\">Next</TD>\n    <TD class=\"head\">Last</TD>\n");
-      else
-        {
-          fprintf(fp, "      <TD class=\"head\"><A HREF=%s>Next</A></TD>\n",
-                  output_file_name(file_number+1));
-          fprintf(fp, "      <TD class=\"head\"><A HREF=%s>Last</A></TD>\n",
-                  output_file_name(max_file_number));
-        }
-      
-      fprintf(fp,"    </TR>\n  </tbody>\n");
-      fprintf(fp, "</table>\n");
-  
-/*       if (top) */
-/*         fprintf(fp, "<HR>\n"); */
+  if (!single_file) {
+    fprintf(fp, "%s\n", TABLE_START);
+    
+    if (file_number == 1) {
+      sprintf(ref, "");
+      sprintf(eref, "");
+    } else {
+      sprintf(ref, "<a href=%s>", output_file_name(1));
+      sprintf(eref, "</a>");
     }
+    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, FIRST_PAGE, eref, BUTTON_STOP);
+
+    if (file_number == 1) {
+      sprintf(ref, "");
+      sprintf(eref, "");
+    } else {
+      sprintf(ref, "<a href=%s>", output_file_name(file_number-1));
+      sprintf(eref, "</a>");
+    }
+    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, PREVIOUS_PAGE, eref, BUTTON_STOP);
+
+    fprintf(fp, "      %s\n", BUTTON_EMPTY);
+
+    if (file_number == max_file_number) {
+      sprintf(ref, "");
+      sprintf(eref, "");
+    } else {
+      sprintf(ref, "<a href=%s>", output_file_name(file_number+1));
+      sprintf(eref, "</a>");
+    }
+    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, NEXT_PAGE, eref, BUTTON_STOP);
+
+    if (file_number == max_file_number) {
+      sprintf(ref, "");
+      sprintf(eref, "");
+    } else {
+      sprintf(ref, "<a href=%s>", output_file_name(max_file_number));
+      sprintf(eref, "</a>");
+    }
+    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, LAST_PAGE, eref, BUTTON_STOP);
+      
+    fprintf(fp, "%s\n", TABLE_STOP);
+  }
 
 }
 
@@ -974,29 +1017,17 @@ static void complete_file(FILE *fp)
   /* Close off the HTML */
   force_end_code(fp);
 
-  if (fp)
-    fprintf(fp, postamble1);
-
-  buttons(fp, 0);
-
-  if (fp)
-    {
-      time_t t;
-
-      (void) time(&t);
-      fprintf(fp, "<P>HTML generated %s</P>\n", ctime(&t));
-
-      fprintf(fp, postamble);
-      fclose(fp);
-    }
+  if (fp) {
+    fprintf(fp, "%s\n", TAIL1);
+    buttons(fp, 0);
+    fprintf(fp, "%s\n", TAIL2);
+  };
 }
 
 static FILE *start_new_file(FILE *fp, int realy_open)
 {
   FILE *newfp = NULL;
-  static char buf[256];
-  char *str;
-  char *ptr;
+  time_t t;
 
   complete_file(fp);
   file_number++;
@@ -1005,32 +1036,30 @@ static FILE *start_new_file(FILE *fp, int realy_open)
 
   line_number = 0;
 
-  if (realy_open)
-    {
-      newfp = fopen(output_file_name(file_number), "w");
+  if (realy_open) {
+    newfp = fopen(output_file_name(file_number), "w");
 
-      if (!newfp) abort();
+    if (!newfp) abort();
 
-      fprintf(newfp, preamble);
+    fprintf(newfp, "m4_define(%s%s%s, %s%s%s%s)\n",
+            left_quote,  HTML_HEADING, right_quote,
+            left_quote,  title, ((file_number == 1) ? "" : " continued"), right_quote);
+    
+    (void) time(&t);
+    fprintf(newfp, "m4_define(%s%s%s, %s%s%s)\n",
+            left_quote,  HTML_TIME, right_quote,
+            left_quote,  ctime(&t), right_quote);
 
-      strcpy(buf, css_url);
-      str = strtok_r(buf, ";", &ptr);
-      while (str)
-        {
-          fprintf(newfp, css_link, str);
-          str = strtok_r(NULL, ";", &ptr);
-        }
+    fprintf(newfp, "%s\n", HEAD1);
 
-      if (file_number == 1)
-        sprintf(buf, "%s", title);
-      else
-        sprintf(buf, "%s continued", title);
+    /* Links would go here if there were any */
 
-      fprintf(newfp, preamble2, title, buf, title);
+    fprintf(newfp, "%s\n", HEAD2);
+    buttons(newfp, 1);
+    fprintf(newfp, "%s\n", HEAD3);
 
-      buttons(newfp, 1);
-
-      fprintf(newfp, preamble3);
+    fprintf(newfp, "%s%s%\n",
+            HEAD_TAG, title ,HEAD_TAG_END);
     }
   return newfp;
 }
@@ -1135,53 +1164,48 @@ int main(int argc, char **argv)
 
   init_symbol_table();
 
-  for (pass = 1; pass <= 2; pass++)
-    {
-      /*printf("Pass %d\n", pass);*/
+  for (pass = 1; pass <= 2; pass++) {
+    /*printf("Pass %d\n", pass);*/
 
-      ifp = fopen(input_filename, "r");
-      if (!ifp)
-        {
-          fprintf(stderr, "Could not open <%s> for reading\n",
-                  input_filename);
-          exit(1);
-        }
-      init_lex();
-      token_number = line_number = file_number = 0;
-      pending_end_code = -1;
-      ofp = start_new_file(NULL, (pass>1));
-      
-      next_token = lex( ifp );
-      do
-        {
-          token = next_token;
-
-          ident_spaces = 1;
-          while (ident_spaces)
-            {
-              next_token = lex( ifp );
-              if ((token==IDENTIFIER) && (next_token==IDENTIFIER))
-                {
-                  /* patch up spaces in an identifier */
-                  for (i=0; i<spaces2; i++)
-                    strcat(lex_buf, " ");
-                  strcat(lex_buf, lex_buf2);
-
-                  strcpy(lex_buf2, lex_buf);
-                  spaces2 = spaces;
-                }
-              else
-                ident_spaces = 0;
-            }
-
-          render_token(token, next_token, &ofp);
-        } while (token != EOF);
-      
-      complete_file(ofp);
-      fclose(ifp);
-
-      record_procedure_symbols(); /* so globals in main prog. aren't deleted in pass 2 */
+    ifp = fopen(input_filename, "r");
+    if (!ifp) {
+      fprintf(stderr, "Could not open <%s> for reading\n",
+              input_filename);
+      exit(1);
     }
+    init_lex();
+    token_number = line_number = file_number = 0;
+    pending_end_code = -1;
+    ofp = start_new_file(NULL, (pass>1));
+      
+    next_token = lex( ifp );
+    do {
+      token = next_token;
+
+      ident_spaces = 1;
+      while (ident_spaces) {
+        next_token = lex( ifp );
+        if ((token==IDENTIFIER) && (next_token==IDENTIFIER)) {
+          /* patch up spaces in an identifier */
+          for (i=0; i<spaces2; i++)
+            strcat(lex_buf, " ");
+          strcat(lex_buf, lex_buf2);
+
+          strcpy(lex_buf2, lex_buf);
+          spaces2 = spaces;
+        }
+        else
+          ident_spaces = 0;
+      }
+
+      render_token(token, next_token, &ofp);
+    } while (token != EOF);
+      
+    complete_file(ofp);
+    fclose(ifp);
+
+    record_procedure_symbols(); /* so globals in main prog. aren't deleted in pass 2 */
+  }
 
   exit(0);
 }
