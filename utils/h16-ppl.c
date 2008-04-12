@@ -40,7 +40,10 @@
 #define HTML_HEADING   "HTML_HEADING"
 #define HTML_TIME      "HTML_TIME"
 
-#define HEAD1 "M4H_HEAD1"
+#define CONTINUED " continued"
+#define CONCLUDED " concluded"
+
+#define HEAD1 "M4H_PPL_HEAD1"
 #define HEAD2 "M4H_HEAD2"
 #define HEAD3 "M4H_HEAD3"
 #define TAIL1 "M4H_TAIL1"
@@ -53,7 +56,6 @@ static char right_quote[MAX_LEN_QUOTE+1];
 static char *input_filename;
 static char *output_root;
 static char *title;
-static char *css_url;
 
 #define LINES_PER_FILE 300
 
@@ -72,6 +74,7 @@ static int max_file_number = 0;
 
 static FILE *start_new_file(FILE *fp, int realy_open);
 static char *output_file_name(int file_num);
+static char *m4h_output_file_name(int file_num);
 
 #define BUFLEN 1024
 static char *lex_buf, *lex_buf2;
@@ -899,52 +902,6 @@ void render_token(int token, int next_token, FILE **pfp)
 /**********************************************************
  * Handle output files
  *********************************************************/
-static char *preamble = 
-"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\n"\
-"   \"http://www.w3.org/TR/html4/strict.dtd\">\n"\
-"<html>\n"\
-"  <head>\n";
-
-static char *css_link = "    <link rel=\"STYLESHEET\" type=\"text/css\" href=\"%s\" title=\"Style\">\n";
-
-static char *preamble2 = 
-"   <title>%s</title>\n"\
-"  </head>\n"\
-"  <body>\n"\
-"    <DIV ID=\"header\">\n"\
-"    <h1>%s</h1>\n"\
-"    <p><a href=\"../../../index.html\">Home</a>&nbsp;>&nbsp;\n"\
-"       <a href=\"../../index.html\">Software</a>&nbsp;>&nbsp;\n"\
-"       <a href=\"../index.html\">PL516</a>&nbsp;>&nbsp;\n"\
-"       %s Source</p>\n"\
-"    </DIV>\n"\
-"    <DIV ID=\"sitenav\">\n"\
-"      <UL>\n"\
-"	<li><a href=\"../../../history.html\">History</a></li>\n"\
-"	<li><a href=\"../../../programming.html\">Programming</a></li>\n"\
-"	<li><a href=\"../../../software/index.html\">Software</a></li>\n"\
-"       <li><a href=\"../../../hardware/index.html\">Hardware</a></li>\n"\
-"	<li><a href=\"../../../emulator.html\">Emulator</a></li>\n"\
-"      </UL>\n"\
-"    </DIV>\n"\
-"\n"\
-"    <DIV ID=\"content\">\n";
-
-static char *preamble3 =
-"      <div class=\"code\">";
-
-static char *postamble1 = 
-"  </div>\n";
-
-static char *postamble = 
-"  </div>\n"\
-"  <div id=\"footer\">\n"\
-"    <address>\n"\
-"      <a href=\"mailto:adrian@adrianwise.co.uk\">Adrian Wise</a>\n"\
-"    </address>\n"\
-"  </div>\n"\
-"  </BODY>\n"\
-"</HTML>\n";
 
 static char *output_file_name(int file_num)
 {
@@ -958,54 +915,51 @@ static char *output_file_name(int file_num)
   return buf;
 }
 
+static char *m4h_output_file_name(int file_num)
+{
+  static char buf[40];
+  if (single_file)
+    sprintf(buf, "%s.m4h", output_root);
+
+  else
+    sprintf(buf, "%s_%d.m4h", output_root, file_num);
+
+  return buf;
+}
+
+static void button(FILE *fp, const char *legend, const char *filename)
+{
+  char ref[1024];
+  char eref[10];
+
+  if (filename) {
+    sprintf(ref, "<a href=%s>", filename);
+    sprintf(eref, "</a>");
+  } else {
+    sprintf(ref, "");
+    sprintf(eref, "");
+  }
+  
+  fprintf(fp, "      %s%s%s%s%s%s%s%s%s\n",
+          BUTTON_START, left_quote, right_quote,
+          ref, legend, eref,
+          left_quote, right_quote, BUTTON_STOP);
+}
+
 static void buttons(FILE *fp, int top)
 {
   int i;
-  char ref[1024];
-  char eref[10];
 
   if (!fp) return;
       
   if (!single_file) {
     fprintf(fp, "%s\n", TABLE_START);
     
-    if (file_number == 1) {
-      sprintf(ref, "");
-      sprintf(eref, "");
-    } else {
-      sprintf(ref, "<a href=%s>", output_file_name(1));
-      sprintf(eref, "</a>");
-    }
-    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, FIRST_PAGE, eref, BUTTON_STOP);
-
-    if (file_number == 1) {
-      sprintf(ref, "");
-      sprintf(eref, "");
-    } else {
-      sprintf(ref, "<a href=%s>", output_file_name(file_number-1));
-      sprintf(eref, "</a>");
-    }
-    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, PREVIOUS_PAGE, eref, BUTTON_STOP);
-
+    button(fp, FIRST_PAGE,    ((file_number == 1) ? NULL : output_file_name(1)));
+    button(fp, PREVIOUS_PAGE, ((file_number == 1) ? NULL : output_file_name(file_number-1)));
     fprintf(fp, "      %s\n", BUTTON_EMPTY);
-
-    if (file_number == max_file_number) {
-      sprintf(ref, "");
-      sprintf(eref, "");
-    } else {
-      sprintf(ref, "<a href=%s>", output_file_name(file_number+1));
-      sprintf(eref, "</a>");
-    }
-    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, NEXT_PAGE, eref, BUTTON_STOP);
-
-    if (file_number == max_file_number) {
-      sprintf(ref, "");
-      sprintf(eref, "");
-    } else {
-      sprintf(ref, "<a href=%s>", output_file_name(max_file_number));
-      sprintf(eref, "</a>");
-    }
-    fprintf(fp, "      %s%s%s%s%s\n", BUTTON_START, ref, LAST_PAGE, eref, BUTTON_STOP);
+    button(fp, NEXT_PAGE,     ((file_number == max_file_number) ? NULL : output_file_name(file_number+1)));
+    button(fp, LAST_PAGE,     ((file_number == max_file_number) ? NULL : output_file_name(max_file_number)));
       
     fprintf(fp, "%s\n", TABLE_STOP);
   }
@@ -1028,6 +982,7 @@ static FILE *start_new_file(FILE *fp, int realy_open)
 {
   FILE *newfp = NULL;
   time_t t;
+  char buf[100];
 
   complete_file(fp);
   file_number++;
@@ -1037,18 +992,24 @@ static FILE *start_new_file(FILE *fp, int realy_open)
   line_number = 0;
 
   if (realy_open) {
-    newfp = fopen(output_file_name(file_number), "w");
+    newfp = fopen(m4h_output_file_name(file_number), "w");
 
     if (!newfp) abort();
 
     fprintf(newfp, "m4_define(%s%s%s, %s%s%s%s)\n",
             left_quote,  HTML_HEADING, right_quote,
-            left_quote,  title, ((file_number == 1) ? "" : " continued"), right_quote);
+            left_quote,  title,
+            ((file_number == 1) ? "" : (file_number == max_file_number) ? CONCLUDED : CONTINUED),
+            right_quote);
     
     (void) time(&t);
+    ctime_r(&t, buf);
+    if ((*buf) && (buf[strlen(buf)-1]=='\n'))
+      buf[strlen(buf)-1]='\0';
+
     fprintf(newfp, "m4_define(%s%s%s, %s%s%s)\n",
             left_quote,  HTML_TIME, right_quote,
-            left_quote,  ctime(&t), right_quote);
+            left_quote,  buf, right_quote);
 
     fprintf(newfp, "%s\n", HEAD1);
 
@@ -1058,8 +1019,10 @@ static FILE *start_new_file(FILE *fp, int realy_open)
     buttons(newfp, 1);
     fprintf(newfp, "%s\n", HEAD3);
 
-    fprintf(newfp, "%s%s%\n",
-            HEAD_TAG, title ,HEAD_TAG_END);
+    /*
+      fprintf(newfp, "%s%s%s%s%s\n",
+            HEAD_TAG, left_quote, title, right_quote, HEAD_TAG_END);
+    */
     }
   return newfp;
 }
@@ -1070,7 +1033,7 @@ static FILE *start_new_file(FILE *fp, int realy_open)
 static void usage(char *name)
 {
   fprintf(stderr,
-          "usage: %s [-s] [-lnum] [-q<l>,<r>] <input filename> <output root> <title> [<css URL>]\n",
+          "usage: %s [-s] [-lnum] [-q<l>,<r>] <input filename> <output root> <title>\n",
           name);
   exit(1);
 }
@@ -1143,10 +1106,6 @@ static void args(int argc, char **argv)
     title = argv[a++];
   else
     usage(argv[0]);
-
-  css_url = "main.css;code.css";
-  if (a<argc)
-    css_url = argv[a++];
 
   if (a<argc) usage(argv[0]);
 }
