@@ -2,10 +2,10 @@ ptr SLSTNAM
 g'1
 clear
 a'100223
-ptr &SRCNAM
+ptr SRCNAM
 g'400
-ptr &SRCNAM
+ptr SRCNAM
 ptp OBJNAM
-lpt &LSTNAM
+lpt LSTNAM
 g
 q

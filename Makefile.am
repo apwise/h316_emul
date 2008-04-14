@@ -78,7 +78,9 @@ EXTRA_DIST = 	data/m4h_defines.m4 \
 		data/dap.css \
 		scripts/h16-as.in \
 		scripts/h16-as.m4 \
-		tapes/dap-16_mod2_slst.ptp
+		scripts/h16-mac.m4 \
+		tapes/dap-16_mod2_slst.ptp \
+		tapes/mac_slst.ptp
 
 install-data-local: h16-as
 	test -z "$(DESTDIR)$(pkgdatadir)/data" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/data"
@@ -88,8 +90,10 @@ install-data-local: h16-as
 	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
 	$(INSTALL_PROGRAM) h16-as $(DESTDIR)$(pkgdatadir)/scripts
 	$(INSTALL_DATA) $(srcdir)/scripts/h16-as.m4 $(DESTDIR)$(pkgdatadir)/scripts
+	$(INSTALL_DATA) $(srcdir)/scripts/h16-mac.m4 $(DESTDIR)$(pkgdatadir)/scripts
 	test -z "$(DESTDIR)$(pkgdatadir)/tapes" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/tapes"
 	$(INSTALL_DATA) $(srcdir)/tapes/dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
+	$(INSTALL_DATA) $(srcdir)/tapes/mac_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 
 CLEANFILES = h16-as version.h
 
