@@ -29,14 +29,9 @@ h16prog="${H16PROG-h16}"
 #
 # help and usage information
 #
-usage="Usage: $0 [--help] [-m] [-o <object-file>] [-a <listing-file>] <source-file>" 
+usage="Usage: $0 [--help] [<source-file>]" 
 help="Options:
 --help     display this help and exit.
--m         Run the macro preprocessor
--o         Specify object filename
-           (default: source-file with extension replaced by \".obj\")
--a         Specify listing filename
-           (default: source-file with extension replaced by \".lst\")"
 
 #
 # flags and values from argument parsing
@@ -44,14 +39,9 @@ help="Options:
 have_srcnam=false
 have_objnam=false
 have_lstnam=false
-run_mac=false
 
 while test -n "$1"; do
   case $1 in
-    -m) run_mac=true
-        shift
-        continue;;
-
     -a) if [ "$#" -gt 2 ]; then
           have_lstnam=true
           lstnam=$2
@@ -92,11 +82,8 @@ fi
 #
 # Files used by this script
 #
-dap_m4_filename=$m4_dir/h16-as.m4
-dapslstnam=$tape_dir/dap-16_mod2_slst.ptp
-
-mac_m4_filename=$m4_dir/h16-mac.m4
-macslstnam=$tape_dir/mac_slst.ptp
+m4_filename=$m4_dir/h16-basic.m4
+slstnam=$tape_dir/basic16_ptlb_h_41286879_621_a.ptp
 
 #
 # Compute filenames
@@ -114,43 +101,12 @@ fi
 
 tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
 
-if [ $run_mac != false ]; then
-
-  prenam=`$mktempprog -t h16-mac.XXXXXX` || tmpnam=/tmp/h16-mac.$$
-  asrnam=`$mktempprog -t h16-mac-asr.XXXXXX` || tmpnam=/tmp/h16-mac-asr.$$
-
-  $m4prog -DSLSTNAM=$macslstnam -DSRCNAM=\&$srcnam -DPRENAM=$prenam $mac_m4_filename > $tmpnam &&
-  $h16prog -t $tmpnam > $asrnam &&
-  errors=`$awkprog -- '/MACRO ERRORS/{print $1}' $asrnam`
-
-  echo $errors MACRO ERRORS
-  if [ $errors = "NO" ]; then
-    errors=0;
-  fi
-  status=$errors
-
-  $rmprog -f $asrnam
-
-  if [ $errors -ne 0 ]; then
-    $rmprog -f $prenam;
-    exit $status;
-  fi
-
-  srcnam=$prenam
-else
-  srcnam=\&$srcnam
-fi
-
-$m4prog -DSLSTNAM=$dapslstnam -DSRCNAM=$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$objnam $dap_m4_filename > $tmpnam && \
-$h16prog -t $tmpnam > /dev/null && \
+$m4prog -DSLSTNAM=$slstnam -DSRCNAM=$srcnam -DLSTNAM=$lstnam -DOBJNAM=$objnam $m4_filename > $tmpnam && \
+$h16prog -t $tmpnam && \
 errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{print $1}' $lstnam` && \
 echo $errors errors && \
 status=$errors
 
 $rmprog -f $tmpnam
-
-if [ $run_mac != false ]; then
-  $rmprog -f $prenam;
-fi
 
 exit $status
