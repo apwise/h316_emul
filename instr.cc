@@ -34,12 +34,12 @@ class Proc;
 
 #include "instr.hh"
 
-InstrTable::Instr::Instr(char *mnemonic,
-			 INSTR_TYPE type,
-			 unsigned short opcode,
-			 char *description,
-			 ExecFunc_pt exec,
-			 bool alloc)
+InstrTable::Instr::Instr(const char *mnemonic,
+                         INSTR_TYPE type,
+                         unsigned short opcode,
+                         const char *description,
+                         ExecFunc_pt exec,
+                         bool alloc)
   : mnemonic(mnemonic),
     type(type),
     opcode(opcode),
@@ -52,16 +52,17 @@ InstrTable::Instr::Instr(char *mnemonic,
 InstrTable::Instr::~Instr()
 {
   if (alloc) {
-    free(mnemonic);
-    free(description);
+    // Oh yuk...
+    free(const_cast<char *>(mnemonic));
+    free(const_cast<char *>(description));
   }
 }
 
 const char *InstrTable::Instr::disassemble(unsigned short addr,
-					   unsigned short instr,
-					   bool brk,
-					   unsigned short y,
-					   bool y_valid)
+                                           unsigned short instr,
+                                           bool brk,
+                                           unsigned short y,
+                                           bool y_valid)
 {
   static char str[64];
   static char *p;
@@ -79,22 +80,22 @@ const char *InstrTable::Instr::disassemble(unsigned short addr,
       break;
     case MR:
       sprintf(p, "%c%1o %02o %04o %s%c %s",
-	      ((instr & 0x8000)?'-':' '),
-	      ((instr>>14) & 1), ((instr >> 10) & 0xf),
-	      (instr & 0x3ff), mnemonic,
-	      ((instr & 0x8000)?'*':' '),
-	      str_ea(addr, instr, y, y_valid));
+              ((instr & 0x8000)?'-':' '),
+              ((instr>>14) & 1), ((instr >> 10) & 0xf),
+              (instr & 0x3ff), mnemonic,
+              ((instr & 0x8000)?'*':' '),
+              str_ea(addr, instr, y, y_valid));
       break;
     case SH:
       sprintf(p, " %04o %02o   %s  '%02o",
-	      ((instr>>6) & 0x3ff), (instr & 0x3f),
-	      mnemonic,
-	      static_cast<int>(-ex_sc(instr)));
+              ((instr>>6) & 0x3ff), (instr & 0x3f),
+              mnemonic,
+              static_cast<int>(-ex_sc(instr)));
       break;
     case IO:
       sprintf(p, " %02o %04o   %s  '%04o",
-	      ((instr>>10) & 0x3f), (instr & 0x3ff),
-	      mnemonic, (instr & 0x3ff));
+              ((instr>>10) & 0x3f), (instr & 0x3ff),
+              mnemonic, (instr & 0x3ff));
       break;
     default:
       sprintf(p, " %06o    %s", instr, mnemonic);
@@ -115,9 +116,9 @@ signed short InstrTable::Instr::ex_sc(unsigned short instr)
 }
 
 const char *InstrTable::Instr::str_ea(unsigned short addr,
-				      unsigned short instr,
-				      unsigned short y,
-				      bool y_valid)
+                                      unsigned short instr,
+                                      unsigned short y,
+                                      bool y_valid)
 {
   unsigned short ea;
   static char str[64];
@@ -167,8 +168,8 @@ const char *InstrTable::Instr::str_ea(unsigned short addr,
     }
 
   sprintf(str, "%s%s%s", a,
-	  ((indexed) ? ",1" : ""),
-	  ((print_y) ? b : ""));
+          ((indexed) ? ",1" : ""),
+          ((print_y) ? b : ""));
   
   return str;
 }
@@ -349,11 +350,11 @@ InstrTable::~InstrTable()
   for (i=0; i<lim; i++) {
     //std::cerr << "i = " << i << std::endl;
     if ((dispatch_table[i]) &&
-	(dispatch_table[i]->get_alloc())) {
+        (dispatch_table[i]->get_alloc())) {
       for (j=i+1; j<lim; j++)
-      	if (dispatch_table[i] ==
-	    dispatch_table[j])
-	  dispatch_table[j] = 0;
+        if (dispatch_table[i] ==
+            dispatch_table[j])
+          dispatch_table[j] = 0;
       delete dispatch_table[i];
     }
   }
@@ -419,28 +420,28 @@ void InstrTable::build_one_instr_table(Instr itable[])
             }
           break;
           
-	case Instr::IO: // IO intructions
-	  for (addr=0; addr<1024; addr++)
-	    {
-	      i = ((ip->get_opcode() & 0x3f) << 10) | (addr & 0x3ff);
-	      if ( ((addr &0x3f) == 020) || ((addr &0x3f) == 024) )
-		{
-		  // device code is SMK
-		  if (i != 0171020) // OTK
-		    {
-		      if (ip->get_opcode() & 0x40)
-			// opcode is flagged as SMK too 
-			dispatch_table[i] = ip;
-		    }
-		}
-	      else
-		{
-		  // device code is OTA
-		  if (!(ip->get_opcode() & 0x40))
-		    dispatch_table[i] = ip;
-		}
-	    }
-	  break;
+        case Instr::IO: // IO intructions
+          for (addr=0; addr<1024; addr++)
+            {
+              i = ((ip->get_opcode() & 0x3f) << 10) | (addr & 0x3ff);
+              if ( ((addr &0x3f) == 020) || ((addr &0x3f) == 024) )
+                {
+                  // device code is SMK
+                  if (i != 0171020) // OTK
+                    {
+                      if (ip->get_opcode() & 0x40)
+                        // opcode is flagged as SMK too 
+                        dispatch_table[i] = ip;
+                    }
+                }
+              else
+                {
+                  // device code is OTA
+                  if (!(ip->get_opcode() & 0x40))
+                    dispatch_table[i] = ip;
+                }
+            }
+          break;
     
         case Instr::IOG: // IO instuction pretending to be Generic
           dispatch_table[ip->get_opcode()] = ip;
@@ -513,10 +514,10 @@ void InstrTable::build_instr_tables()
 
 
 const char *InstrTable::disassemble(unsigned short addr,
-				    unsigned short instr,
-				    bool brk,
-				    unsigned short y,
-				    bool y_valid)
+                                    unsigned short instr,
+                                    bool brk,
+                                    unsigned short y,
+                                    bool y_valid)
 {
   return dispatch_table[instr]->disassemble(addr, instr, brk, y, y_valid);
 }
@@ -530,7 +531,7 @@ InstrTable::Instr *InstrTable::lookup(const char *mnemonic) const
     {
       const char *m = dispatch_table[i]->get_mnemonic();
       if ((m) && (strcmp(mnemonic, m) == 0))
-	return dispatch_table[i];
+        return dispatch_table[i];
     }
   return 0;
 }
@@ -879,15 +880,15 @@ void InstrTable::apply_one_alias( unsigned short alias[] )
   for (a=0; (alias[a] != LAST); a++) {
     for (i=alias[a]; i<=(alias[a]+limit); i+=B7)
       if (i != proper_i)
-	// for all but the proper instruction
-	// create a new Instr structure
+        // for all but the proper instruction
+        // create a new Instr structure
             
-	dispatch_table[i] = new Instr(strdup(temp_mnemonic),
-				      dispatch_table[proper_i]->get_type(),
-				      i,
-				      strdup(temp_description),
-				      dispatch_table[proper_i]->get_exec(),
-				      true);
+        dispatch_table[i] = new Instr(strdup(temp_mnemonic),
+                                      dispatch_table[proper_i]->get_type(),
+                                      i,
+                                      strdup(temp_description),
+                                      dispatch_table[proper_i]->get_exec(),
+                                      true);
             
     }
   

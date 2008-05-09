@@ -26,10 +26,11 @@ class IODEV
 public:
   enum DEVICE
     {
-      PTR_DEVICE=1,
-      PTP_DEVICE=2,
-      LPT_DEVICE=3,
-      ASR_DEVICE=4
+      PTR_DEVICE = 001,
+      PTP_DEVICE = 002,
+      LPT_DEVICE = 003,
+      ASR_DEVICE = 004,
+      PLT_DEVICE = 027
     };
 
   enum STATUS

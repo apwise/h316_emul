@@ -144,7 +144,7 @@ fi
 $m4prog -DSLSTNAM=$dapslstnam -DSRCNAM=$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$objnam $dap_m4_filename > $tmpnam && \
 $h16prog -t $tmpnam > /dev/null && \
 errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{print $1}' $lstnam` && \
-echo $errors errors && \
+echo $errors WARNING OR ERROR FLAGS && \
 status=$errors
 
 $rmprog -f $tmpnam

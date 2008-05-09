@@ -32,7 +32,7 @@
  *
  */
 
-static char *RcsId __attribute__ ((unused)) = "$Id: tree.cc,v 1.2 1999/02/25 06:54:55 adrian Exp $";
+static const char *RcsId __attribute__ ((unused)) = "$Id: tree.cc,v 1.2 1999/02/25 06:54:55 adrian Exp $";
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -69,23 +69,23 @@ int lt(unsigned long a, unsigned long b)
 
 void tree_add(TREE *t, unsigned long name, void *record)
 {
-  char *PN = "tree_add()";
+  const char *PN = "tree_add()";
   TREE n;
   
   if (*t)
     {
       if (lt(name, (*t)->name) < 0)
-	tree_add(&((*t)->l), name, record);
+        tree_add(&((*t)->l), name, record);
       else /* add greater OR SAME to the right */
-	tree_add(&((*t)->r), name, record);
+        tree_add(&((*t)->r), name, record);
     }
   else
     {
       if (!record)
-	{
-	  fprintf(stderr, "%s: (name <%ld>) NULL record", PN, name);
-	  exit(1);
-	}
+        {
+          fprintf(stderr, "%s: (name <%ld>) NULL record", PN, name);
+          exit(1);
+        }
       n = (TREE) malloc(sizeof(struct TREE_STRUCT));
       n->name = name;
       n->record = record;
@@ -99,7 +99,7 @@ void tree_add(TREE *t, unsigned long name, void *record)
 
 void tree_free(TREE *t, void (*free_fn)(void *ptr))
 {
-  //	char *PN = "tree_free()";
+  //    char *PN = "tree_free()";
   
   if (*t)
     {
@@ -107,16 +107,16 @@ void tree_free(TREE *t, void (*free_fn)(void *ptr))
       tree_free(&((*t)->r), free_fn);
       
       if (free_fn)
-	free_fn((*t)->record);
+        free_fn((*t)->record);
       free(*t);
       *t = NULL;
     }
 }
 
 void tree_for_all(TREE *t, void *data,
-		  void (*proc)(TREE *t, unsigned long name, void *record, void *data))
+                  void (*proc)(TREE *t, unsigned long name, void *record, void *data))
 {
-  //	char *PN="tree_for_all()";
+  //    char *PN="tree_for_all()";
   
   if (*t)
     {
@@ -141,7 +141,7 @@ static char *spaces(int depth)
 }
 
 void tree_dump(TREE *t, FILE *fp, int depth,
-	       void (*dump_proc)(TREE *t, char *space, void *record))
+               void (*dump_proc)(TREE *t, char *space, void *record))
 {
   //char *PN="tree_dump()";
   char *s = strdup(spaces(depth));
@@ -149,25 +149,25 @@ void tree_dump(TREE *t, FILE *fp, int depth,
   if (*t)
     {
       fprintf(fp, "%sNode <%ld> -> 0x%08x\n", s,
-	      ((*t)->name), (unsigned int)((*t)->record));
+              ((*t)->name), (unsigned int)((*t)->record));
       if (dump_proc)
-	dump_proc(t, s, (*t)->record);
+        dump_proc(t, s, (*t)->record);
       
       if ((*t)->l)
-	{
-	  fprintf(fp, "%sLeft:\n", s);
-	  tree_dump(&((*t)->l), fp, depth+1, dump_proc);
-	}
+        {
+          fprintf(fp, "%sLeft:\n", s);
+          tree_dump(&((*t)->l), fp, depth+1, dump_proc);
+        }
       else
-	fprintf(fp, "%sLeft: (NULL)\n", s);
+        fprintf(fp, "%sLeft: (NULL)\n", s);
       
       if ((*t)->r)
-	{
-	  fprintf(fp, "%sRight:\n", s);
-	  tree_dump(&((*t)->r), fp, depth+1, dump_proc);
-	}
+        {
+          fprintf(fp, "%sRight:\n", s);
+          tree_dump(&((*t)->r), fp, depth+1, dump_proc);
+        }
       else
-	fprintf(fp, "%sRight: (NULL)\n",s);
+        fprintf(fp, "%sRight: (NULL)\n",s);
     }
   
   free(s);
@@ -175,7 +175,7 @@ void tree_dump(TREE *t, FILE *fp, int depth,
 
 
 extern void *tree_remove_left_most(TREE *t, unsigned long &left_name,
-				   unsigned long name, bool check_time)
+                                   unsigned long name, bool check_time)
 {
   TREE p=(*t);
   TREE q = NULL;
@@ -201,17 +201,17 @@ extern void *tree_remove_left_most(TREE *t, unsigned long &left_name,
   if (q)
     {
       if ((!check_time) || (lt(q->name, name) <= 0))
-	{
-	  record = q->record;
-	  left_name = q->name;
-	  
-	  if (up)
-	    up->l = q->r;
-	  else
-	    *t = q->r;
-	  
-	  free (q);
-	}
+        {
+          record = q->record;
+          left_name = q->name;
+          
+          if (up)
+            up->l = q->r;
+          else
+            *t = q->r;
+          
+          free (q);
+        }
     }
 
   return record;

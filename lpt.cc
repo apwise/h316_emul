@@ -38,7 +38,7 @@ enum LPT_REASON
     LPT_REASON_NUM
   };
 
-static char *ptp_reason[LPT_REASON_NUM] __attribute__ ((unused)) =
+static const char *ptp_reason[LPT_REASON_NUM] __attribute__ ((unused)) =
 {
   "Dummy"
 };
@@ -186,10 +186,10 @@ LPT::STATUS LPT::ocp(unsigned short instr)
       if (line_number != 0)
         {
           /*
-	    while (line_number != 0)
+            while (line_number != 0)
             {
-	    fprintf(fp, "\n");
-	    next_line();
+            fprintf(fp, "\n");
+            next_line();
             }
           */
           line_number = 0;

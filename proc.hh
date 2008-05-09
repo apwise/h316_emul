@@ -81,7 +81,7 @@ public:
   void dump_memory();
   void dump_trace(char *filename, int n);
   void dump_disassemble(char *filename, int first, int last);
-  void dump_vmem(char *filename, int exec_addr);
+  void dump_vmem(char *filename, int exec_addr, bool octal=false);
   
   void start_button();
   void goto_monitor();
@@ -90,6 +90,7 @@ public:
   void flush_events();
   void set_ptr_filename(char *filename);
   void set_ptp_filename(char *filename);
+  void set_plt_filename(char *filename);
   void set_lpt_filename(char *filename);
   void set_asr_ptr_filename(char *filename);
   void set_asr_ptp_filename(char *filename);
