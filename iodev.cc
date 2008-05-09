@@ -27,6 +27,7 @@
 #include "ptp.hh"
 #include "asr_intf.hh"
 #include "lpt.hh"
+#include "plt.hh"
 
 IODEV::STATUS IODEV::ina(unsigned short instr, signed short &data)
 {
@@ -62,7 +63,7 @@ void IODEV::event(int reason)
   if (reason != REASON_MASTER_CLEAR)
     {
       fprintf(stderr, "Event called for undefined device with reason %d\n",
-	      reason);
+              reason);
       exit(1);
     }
 }
@@ -80,6 +81,7 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
   dt[PTR_DEVICE] = new PTR(p, stdtty);
   dt[PTP_DEVICE] = new PTP(p, stdtty);
   dt[LPT_DEVICE] = new LPT(p, stdtty);
+  dt[PLT_DEVICE] = new PLT(p, stdtty);
   
   return dt;
 } 

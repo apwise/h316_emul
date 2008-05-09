@@ -56,6 +56,7 @@ private:
   bool ss(bool &run, int words, char **cmd);
   bool ptr(bool &run, int words, char **cmd);
   bool ptp(bool &run, int words, char **cmd);
+  bool plt(bool &run, int words, char **cmd);
   bool lpt(bool &run, int words, char **cmd);
   bool asr_ptr(bool &run, int words, char **cmd);
   bool asr_ptp(bool &run, int words, char **cmd);
@@ -69,6 +70,7 @@ private:
   bool trace(bool &run, int words, char **cmd);
   bool disassemble(bool &run, int words, char **cmd);
   bool vmem(bool &run, int words, char **cmd);
+  bool omem(bool &run, int words, char **cmd);
   bool license(bool &run, int words, char **cmd);
   bool warranty(bool &run, int words, char **cmd);
 };

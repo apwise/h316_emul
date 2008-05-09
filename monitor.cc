@@ -34,7 +34,7 @@
 #define BUFSIZE 1024
 #define PROMPT "MON"
 
-static char *instructions_text[] = 
+static const char *instructions_text[] = 
   {
     "Type \"license\" or \"warranty\" for details\n",
     NULL
@@ -42,11 +42,11 @@ static char *instructions_text[] =
 
 struct CmdTab
 {
-  char *name;
+  const char *name;
   int while_running; // 0=No, 1=Yes, 2=Yes if no arguments
   int min_args;
   int max_args;
-  char *descr;
+  const char *descr;
 
   bool (Monitor::*cmd)(bool &run, int argc, char **argv);
 };
@@ -64,6 +64,7 @@ struct CmdTab Monitor::commands[] =
     {"ss",         1, 1, 2, "num [0/1] Get/Set Sense Switch",               &Monitor::ss},
     {"ptr",        1, 1, 1, "filename : Set Papertape Reader filename",     &Monitor::ptr},
     {"ptp",        1, 1, 1, "filename : Set Papertape Punch filename",      &Monitor::ptp},
+    {"plt",        1, 1, 1, "filename : Set Plotter filename",              &Monitor::plt},
     {"lpt",        1, 1, 1, "filename : Set Lineprinter filename",          &Monitor::lpt},
     {"asr_ptr",    1, 1, 1, "filename : Set ASR Papertape Reader filename", &Monitor::asr_ptr},
     {"asr_ptp",    1, 1, 1, "filename : Set ASR Papertape Punch filename",  &Monitor::asr_ptp},
@@ -73,6 +74,7 @@ struct CmdTab Monitor::commands[] =
     {"trace",      1, 0, 2, "[filename] [,lines] : Save trace file",        &Monitor::trace},
     {"disassemble",1, 1, 3, "[filename] first [,last] : Save disassembly",  &Monitor::disassemble},
     {"vmem",       1, 1, 2, "filename [, exec-addr] : Save Verilog Mem.",   &Monitor::vmem},
+    {"omem",       1, 1, 2, "filename [, exec-addr] : Save Octal Mem.",     &Monitor::omem},
     {"license",    1, 0, 0, "Print license information",                    &Monitor::license},
     {"warranty",   1, 0, 0, "Statement of no warranty",                     &Monitor::warranty},
     {NULL,         0, 0, 0, NULL, NULL}
@@ -422,6 +424,15 @@ bool Monitor::ptp(bool &run, int words, char **cmd)
   return ok;
 }
 
+bool Monitor::plt(bool &run, int words, char **cmd)
+{
+  bool ok = 1;
+
+  p->set_plt_filename(cmd[1]);
+
+  return ok;
+}
+
 bool Monitor::lpt(bool &run, int words, char **cmd)
 {
   bool ok = 1;
@@ -523,7 +534,7 @@ char *Monitor::binary16(unsigned short n)
 bool Monitor::reg(bool &run, int words, char **cmd, int n)
 {
   bool ok = 1;
-  static char *regname[]={"A", "B", "X"};
+  static const char *regname[]={"A", "B", "X"};
 
   unsigned short val;
 
@@ -675,6 +686,29 @@ bool Monitor::vmem(bool &run, int words, char **cmd)
 
   if (ok)
     p->dump_vmem(filename, exec_addr);
+  
+  return ok;
+}
+
+bool Monitor::omem(bool &run, int words, char **cmd)
+{
+  bool ok = true;
+  char *filename = NULL;
+  int exec_addr = 0;
+  
+  /*
+   * if cmd[1] is a number then it's assumed to be the
+   * number of lines rather than a filename.
+   * else treat it as the filename
+   */
+  if (words > 1)
+    filename = cmd[1];
+
+  if (words>2)
+    exec_addr = parse_number(cmd[2], ok);
+
+  if (ok)
+    p->dump_vmem(filename, exec_addr, true);
   
   return ok;
 }

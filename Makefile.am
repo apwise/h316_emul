@@ -15,6 +15,7 @@ h16_SOURCES = 	asr_intf.cc \
 		tree.cc \
 		asr.cc \
 		stdtty.cc \
+		plt.cc \
 		gpl.c \
 		asr.hh \
 		event.hh \
@@ -22,6 +23,7 @@ h16_SOURCES = 	asr_intf.cc \
 		monitor.hh \
 		ptp.hh \
 		stdtty.hh \
+		plt.hh \
 		asr_intf.hh \
 		instr.hh \
 		lpt.hh \

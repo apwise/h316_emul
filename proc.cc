@@ -229,10 +229,10 @@ void Proc::dump_trace(char *filename, int n)
                   (btrace_buf[i].x & 0xffff),
                   (btrace_buf[i].c & 1),
                   instr_table.disassemble(btrace_buf[i].p,
-					  btrace_buf[i].instr,
-					  btrace_buf[i].brk,
-					  btrace_buf[i].y,
-					  true/*y_valid*/));
+                                          btrace_buf[i].instr,
+                                          btrace_buf[i].brk,
+                                          btrace_buf[i].y,
+                                          true/*y_valid*/));
         }
       i = (i+1) % TRACE_BUF;
     } while (trace_ptr != i);
@@ -278,7 +278,7 @@ void Proc::dump_disassemble(char *filename, int first, int last)
 
 // }}}
 
-void Proc::dump_vmem(char *filename, int exec_addr)
+void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
 {
   int i;
   unsigned short instr;
@@ -307,10 +307,10 @@ void Proc::dump_vmem(char *filename, int exec_addr)
 
     if ((i == 0) && (exec_addr != 0)) {
       if ((exec_addr & (~0777)) != 0)
-	// Not sector zero
-	instr = 0102020; // JMP *'20
+        // Not sector zero
+        instr = 0102020; // JMP *'20
       else
-	instr = 0002000 | exec_addr; // JMP exec_addr
+        instr = 0002000 | exec_addr; // JMP exec_addr
       mod = true;
     } else if ((i == 020) && ((exec_addr & (~0777)) != 0)) {
       instr = exec_addr;
@@ -321,7 +321,10 @@ void Proc::dump_vmem(char *filename, int exec_addr)
 
     if (mod && skip) {
       // Need an @ line
-      fprintf(fp, "@%04x\n", i);
+      if (octal)
+        fprintf(fp, "@%04x\n", i);
+      else
+        fprintf(fp, "@%06o\n", i);
     }
 
     if (mod) {
@@ -333,7 +336,10 @@ void Proc::dump_vmem(char *filename, int exec_addr)
       else
         sprintf(buf, "%06o  %06o    %s", i, instr, "???");       
       
-      fprintf(fp, "%04x // %s\n", instr, buf);
+      if (octal)
+        fprintf(fp, "%06o // %s\n", instr, buf);
+      else
+        fprintf(fp, "%04x // %s\n", instr, buf);
     }
 
     skip = !mod;
@@ -926,6 +932,11 @@ void Proc::set_ptr_filename(char *filename)
 void Proc::set_ptp_filename(char *filename)
 {
   ((PTR *) devices[IODEV::PTP_DEVICE])->set_filename(filename);
+}
+
+void Proc::set_plt_filename(char *filename)
+{
+  ((PTR *) devices[IODEV::PLT_DEVICE])->set_filename(filename);
 }
 
 void Proc::set_lpt_filename(char *filename)
@@ -2611,16 +2622,16 @@ void Proc::generic_group_A(unsigned short instr)
     } while (azzzz);
 
   // T4
-  CLATR	= (m[11] || m[15] || m[16]);
-  CLA1R	= (m[10] || m[14]);
-  EDAHS	= ((m[11] && m[14]) || m[15] || m[16]);
-  EDALS	= ((m[11] && m[13]) || m[15] || m[16]);
-  ETAHS	= (m[9] && m[11]);
-  ETALS	= (m[10] && m[11]);
-  EDA1R	= ((m[8] && m[10]) || m[14]);
+  CLATR = (m[11] || m[15] || m[16]);
+  CLA1R = (m[10] || m[14]);
+  EDAHS = ((m[11] && m[14]) || m[15] || m[16]);
+  EDALS = ((m[11] && m[13]) || m[15] || m[16]);
+  ETAHS = (m[9] && m[11]);
+  ETALS = (m[10] && m[11]);
+  EDA1R = ((m[8] && m[10]) || m[14]);
 
   overflow_to_c = (m[9] && (!m[11]));
-  set_c	= (m[8] && m[9]);
+  set_c = (m[8] && m[9]);
   d1_to_c = (m[10] && m[12]);
 
   if (CLATR) // clear A register

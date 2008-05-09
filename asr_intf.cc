@@ -41,7 +41,7 @@ enum ASR_REASON
     ASR_REASON_NUM
   };
 
-static char *asr_reason[ASR_REASON_NUM] __attribute__ ((unused)) =
+static const char *asr_reason[ASR_REASON_NUM] __attribute__ ((unused)) =
 {
   "Dummy cycle",
   "Output",
@@ -84,7 +84,7 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
           fprintf(stderr, "ASR_INTF: INA '%04o\n", instr&0x3ff);
           exit(1);
         }
-			
+                        
       output_pending = 0;
       ready = false;
       p->clear_interrupt(SMK_MASK);
@@ -96,10 +96,10 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
           if (asr->get_asrch(c))
             {
               data_buf = c & 0xff;
-							
+                                                        
               activity = ASR_ACTIVITY_INPUT;
               input_pending = true;
-							
+                                                        
               Event::queue(p, ((1000000*11)/ BAUD), this, ASR_REASON_INPUT );
             }
         }
@@ -113,7 +113,7 @@ ASR_INTF::STATUS ASR_INTF::ocp(unsigned short instr)
   switch(instr & 0700)
     {
     case 0000:
-						
+                                                
       output_mode = 0;
       activity = ASR_ACTIVITY_NONE;
       ready = false;
@@ -121,16 +121,16 @@ ASR_INTF::STATUS ASR_INTF::ocp(unsigned short instr)
       break;
 
     case 0100:
-						
+                                                
       output_mode = 1;
       activity = ASR_ACTIVITY_DUMMY;
       ready = 1;
       p->set_interrupt(mask);
 
       Event::queue(p, (1000000 / BAUD), this, ASR_REASON_DUMMY_CYCLE );
-			
+                        
       break;
-			
+                        
     default:
       fprintf(stderr, "ASR_INTF: OCP '%04o\n", instr&0x3ff);
       exit(1);
@@ -155,7 +155,7 @@ ASR_INTF::STATUS ASR_INTF::sks(unsigned short instr)
     }
 
   //if (( (instr & 0x03ff) == 0004) && r)
-  //	Printf("%s %04o r=%d\n",  __PRETTY_FUNCTION__, instr & 0x03ff, r);
+  //    Printf("%s %04o r=%d\n",  __PRETTY_FUNCTION__, instr & 0x03ff, r);
 
   return status(r);
 }
@@ -178,7 +178,7 @@ ASR_INTF::STATUS ASR_INTF::ota(unsigned short instr, signed short data)
           fprintf(stderr, "ASR_INTF: OTA '%04o\n", instr&0x3ff);
           exit(1);
         }
-			
+                        
       ready = 0;
       p->clear_interrupt(SMK_MASK);
 

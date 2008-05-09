@@ -345,7 +345,7 @@ static char *no_readline(char *prompt)
 }
 #endif
 
-void STDTTY::get_input(char *prompt, char *str, int len, bool more)
+void STDTTY::get_input(const char *prompt, char *str, int len, bool more)
 {
   int n;
   char *ptr;
@@ -414,14 +414,14 @@ void STDTTY::install_handler()
 
   signal (SIGIO, catch_sigio);
 
-  flags = fcntl_perror("STDTTY::install_handler() F_GETFL",
+  flags = fcntl_perror(const_cast<char *>("STDTTY::install_handler() F_GETFL"),
                        STDIN_FILENO, F_GETFL, 0);
   
   saved_flags = flags; // Save to restore at exit
 
   flags |= O_NONBLOCK;
 
-  (void) fcntl_perror("STDTTY::install_handler() F_SETFL",
+  (void) fcntl_perror(const_cast<char *>("STDTTY::install_handler() F_SETFL"),
                       STDIN_FILENO, F_SETFL, flags);
 
   // Don't think this SETOWN is needed...
@@ -433,8 +433,8 @@ void STDTTY::install_handler()
 
 void STDTTY::uninstall_handler()
 {
-  (void) fcntl_perror("STDTTY::uninstall_handler() F_SETFL",
-		      STDIN_FILENO, F_SETFL, saved_flags);
+  (void) fcntl_perror(const_cast<char *>("STDTTY::uninstall_handler() F_SETFL"),
+                      STDIN_FILENO, F_SETFL, saved_flags);
 }
 
 char STDTTY::pending_char;

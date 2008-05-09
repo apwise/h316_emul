@@ -38,7 +38,7 @@ enum PTP_REASON
     PTP_REASON_NUM
   };
 
-static char *ptp_reason[PTP_REASON_NUM] __attribute__ ((unused)) =
+static const char *ptp_reason[PTP_REASON_NUM] __attribute__ ((unused)) =
 {
   "Character ready"
 
@@ -85,32 +85,32 @@ PTP::STATUS PTP::ota(unsigned short instr, signed short data)
     {
     case 0000:
       if (!power_on)
-	turn_power_on();
+        turn_power_on();
       
       r = ready;
       
       if (ready)
-	{
-	  c = data & 0xff;
-	  
-	  if (ascii_file)
-	    {
+        {
+          c = data & 0xff;
+          
+          if (ascii_file)
+            {
               c &= 0x7f;
 
-	      if (c != 015) // ignore Carriage Return
-		{
-		  if (c == 012) // LF is newline
-		    c = '\n';
-		  putc(c, fp); // loose the top bit
-		}
-	    }
-	  else
-	    putc(c, fp);
-	  
-	  ready = false;
-	  
-	  Event::queue(p, (1000000 / SPEED), this, PTP_REASON_CHARACTER );
-	}
+              if (c != 015) // ignore Carriage Return
+                {
+                  if (c == 012) // LF is newline
+                    c = '\n';
+                  putc(c, fp); // loose the top bit
+                }
+            }
+          else
+            putc(c, fp);
+          
+          ready = false;
+          
+          Event::queue(p, (1000000 / SPEED), this, PTP_REASON_CHARACTER );
+        }
       break;
       
     default:
@@ -129,33 +129,33 @@ void PTP::turn_power_on()
   if (!fp)
     {
       while (!fp)
-	{
-	  if (pending_filename)
-	    strcpy(buf, filename);
-	  else
-	    stdtty->get_input("PTP: Filename>", buf, 256, 0);
-	  
-	  cp = buf;
-	  if (buf[0]=='&')
-	    {
-	      ascii_file = 1;
-	      cp++;
-	    }
-	  
-	  fp = fopen(cp, "wb");
-	  if (!fp)
-	    {
-	      fprintf(((pending_filename) ? stderr : stdout),
-		      "Could not open <%s> for writing\n", cp);
-	      if (pending_filename)
-		exit(1);
-	    }
-	  
-	  if (pending_filename)
-	    delete filename;
-	  
-	  pending_filename = 0;
-	}
+        {
+          if (pending_filename)
+            strcpy(buf, filename);
+          else
+            stdtty->get_input("PTP: Filename>", buf, 256, 0);
+          
+          cp = buf;
+          if (buf[0]=='&')
+            {
+              ascii_file = 1;
+              cp++;
+            }
+          
+          fp = fopen(cp, "wb");
+          if (!fp)
+            {
+              fprintf(((pending_filename) ? stderr : stdout),
+                      "Could not open <%s> for writing\n", cp);
+              if (pending_filename)
+                exit(1);
+            }
+          
+          if (pending_filename)
+            delete filename;
+          
+          pending_filename = 0;
+        }
     }
   
   if (!power_on)
@@ -163,7 +163,7 @@ void PTP::turn_power_on()
       // 5 second turn-on delay
       Event::queue(p, 5000000, this, PTP_REASON_CHARACTER );
       power_on = true;
-    }	
+    }   
 }
 
 PTP::STATUS PTP::ocp(unsigned short instr)
@@ -185,7 +185,7 @@ PTP::STATUS PTP::ocp(unsigned short instr)
        */
 
       if (fp)
-	fflush(fp);
+        fflush(fp);
       
       break;
       
@@ -237,7 +237,7 @@ void PTP::event(int reason)
     case PTP_REASON_CHARACTER:
       ready = true;
       break;
-			
+                        
     default:
       fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
       exit(1);

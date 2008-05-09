@@ -44,31 +44,31 @@ public:
 
     enum INSTR_TYPE 
       {
-	UNDEFINED,
-	GB, // Generic type B
-	SH, // Shift
-	SK, // Skip
-	GA, // Generic type A
-	MR, // Memory reference
-	IO, // IO intructions
-	IOG // IO instuction pretending to be Generic
+        UNDEFINED,
+        GB, // Generic type B
+        SH, // Shift
+        SK, // Skip
+        GA, // Generic type A
+        MR, // Memory reference
+        IO, // IO intructions
+        IOG // IO instuction pretending to be Generic
       };
     
     typedef void (Proc::*ExecFunc_pt)(unsigned short instr);
 
-    Instr(char *mnemonic=NULL,
-	  INSTR_TYPE type=UNDEFINED,
-	  unsigned short opcode=0,
-	  char *description=NULL,
-	  ExecFunc_pt exec=NULL,
-	  bool alloc=false);
+    Instr(const char *mnemonic=NULL,
+          INSTR_TYPE type=UNDEFINED,
+          unsigned short opcode=0,
+          const char *description=NULL,
+          ExecFunc_pt exec=NULL,
+          bool alloc=false);
     ~Instr();
     
     const char *disassemble(unsigned short addr,
-			    unsigned short instr,
-			    bool brk,
-			    unsigned short y = 0,
-			    bool y_valid = false);
+                            unsigned short instr,
+                            bool brk,
+                            unsigned short y = 0,
+                            bool y_valid = false);
 
     static signed short ex_sc(unsigned short instr);
 
@@ -80,17 +80,17 @@ public:
     bool get_alloc(){return alloc;};
 
   private:
-    char *   mnemonic;
+    const char *   mnemonic;
     INSTR_TYPE     type;
     unsigned short opcode;
-    char *   description;
+    const char *   description;
     ExecFunc_pt    exec;
     bool           alloc; // storage allocated with "new" (else static)
 
     static const char *str_ea(unsigned short addr,
-			      unsigned short instr,
-			      unsigned short y = 0,
-			      bool y_valid = false);
+                              unsigned short instr,
+                              unsigned short y = 0,
+                              bool y_valid = false);
   };
 
 public:
@@ -107,10 +107,10 @@ public:
   { return dispatch_table[instr]->get_type() != Instr::UNDEFINED; };
 
   const char *disassemble(unsigned short addr,
-			  unsigned short instr,
-			  bool brk,
-			  unsigned short y = 0,
-			  bool y_valid = false);
+                          unsigned short instr,
+                          bool brk,
+                          unsigned short y = 0,
+                          bool y_valid = false);
 
   Instr *lookup(const char *mnemonic) const;
   void dump_dispatch_table() const;

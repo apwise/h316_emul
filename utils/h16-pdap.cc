@@ -91,9 +91,9 @@ enum INSTR_TYPE
 
 struct Instr
 {
-  char *mnemonic;
+  const char *mnemonic;
   INSTR_TYPE type;
-  char *description;
+  const char *description;
 };
 
 // }}}
@@ -380,7 +380,7 @@ class File
   string find_last_file_name(bool html_per_page, string &title_str);
   string find_file_name(bool previous, bool html_per_page, int page, string &title_str);
   void links(FILE *fp, bool html_per_page, int page);
-  void link_button(FILE *fp, string filename, char *str, const string &title_str);
+  void link_button(FILE *fp, string filename, const char *str, const string &title_str);
   void link_buttons(FILE *fp, bool html_per_page, int page);
   void file_start(FILE *fp, bool html_per_page, int page);
   void file_stop(FILE *fp, bool html_per_page, int page);
@@ -561,17 +561,17 @@ void Line::analyze()
             { 
               ok = number(src_line, n, ST_ADDR, ST_ADDR_LEN, 8);
               if (ok)
-		{
-		  file->set_end_really_read();
-		  type = LINE_SYMBOL;
-		}
+                {
+                  file->set_end_really_read();
+                  type = LINE_SYMBOL;
+                }
               else if (src_line[SLN] == ' ')
                 type = LINE_HEAD;
               else
-		{
-		  file->set_end_really_read();
-		  type = LINE_INFO;
-		}     
+                {
+                  file->set_end_really_read();
+                  type = LINE_INFO;
+                }     
             }         
         }
       else
@@ -846,14 +846,14 @@ void Line::analyze_src()
 
       if ((j < ((int)src_line.size())) && (src_line[j] != ' '))
         {
-	  if ((src_line[j]=='+') || (src_line[j]=='-') ||
-	      (src_line[j]==',') || (src_line[j]==' ')) {
-	    if (src_line[j] == ',')
-	      comma = true;
-	    i = j+1;
-	  } else {
-	    i = j;
-	  }
+          if ((src_line[j]=='+') || (src_line[j]=='-') ||
+              (src_line[j]==',') || (src_line[j]==' ')) {
+            if (src_line[j] == ',')
+              comma = true;
+            i = j+1;
+          } else {
+            i = j;
+          }
           //printf("separator = <%c>\n", src_line[j]);
           j = find_sub_field(i, type, symbol, literal, num, asterix);
         }
@@ -1371,19 +1371,19 @@ File::File(const char *filename, bool is_toc)
       fp = fopen(filename, "r");
       
       if (!fp)
-	{
-	  cerr << "Could not open <" << filename << "> for reading" << endl;
-	  exit(1);
-	}
+        {
+          cerr << "Could not open <" << filename << "> for reading" << endl;
+          exit(1);
+        }
       
       bool ok = true;
       while (ok)
-	{
-	  str = read_line(fp, ok);
-	  line = new Line(str, this, pages);
-	  lines.push_back(line);
-	  line->analyze();
-	}
+        {
+          str = read_line(fp, ok);
+          line = new Line(str, this, pages);
+          lines.push_back(line);
+          line->analyze();
+        }
       
       fclose(fp);
     }
@@ -1541,11 +1541,11 @@ string File::find_file_name(bool previous, bool html_per_page, int page, string 
 
 // {{{ void File::link_button(FILE *fp, string filename, char *str, const string &title_str)
 
-void File::link_button(FILE *fp, string filename, char *str, const string &title_str)
+void File::link_button(FILE *fp, string filename, const char *str, const string &title_str)
 {
   if (filename.size()>0)
     fprintf(fp, "%s <a href=\"%s\" title=\"%s\">%s</a> %s\n",
-	    BUTTON_START, filename.c_str(), title_str.c_str(), str, BUTTON_STOP);
+            BUTTON_START, filename.c_str(), title_str.c_str(), str, BUTTON_STOP);
   else
     fprintf(fp, "%s %s %s\n", BUTTON_START, str, BUTTON_STOP);
 }
@@ -1581,7 +1581,7 @@ void File::links(FILE *fp, bool html_per_page, int page)
   l_filename = find_first_file_name(html_per_page, title_str);
   if ((files[0]->is_toc) && (l_filename.size()>0))
     fprintf(fp, "%s rel=\"contents\" href=\"%s\" title=\"%s\" %s\n",
-	    LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
+            LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
 
   int i;
   i = 0;
@@ -1592,7 +1592,7 @@ void File::links(FILE *fp, bool html_per_page, int page)
       
       if ((l_filename.size()>0) && ((i>0) || (!files[i]->is_toc)))
         fprintf(fp, "%s rel=\"chapter\" href=\"%s\" title=\"%s\" %s\n",
-		LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
+                LINK_START, l_filename.c_str(), title_str.c_str(), LINK_STOP);
       
       i++;
     }
@@ -1723,8 +1723,8 @@ void File::file_start(FILE *fp, bool html_per_page, int page)
 
   // TODO - quote dollar signs
   fprintf(fp, "m4_define(%s%s%s, %s%s%s)\n",
-	  left_quote, HTML_HEADING,  right_quote,
-	  left_quote, dollars_quoted.c_str(), right_quote);
+          left_quote, HTML_HEADING,  right_quote,
+          left_quote, dollars_quoted.c_str(), right_quote);
   
   (void) time(&t);
   ctime_r(&t, buf);
@@ -1732,8 +1732,8 @@ void File::file_start(FILE *fp, bool html_per_page, int page)
     buf[strlen(buf)-1]='\0';
 
   fprintf(fp, "m4_define(%s%s%s, %s%s%s)\n",
-	  left_quote, HTML_TIME, right_quote,
-	  left_quote, buf,       right_quote);
+          left_quote, HTML_TIME, right_quote,
+          left_quote, buf,       right_quote);
 
   fprintf(fp, "%s\n", HEAD1);
   links(fp, html_per_page, page);
@@ -1789,17 +1789,17 @@ void File::render()
 
       int i;
       for (i=1; i<n_files; i++)
-	{
-	  string single_filename = files[i]->get_html_name(0);
-	  string multi_filename = files[i]->get_html_name(1);
-	  string title_str = files[i]->title;
+        {
+          string single_filename = files[i]->get_html_name(0);
+          string multi_filename = files[i]->get_html_name(1);
+          string title_str = files[i]->title;
 
-	  fprintf(fp, "%s", TOC_ROW_START);
-	  fprintf(fp, "<td>%s</td>", title_str.c_str());
-	  fprintf(fp, "<td><a href=\"%s\">%s</a></td>", single_filename.c_str(), SINGLE_PAGE);
-	  fprintf(fp, "<td><a href=\"%s\">%s</a></td>", multi_filename.c_str(), MULTIPLE_PAGES);
-	  fprintf(fp, "%s\n", TOC_ROW_STOP);
-	}
+          fprintf(fp, "%s", TOC_ROW_START);
+          fprintf(fp, "<td>%s</td>", title_str.c_str());
+          fprintf(fp, "<td><a href=\"%s\">%s</a></td>", single_filename.c_str(), SINGLE_PAGE);
+          fprintf(fp, "<td><a href=\"%s\">%s</a></td>", multi_filename.c_str(), MULTIPLE_PAGES);
+          fprintf(fp, "%s\n", TOC_ROW_STOP);
+        }
 
       fprintf(fp, "%s\n", TOC_TABLE_STOP);
     }
@@ -1808,36 +1808,36 @@ void File::render()
       list<Line *>::iterator i = lines.begin();
       
       while (i!=lines.end())
-	{
-	  Line::LINE_TYPE type = (*i)->get_type();
-	  
-	  if (type == Line::LINE_HEAD)
-	    {
-	      if (fp2)
-		{
-		  file_stop(fp2, true, page);
-		  fclose(fp2);
-		}
-	      sprintf(buf, "%d", ++page);
-	      
-	      out_filename2 = basename(filename)+"_"+buf+".m4h";
-	      fp2 = fopen(out_filename2.c_str(), "w");
-	      
-	      if (!fp2)
-		{
-		  fprintf(stderr, "Could not open <%s> for writing\n",
-			  out_filename2.c_str());
-		  exit(1);
-		}
-	      file_start(fp2, true, page);
-	    }
-	  
-	  (*i)->render(fp, false);
-	  if (fp2)
-	    (*i)->render(fp2, true);
-	  
-	  i++;
-	}
+        {
+          Line::LINE_TYPE type = (*i)->get_type();
+          
+          if (type == Line::LINE_HEAD)
+            {
+              if (fp2)
+                {
+                  file_stop(fp2, true, page);
+                  fclose(fp2);
+                }
+              sprintf(buf, "%d", ++page);
+              
+              out_filename2 = basename(filename)+"_"+buf+".m4h";
+              fp2 = fopen(out_filename2.c_str(), "w");
+              
+              if (!fp2)
+                {
+                  fprintf(stderr, "Could not open <%s> for writing\n",
+                          out_filename2.c_str());
+                  exit(1);
+                }
+              file_start(fp2, true, page);
+            }
+          
+          (*i)->render(fp, false);
+          if (fp2)
+            (*i)->render(fp2, true);
+          
+          i++;
+        }
     }
   
   if (fp2)
@@ -2061,88 +2061,88 @@ int main (int argc, char **argv)
   for (a=1; a<argc; a++)
     {
       if (argv[a][0] == '-')
-	{
-	  if ((strncmp(argv[a], "-h", 2) == 0) || (strncmp(argv[a], "--h", 3) == 0))
-	    {
-	      cerr << "Usage : " << argv[0] << " [-h|--help] [-q<l>,<r>] [[-t <title>] -i <TOC-name>] ([-tc|-t <title>] <filename>)*" << endl;
-	    }
-	  else if (strncmp(argv[a], "-q", 2) == 0)
-	    {
-	      char *p, *l, *r;
-	      p = &argv[a][2];
-	      l = r = 0;
+        {
+          if ((strncmp(argv[a], "-h", 2) == 0) || (strncmp(argv[a], "--h", 3) == 0))
+            {
+              cerr << "Usage : " << argv[0] << " [-h|--help] [-q<l>,<r>] [[-t <title>] -i <TOC-name>] ([-tc|-t <title>] <filename>)*" << endl;
+            }
+          else if (strncmp(argv[a], "-q", 2) == 0)
+            {
+              char *p, *l, *r;
+              p = &argv[a][2];
+              l = r = 0;
 
-	      while ((*p) && ((*p)!=','))
-		p++;
+              while ((*p) && ((*p)!=','))
+                p++;
 
-	      if (*p)
-		{
-		  // Have found a ','
-		  if (p > l)
-		    l = &argv[a][2];
-		  *p = '\0'; // Terminate left quote
-		  r = p+1; // right starts in next character
-		  if (!(*r))
-		    r = 0;
-		}
+              if (*p)
+                {
+                  // Have found a ','
+                  if (p > l)
+                    l = &argv[a][2];
+                  *p = '\0'; // Terminate left quote
+                  r = p+1; // right starts in next character
+                  if (!(*r))
+                    r = 0;
+                }
 
-	      if ((strlen(l)>MAX_LEN_QUOTE) || (strlen(r)>MAX_LEN_QUOTE))
-		{
-		  cerr << "Quote chars <" << ((l)?l:"[none]") << ">, <"
-		       << ((r)?r:"[none]") << "> are too long. (Max: "
-		       << MAX_LEN_QUOTE << "characters)" << endl;
-		  exit(1);
-		}
+              if ((strlen(l)>MAX_LEN_QUOTE) || (strlen(r)>MAX_LEN_QUOTE))
+                {
+                  cerr << "Quote chars <" << ((l)?l:"[none]") << ">, <"
+                       << ((r)?r:"[none]") << "> are too long. (Max: "
+                       << MAX_LEN_QUOTE << "characters)" << endl;
+                  exit(1);
+                }
 
-	      strcpy(left_quote,  ((l) ? l : DEFAULT_LEFT_QUOTE ));
-	      strcpy(right_quote, ((r) ? r : DEFAULT_RIGHT_QUOTE));
-	    }
-	  else if (strcmp(argv[a], "-t") == 0)
-	    {
-	      tc = false;
-	      a++;
-	      title = argv[a];
-	    }
-	  else if (strcmp(argv[a], "-tc") == 0)
-	    {
-	      tc = true;
-	      title = 0;
-	    }
-	  else if (strcmp(argv[a], "-i") == 0)
-	    {
-	      if (n_files > 0)
-		{
-		  cerr << "-i must occur before other filenames" << endl;
-		  exit(1);
-		}
-	      a++;
+              strcpy(left_quote,  ((l) ? l : DEFAULT_LEFT_QUOTE ));
+              strcpy(right_quote, ((r) ? r : DEFAULT_RIGHT_QUOTE));
+            }
+          else if (strcmp(argv[a], "-t") == 0)
+            {
+              tc = false;
+              a++;
+              title = argv[a];
+            }
+          else if (strcmp(argv[a], "-tc") == 0)
+            {
+              tc = true;
+              title = 0;
+            }
+          else if (strcmp(argv[a], "-i") == 0)
+            {
+              if (n_files > 0)
+                {
+                  cerr << "-i must occur before other filenames" << endl;
+                  exit(1);
+                }
+              a++;
 
-	      files[n_files] = new File(argv[a], true);
+              files[n_files] = new File(argv[a], true);
 
-	      if (title)
-		files[n_files]->supply_title(title);
-	      else
-		files[n_files]->supply_title(DEFAULT_TOC_TITLE);
+              if (title)
+                files[n_files]->supply_title(title);
+              else
+                files[n_files]->supply_title(DEFAULT_TOC_TITLE);
 
-	      tc = false;
-	      title = 0;
+              tc = false;
+              title = 0;
 
-	      n_files++;
-	    }
-	}
+              n_files++;
+            }
+        }
       else
-	{
-	  files[n_files] = new File(argv[a]);
-	  if (tc)
-	    files[n_files]->set_use_comment_as_title(tc);
-	  else if (title)
-	    files[n_files]->supply_title(title);
+        {
+          files[n_files] = new File(argv[a]);
+          if (tc)
+            files[n_files]->set_use_comment_as_title(tc);
+          else if (title)
+            files[n_files]->supply_title(title);
 
-	  title = 0;
-	  tc = false;
+          title = 0;
+          tc = false;
 
-	  n_files++;
-	}
+          n_files++;
+        }
     }
 
   for (i=0; i<n_files; i++)
