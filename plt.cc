@@ -119,42 +119,45 @@ PLT::STATUS PLT::ota(unsigned short instr, signed short data)
   return STATUS_READY;
 }
 
-void PLT::plot_data()
+void PLT::ensure_file_open()
 {
   char buf[256];
   char *cp;
+  if (!fp) {
+    while (!fp) {
+      if (pending_filename)
+        strcpy(buf, filename);
+      else
+        stdtty->get_input("PLT: Filename>", buf, 256, 0);
+         
+      cp = buf;
+      if (buf[0]=='&') {
+        ascii_file = 1;
+        cp++;
+      }
+        
+      fp = fopen(cp, ((ascii_file) ? "w" : "wb") );
+      if (!fp) {
+        fprintf(((pending_filename) ? stderr : stdout),
+                "Could not open <%s> for writing\n", cp);
+        if (pending_filename)
+          exit(1);
+      }
+        
+      if (pending_filename)
+        delete filename;
+        
+      pending_filename = 0;
+    }
+  }
+}
+
+void PLT::plot_data()
+{
   int data;
   int bit, limit;
 
   if (current_direction != PD_NULL) {
-    if (!fp) {
-      while (!fp) {
-        if (pending_filename)
-          strcpy(buf, filename);
-        else
-          stdtty->get_input("PLT: Filename>", buf, 256, 0);
-         
-        cp = buf;
-        if (buf[0]=='&') {
-          ascii_file = 1;
-          cp++;
-        }
-        
-        fp = fopen(cp, ((ascii_file) ? "w" : "wb") );
-        if (!fp) {
-          fprintf(((pending_filename) ? stderr : stdout),
-                  "Could not open <%s> for writing\n", cp);
-          if (pending_filename)
-            exit(1);
-        }
-        
-        if (pending_filename)
-          delete filename;
-        
-        pending_filename = 0;
-      }
-    }
-    
     if (ascii_file) {
       fprintf(fp, "%s", pd_names[current_direction]);
       if (current_count > 0)
@@ -191,6 +194,12 @@ void PLT::plot_data()
 
 PLT::STATUS PLT::ocp(unsigned short instr)
 {
+  // Don't really need to do this here, but
+  // it's better to ask for the filename at the start
+  // rather than leave it to witter a while before
+  // asking for the filename when the user's moved on
+  ensure_file_open();
+
   PLT_DIRN direction = (PLT_DIRN) ((instr >> 6) & 017);
 
   if (is_legal(direction)) {

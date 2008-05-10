@@ -78,6 +78,7 @@ class PLT : public IODEV
   bool is_legal(PLT_DIRN dirn);
   bool is_pen(PLT_DIRN dirn);
   bool is_limit();
+  void ensure_file_open();
   void plot_data();
 
   Proc * const p;
