@@ -21,6 +21,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>
@@ -28,6 +29,20 @@
 
 #include <string>
 #include <list>
+
+// This is used because Postscript files are supposed
+// to have CR-LF as a line-end, not a UNIX-style LF only
+#define ENDL "\r\n"
+
+#define CREATOR "h16-plt2ps"
+
+#define ENV_MODEL     "H16PLT2PS_MODEL"
+#define ENV_MEDIA     "H16PLT2PS_MEDIA"
+#define ENV_PEN_WIDTH "H16PLT2PS_PEN_WIDTH"
+
+#define DEFAULT_MODEL     "2113"
+#define DEFAULT_MEDIA     "A4"
+#define DEFAULT_PEN_WIDTH 0.5
 
 struct PlotterModel;
 struct Media;
@@ -44,9 +59,11 @@ public:
                   bool force_portrait,
                   bool force_landscape,
                   const PlotterModel *plotter_model,
-                  const Media *media);
-  void headers(std::ostream &outs);
+                  const Media *media,
+                  double pen_width);
+  void headers(bool epsf_flag, std::ostream &outs, std::string title);
   void data(std::ostream &outs);
+  void footers(std::ostream &outs);
 
 private:
   enum PLT_DIRN {
@@ -71,7 +88,16 @@ private:
   bool pen;
 
   int x_offset, y_offset;
-  int x_range, y_range;
+  double scale;
+
+  double pen_steps;
+
+  bool landscape;
+  int x_page_pt, y_page_pt;
+  int bound_ll_x, bound_ll_y;
+  int bound_ur_x, bound_ur_y;
+
+  std::string media_name;
 
   class Segment {
   public:
@@ -184,7 +210,7 @@ void PlotFile::readfile(std::istream &ins, bool ascii_file)
       if (ins) {
         while ((ins) && ((c & 0200) != 0)) {
           // This is a prefix
-          printf("Prefix = %02x\n", c);
+          //printf("Prefix = %02x\n", c);
           current_count = (current_count << 7) | (c & 0177);
           c = ins.get();
         }
@@ -193,6 +219,15 @@ void PlotFile::readfile(std::istream &ins, bool ascii_file)
           // This is the actual command byte
           current_count     = (current_count << 3) | (c & 0007);
           current_direction = (PLT_DIRN) ((c >> 3) & 0017);
+
+          if ((current_direction == PD_NULL) ||
+              (current_direction == 003) ||
+              (current_direction == 007) ||
+              (current_direction == 013) ||
+              (current_direction == 017)) {
+            std::cerr << "Bad pen direction command" << std::endl;
+            exit(2);
+          }
         } else {
           std::cerr << "Unexpected end of file between prefix and command" << std::endl;
           exit(2);
@@ -236,7 +271,7 @@ std::string PlotFile::translate(int x, int y)
   int tx, ty;
   tx = x + x_offset;
   ty = y + y_offset;
-  ost << x << " " << y;
+  ost << tx << " " << ty;
   return ost.str();
 }
 
@@ -245,11 +280,13 @@ void PlotFile::preprocess(bool scale_flag,
                           bool force_portrait,
                           bool force_landscape,
                           const PlotterModel *plotter_model,
-                          const Media *media)
+                          const Media *media,
+                          double pen_width)
 {
   std::list<Segment>::const_iterator i;
 
   x_pos = 0; y_pos = 0; pen = false;
+
   int x_max = 0;
   int x_min = 0;
   int y_max = 0;
@@ -260,8 +297,16 @@ void PlotFile::preprocess(bool scale_flag,
   int iy_max = 0;
   int iy_min = 0;
 
+  int x_range, y_range;
+  int ix_range, iy_range;
+
+  // Find the extent of the image, both all movements and
+  // that with the pen down
+
   for (i = segments.begin(); i != segments.end(); i++) {
     apply_segment(*i);
+
+    //std::cout << "pos = (" << x_pos << ", " << y_pos << ")" << std::endl;
 
     if (x_pos > x_max) x_max = x_pos;
     if (x_pos < x_min) x_min = x_pos;
@@ -276,10 +321,19 @@ void PlotFile::preprocess(bool scale_flag,
     }
   }
 
+  //std::cout << "min = (" << x_min << ", " << y_min << ")" << std::endl;
+  //std::cout << "max = (" << x_max << ", " << y_max << ")" << std::endl;
+  //std::cout << "imin = (" << ix_min << ", " << iy_min << ")" << std::endl;
+  //std::cout << "imax = (" << ix_max << ", " << iy_max << ")" << std::endl;
+  
+  x_range = 1 + x_max - x_min;
+  y_range = 1 + y_max - y_min;
+
   ix_range = 1 + ix_max - ix_min;
   iy_range = 1 + iy_max - iy_min;
 
-  bool landscape = false;
+  // Figure out whether to use landscape
+  landscape = false;
   if (force_portrait)
     landscape = false;
   else if (force_landscape)
@@ -290,27 +344,151 @@ void PlotFile::preprocess(bool scale_flag,
     // to see whether we'd choose portrait or
     // landscape.
     //
-    landscape = (ix_range > iyrange);
+    landscape = (ix_range > iy_range);
   }
 
-  x_offset = -x_min;
-  x_range = x_offset + x_max + 1;
-  y_offset = -y_min;
-  y_range = y_offset + y_max + 1;
+  // Look at the characteristics of the plotter
+  int paper_steps = plotter_model->paper_width/plotter_model->step;
+  int limit_steps = plotter_model->limit_width/plotter_model->step;
+  int margin = ((paper_steps - limit_steps) / 2);
 
-  std::cout << "offset = (" << x_offset << ", " << y_offset << ")" << std::endl;
-  std::cout << "range = (" << x_range << ", " << y_range << ")" << std::endl;
+  double step_size_pt = 72.0 * ((plotter_model->metric) ?
+                                (plotter_model->step * 0.1 / 25.4) :
+                                (plotter_model->step / 1000.0));
+
+  double x_scale, y_scale;
+
+  if (keep_flag) {
+    media_name = "Custom";
+    x_page_pt = paper_steps * step_size_pt;
+    y_page_pt = (iy_range + (2 * margin) ) * step_size_pt;
+
+    if (landscape) {
+      int t = x_page_pt;
+      x_page_pt = y_page_pt;
+      y_page_pt = t;
+    }
+
+    scale = step_size_pt;
+
+    x_offset = margin - ix_min;
+    y_offset = margin - iy_min;
+
+  } else {
+    media_name = media->name;
+    x_page_pt = (landscape) ? media->y : media->x;
+    y_page_pt = (landscape) ? media->x : media->y;
+    
+    if (scale_flag) {
+      // Take the width of the image, adding 5% first...
+      x_scale = x_page_pt / (ix_range * 1.05);
+
+      // The the height
+      y_scale = y_page_pt / (iy_range * 1.05);
+
+      //std::cout << "x_scale = " << x_scale << " y_scale = " << y_scale << std::endl;
+
+      scale = (x_scale < y_scale) ? x_scale : y_scale;
+
+      // Centre image on page
+      
+      x_offset = floor((x_page_pt/scale - ix_range)/2) - ix_min;
+      y_offset = floor((y_page_pt/scale - iy_range)/2) - iy_min;
+
+    } else {  
+      // Calculate a suitable scale factor
+
+      // Take the width of the paper first...
+      x_scale = ((double) x_page_pt) / paper_steps;
+
+      // For the height, take the actual number of steps
+      // traversed and add on 5%
+      y_scale = ((double) y_page_pt) / (1.05 * y_range);
+
+      //std::cout << "x_scale = " << x_scale << " y_scale = " << y_scale << std::endl;
+
+      bool limit_is_x = (x_scale < y_scale);
+
+      scale = (limit_is_x) ? x_scale : y_scale;
+
+      // Figure suitable offsets
+      if (limit_is_x) {
+        x_offset = margin - x_min;
+        // y-dimension has spare so half to top, half to bottom
+        int half_spare = (int) (((((double) y_page_pt) / scale) - y_range) / 2.0);
+        y_offset = half_spare - y_min;
+      } else {
+        y_offset = margin - y_min;
+        // x-dimension has spare so half to left, half to right
+        int half_spare = (int) (((((double) x_page_pt) / scale) - limit_steps) / 2.0);
+        x_offset = half_spare - x_min;
+      }
+    }
+  }
+
+  double pen_pt = 72.0 * pen_width / 25.4;
+  pen_steps = pen_pt / step_size_pt;
+
+  //std::cout << "offset = (" << x_offset << ", " << y_offset << ")" << std::endl;
+  //std::cout << "range = (" << x_range << ", " << y_range << ")" << std::endl;
+  //std::cout << "irange = (" << ix_range << ", " << iy_range << ")" << std::endl;
+
+  // Calculate bounding box
+
+  bound_ll_x = floor( (scale * (ix_min+x_offset)) - (pen_pt/2.0) );
+  bound_ll_y = floor( (scale * (iy_min+y_offset)) - (pen_pt/2.0) );
+  bound_ur_x = ceil( (scale * (ix_max+x_offset)) + (pen_pt/2.0) );
+  bound_ur_y = ceil( (scale * (iy_max+y_offset)) + (pen_pt/2.0) );
+
 }
 
-void PlotFile::headers(std::ostream &outs)
+void PlotFile::headers(bool epsf_flag, std::ostream &outs, std::string title)
 {
-  outs << "%!" << std::endl;
+  outs << "%!PS-Adobe-3.0";
+  if (epsf_flag)
+    outs << " EPSF-3.0";
+  outs << ENDL;
+  outs << "%%BoundingBox: "
+       << bound_ll_x << " " << bound_ll_y << " "
+       << bound_ur_x << " " << bound_ur_y << ENDL;
+  outs << "%%Creator: " << CREATOR << ENDL;
+  outs << "%%DocumentData: Clean7Bit" << ENDL;
 
-  //double scale = 842.0 / 3400.0;
-  double scale = 595.0 / 3400.0;
+  time_t t;
+  char buf[100];
+  (void) time(&t);
+  ctime_r(&t, buf);
+  if ((*buf) && (buf[strlen(buf)-1]=='\n'))
+    buf[strlen(buf)-1]='\0';
 
-  //outs << "270 rotate" << std::endl;
-  outs << scale << " " << scale << " scale" << std::endl;
+  outs << "%%CreationDate: (" << buf << ")" << ENDL;
+  outs << "%%DocumentMedia: " << media_name << " "
+       << x_page_pt << " " << y_page_pt
+       << " ( ) ( )" << ENDL;
+  outs << "%%LanguageLevel: 1" << ENDL;
+  outs << "%%Orientation: "
+       << ((landscape) ? "Landscape" : "Portrait") << ENDL;
+  outs << "%%Pages: 1" << ENDL;
+  outs << "%%Title: (" << title << ")" << ENDL;
+  outs << "%%EndComments" << ENDL;
+  outs << "%%Page: 1 1" << ENDL;
+  outs << "%%PageMedia: " << media_name << ENDL;
+  outs << "%%BeginPageSetup" << ENDL;
+  outs << "/pgsave save def" << ENDL;
+  outs << "%%EndPageSetup" << ENDL;
+
+  outs << scale << " " << scale << " scale" << ENDL;
+  outs << "1 setlinecap" << ENDL;
+  outs << "1 setlinejoin" << ENDL;
+  outs << pen_steps << " setlinewidth" << ENDL;
+
+}
+
+void PlotFile::footers(std::ostream &outs)
+{
+ outs << "pgsave restore" << ENDL;
+ outs << "showpage" << ENDL;
+ outs << "%%EOF" << ENDL;
 }
 
 void PlotFile::data(std::ostream &outs)
@@ -318,10 +496,6 @@ void PlotFile::data(std::ostream &outs)
   std::list<Segment>::const_iterator i;
 
   x_pos = 0; y_pos = 0; pen = false;
-  int x_max = 0;
-  int x_min = 0;
-  int y_max = 0;
-  int y_min = 0;
 
   bool drawing = false;
   bool prev_pen;
@@ -332,18 +506,17 @@ void PlotFile::data(std::ostream &outs)
 
     if (pen != prev_pen) {
       if (pen) {
-        outs << "newpath" << std::endl;
-        outs << translate(x_pos, y_pos) << " moveto" << std::endl;
+        outs << "newpath" << ENDL;
+        outs << translate(x_pos, y_pos) << " moveto" << ENDL;
         drawing = true;
       } else {
-        outs << "stroke" << std::endl;
+        outs << "stroke" << ENDL;
         drawing = false;
       }
     } else if (drawing) {
-      outs << translate(x_pos, y_pos) << " lineto" << std::endl;
+      outs << translate(x_pos, y_pos) << " lineto" << ENDL;
     }
   }
-  outs << "showpage" << std::endl;
 }
 
 /*
@@ -451,22 +624,18 @@ static char *output_filename;
 static const PlotterModel *plotter_model;
 static const Media *media;
 static double pen_width;
+static bool epsf_flag;
 static bool scale_flag;
 static bool keep_flag;
 static bool force_portrait;
 static bool force_landscape;
+static std::string title;
 
-#define ENV_MODEL     "H16PLT2PS_MODEL"
-#define ENV_MEDIA     "H16PLT2PS_MEDIA"
-#define ENV_PEN_WIDTH "H16PLT2PS_PEN_WIDTH"
-
-#define DEFAULT_MODEL     "2113"
-#define DEFAULT_MEDIA     "A4"
-#define DEFAULT_PEN_WIDTH 0.5
 
 static void defs()
 {
   ascii_file = false;
+  epsf_flag = false;
   input_filename = 0;
   output_filename = 0;
   plotter_model = lookup_plotter_model(DEFAULT_MODEL);
@@ -476,6 +645,7 @@ static void defs()
   keep_flag = false;
   force_portrait = false;
   force_landscape = false;
+  title = "";
 }
 
 static void envs()
@@ -517,24 +687,10 @@ static void envs()
 
 }
 
-/*
- * -a : ascii plotfile format
- * -e : EPSF ???
- * -fp : force portrait
- * -fl : force landscape
- * -h : help
- * -k : Keep actual paper size (else scale for paper)
- * -m <media> : specify media (env. variable, A4)
- * -o : output file
- * -p <model> : plotter model
- * -s : Scale image to fill paper (else full ploter width)
- * -w : Pen width in mm (floating point)
- */
-
 static void print_usage(std::ostream &strm, char *arg0)
 {
   strm << "Usage : " << arg0
-       << " [-h] [-a] [-f<l|p>] [-i] [-k] [-m <media>] [-o <filename>] [-p <model>] [-w <width>] <filename>" << std::endl;
+       << " [-h] [-f<l|p>] [-i] [-k] [-m <media>] [-o <filename>] [-p <model>] [-w <width>] [-a] <filename>" << std::endl;
 }
 
 static void args(int argc, char **argv)
@@ -545,11 +701,16 @@ static void args(int argc, char **argv)
   bool help = false;
 
   bool media_set_by_args = false;
+  bool title_set = false;
+
+  bool seen_filename = false;
 
   for (a=1; a<argc; a++) {
-    if (argv[a][0] == '-') {
+    if ((argv[a][0] == '-') && (argv[a][1])) { // '-' on its own is a filename
       if (strcmp(argv[a], "-a") == 0) {
         ascii_file = true;
+      } else if (strcmp(argv[a], "-e") == 0) {
+        epsf_flag = true;
       } else if (strncmp(argv[a], "-f", 2) == 0) {
         char c = '\0';
         if (strlen(argv[a]) == 2) {
@@ -599,6 +760,15 @@ static void args(int argc, char **argv)
         }
       } else if (strcmp(argv[a], "-s") == 0) {
         scale_flag = true;
+      } else if (strcmp(argv[a], "-t") == 0) {
+        a++;
+        if (a<argc) {
+          title = argv[a];
+          title_set = true;
+        } else {
+          usage = true;
+          break;
+        }
       } else if (strcmp(argv[a], "-w") == 0) {
         a++;
         if ((a>=argc) ||
@@ -611,8 +781,13 @@ static void args(int argc, char **argv)
         break;
       }
     } else {
-      if (a == (argc-1))
-        input_filename = strdup(argv[a]);
+      if (a == (argc-1)) {
+        seen_filename = true;
+        if (strcmp(argv[a], "-") == 0)
+          input_filename = 0;
+        else
+          input_filename = strdup(argv[a]);
+      }
       else {
         usage = true;
         break;
@@ -623,7 +798,8 @@ static void args(int argc, char **argv)
   if (help) {
     print_usage(std::cout, argv[0]);
 
-    std::cout << " -a            : ASCII input file format " << std::endl;
+    std::cout << " -a            : ASCII input file format" << std::endl;
+    std::cout << " -e            : Produce EPSF" << std::endl;
     std::cout << " -fl           : Force landscape" << std::endl;
     std::cout << " -fp           : Force portrait" << std::endl;
     std::cout << " -h            : This help" << std::endl;
@@ -637,13 +813,20 @@ static void args(int argc, char **argv)
     std::cout << "                 i.e.:3341, 3342, 3141, 3142" << std::endl;
     std::cout << "               - or Honeywell option number," << std::endl;
     std::cout << "                 i.e.:2111, 2112, 2113, 2114" << std::endl;
+    std::cout << " -t <text>     : Supply a title" << std::endl;
     std::cout << " -w <float>    : Width of pen in mm" << std::endl;
     std::cout << " <filename>    : Input plot file" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Environment variables may be used to specify" << std::endl;
+    std::cout << "defaults for some of these arguments:" << std::endl;
+    std::cout << ENV_MEDIA << " sets the default media, else \"A4\"" << std::endl;
+    std::cout << ENV_MODEL << " sets the default plotter, else \"3341\"/\"2113\"" << std::endl;
+    std::cout << ENV_PEN_WIDTH << " sets the default pen width, else 0.5mm" << std::endl;
 
     exit(0);
   }
 
-  if (!input_filename)
+  if (!seen_filename)
     usage = true;
 
   if (force_portrait && force_landscape) {
@@ -669,6 +852,11 @@ static void args(int argc, char **argv)
     print_usage(std::cerr, argv[0]);
     exit(1);
   }
+
+  if (!title_set) {
+    const char *s = (input_filename) ? basename(input_filename) : "(stdin)" ;
+    title = s;
+  }
 }
 
 int main (int argc, char **argv)
@@ -677,17 +865,23 @@ int main (int argc, char **argv)
   envs(); // Values from environment variables
   args(argc, argv); // Command line arguments
   
-  std::ifstream ins(input_filename);
+  std::ifstream infs;
 
-  if (!ins) {
-    std::cerr << "Cannot open <" << input_filename << "> for input" << std::endl;
-    exit(1);
+  if (input_filename) {
+    infs.open(input_filename);
+    
+    if (!infs) {
+      std::cerr << "Cannot open <" << input_filename << "> for input" << std::endl;
+      exit(1);
+    }
   }
+
+  std::istream &ins = (input_filename) ? infs : std::cin;
 
   std::ofstream outfs;
 
   if (output_filename) {
-    outfs.open(output_filename);
+    outfs.open(output_filename, std::ios_base::binary);
 
     if (!outfs) {
       std::cerr << "Cannot open <" << output_filename << "> for output" << std::endl;
@@ -701,9 +895,16 @@ int main (int argc, char **argv)
 
   pf.readfile(ins, ascii_file);
   pf.preprocess(scale_flag, keep_flag, force_portrait, force_landscape,
-                plotter_model, media);
-  pf.headers(outs);
+                plotter_model, media, pen_width);
+  pf.headers(epsf_flag, outs, title);
   pf.data(outs);
+  pf.footers(outs);
+
+  if (output_filename)
+    outfs.close();
+
+  if (input_filename)
+    infs.close();
 
   exit(0);
 }
