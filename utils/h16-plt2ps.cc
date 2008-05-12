@@ -371,12 +371,12 @@ void PlotFile::preprocess(bool scale_flag,
   if (keep_flag) {
     media_name = "Custom";
     x_page_pt = paper_steps * step_size_pt;
-    y_page_pt = (iy_range + (2 * margin) ) * step_size_pt;
+    y_page_pt = (y_range + (2 * margin) ) * step_size_pt;
 
     scale = step_size_pt;
 
-    x_offset = margin - ix_min;
-    y_offset = margin - iy_min;
+    x_offset = margin - x_min;
+    y_offset = margin - y_min;
 
   } else {
     media_name = media->name;
@@ -425,6 +425,7 @@ void PlotFile::preprocess(bool scale_flag,
         y_offset = margin - y_min;
         // x-dimension has spare so half to left, half to right
         int half_spare = (int) (((((double) x_page_pt) / scale) - limit_steps) / 2.0);
+        std::cout << "half_spare = " << half_spare << std::endl;
         x_offset = half_spare - x_min;
       }
     }
