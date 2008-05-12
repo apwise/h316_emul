@@ -61,7 +61,7 @@ public:
                   const PlotterModel *plotter_model,
                   const Media *media,
                   double pen_width);
-  void headers(bool epsf_flag, std::ostream &outs, std::string title);
+  void headers(bool epsf_flag, bool keep_flag, std::ostream &outs, std::string title);
   void data(std::ostream &outs);
   void footers(std::ostream &outs);
 
@@ -287,15 +287,17 @@ void PlotFile::preprocess(bool scale_flag,
 
   x_pos = 0; y_pos = 0; pen = false;
 
+  bool pen_has_been_down = false;
+
   int x_max = 0;
   int x_min = 0;
   int y_max = 0;
   int y_min = 0;
 
-  int ix_max = 0;
-  int ix_min = 0;
-  int iy_max = 0;
-  int iy_min = 0;
+  int ix_min = ((~((unsigned int)0)) >> 1); // Most +ve
+  int ix_max = ~ix_min; // Most -ve
+  int iy_max = ix_max;
+  int iy_min = ix_min;
 
   int x_range, y_range;
   int ix_range, iy_range;
@@ -306,19 +308,27 @@ void PlotFile::preprocess(bool scale_flag,
   for (i = segments.begin(); i != segments.end(); i++) {
     apply_segment(*i);
 
-    //std::cout << "pos = (" << x_pos << ", " << y_pos << ")" << std::endl;
-
     if (x_pos > x_max) x_max = x_pos;
     if (x_pos < x_min) x_min = x_pos;
     if (y_pos > y_max) y_max = y_pos;
     if (y_pos < y_min) y_min = y_pos;
     
     if (pen) {
+      pen_has_been_down = true;
       if (x_pos > ix_max) ix_max = x_pos;
       if (x_pos < ix_min) ix_min = x_pos;
       if (y_pos > iy_max) iy_max = y_pos;
       if (y_pos < iy_min) iy_min = y_pos;
     }
+
+    //std::cout << "pos = (" << x_pos << ", " << y_pos << ") pen = " << pen
+    //         << " imin = (" << ix_min << ", " << iy_min << ")" 
+    //         << " imax = (" << ix_max << ", " << iy_max << ")" << std::endl;
+  }
+
+  if (!pen_has_been_down) {
+    std::cerr << "Pen never went down" << std::endl;
+    exit(2);
   }
 
   //std::cout << "min = (" << x_min << ", " << y_min << ")" << std::endl;
@@ -334,7 +344,7 @@ void PlotFile::preprocess(bool scale_flag,
 
   // Figure out whether to use landscape
   landscape = false;
-  if (force_portrait)
+  if ((force_portrait) || (keep_flag))
     landscape = false;
   else if (force_landscape)
     landscape = true;
@@ -362,12 +372,6 @@ void PlotFile::preprocess(bool scale_flag,
     media_name = "Custom";
     x_page_pt = paper_steps * step_size_pt;
     y_page_pt = (iy_range + (2 * margin) ) * step_size_pt;
-
-    if (landscape) {
-      int t = x_page_pt;
-      x_page_pt = y_page_pt;
-      y_page_pt = t;
-    }
 
     scale = step_size_pt;
 
@@ -442,7 +446,7 @@ void PlotFile::preprocess(bool scale_flag,
 
 }
 
-void PlotFile::headers(bool epsf_flag, std::ostream &outs, std::string title)
+void PlotFile::headers(bool epsf_flag, bool keep_flag, std::ostream &outs, std::string title)
 {
   outs << "%!PS-Adobe-3.0";
   if (epsf_flag)
@@ -466,8 +470,9 @@ void PlotFile::headers(bool epsf_flag, std::ostream &outs, std::string title)
        << x_page_pt << " " << y_page_pt
        << " ( ) ( )" << ENDL;
   outs << "%%LanguageLevel: 1" << ENDL;
-  outs << "%%Orientation: "
-       << ((landscape) ? "Landscape" : "Portrait") << ENDL;
+  if (!keep_flag)
+    outs << "%%Orientation: "
+         << ((landscape) ? "Landscape" : "Portrait") << ENDL;
   outs << "%%Pages: 1" << ENDL;
   outs << "%%Title: (" << title << ")" << ENDL;
   outs << "%%EndComments" << ENDL;
@@ -896,7 +901,7 @@ int main (int argc, char **argv)
   pf.readfile(ins, ascii_file);
   pf.preprocess(scale_flag, keep_flag, force_portrait, force_landscape,
                 plotter_model, media, pen_width);
-  pf.headers(epsf_flag, outs, title);
+  pf.headers(epsf_flag, keep_flag, outs, title);
   pf.data(outs);
   pf.footers(outs);
 
