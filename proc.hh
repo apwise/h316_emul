@@ -79,7 +79,7 @@ public:
   void clear_interrupt(unsigned short bit);
 
   void dump_memory();
-  void dump_trace(char *filename, int n);
+  void dump_trace(const char *filename, int n);
   void dump_disassemble(char *filename, int first, int last);
   void dump_vmem(char *filename, int exec_addr, bool octal=false);
   

@@ -153,7 +153,7 @@ bool ASR::get_asrch(char &c)
         }
       
       if (r)
-        c = k | ((k >= 040) ? 0x80 : 0);
+        c = k | ((k != 0) ? 0x80 : 0);
     }
   
   if ((r) &&
@@ -198,7 +198,7 @@ void ASR::echo_asrch(char c, bool from_serial)
         {
           k = c & 0x7f;
           if ((k != 015) && // ignore Carriage Return
-	      (k != 0))     // ignore null
+              (k != 0))     // ignore null
             {
               if (k == 012) // LF is newline
                 k = '\n';
