@@ -196,9 +196,9 @@ Proc::Proc(STDTTY *stdtty)
 
 // }}}
 
-// {{{ void Proc::dump_trace(char *filename, int n)
+// {{{ void Proc::dump_trace(const char *filename, int n)
 
-void Proc::dump_trace(char *filename, int n)
+void Proc::dump_trace(const char *filename, int n)
 {
   int i;
   FILE *fp=stdout;
@@ -996,7 +996,16 @@ void Proc::unimplemented(unsigned short instr)
 {
   printf("%s\n", __PRETTY_FUNCTION__);
   printf("Instr = `%06o at `%06o\n", instr, p);
-  //exit(1);
+
+  printf("Dumping \"tracefile\"\n");
+
+  dump_trace("tracefile",0);
+
+  printf("Dumping \"memdump\"\n");
+
+  dump_memory();
+
+  exit(1);
 }
 
 void Proc::do_CRA(unsigned short instr)

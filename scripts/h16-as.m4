@@ -1,7 +1,7 @@
 ptr SLSTNAM
 g'1
 clear
-a'100223
+a'140223
 ptr SRCNAM
 g'400
 ptr SRCNAM
