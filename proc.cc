@@ -730,37 +730,24 @@ unsigned short Proc::ea(unsigned short instr)
           d += x;
         }
       
-      /*
-       * This is what is documented in the Programmers'
-       * reference manual. However it isn't right because
-       * it means that an attempt to address sector zero
-       * from the upper 16kword of memory would address
-       * sector 040
-       */
-       
-      //       if (extend)
-      //         y = d;
-      //       else
-      //         y = (d & 0xbfff) | (y & 0x4000);
+      if (extend)
+        y = d;
+      else
+        y = (d & 0xbfff) | (y & 0x4000);
       
-      y = d & ((extend) ? 0x7fff : 0x3fff);
-
       if (ind)
         {
           half_cycles += 2;
     
-          (void) read(y); /* sets m */
+          (void) read(y & 0x7fff); /* sets m */
     
-          if (extend)
-            sec_zero = ((m & 0x7e00) == 0);
-          else
-            sec_zero = ((m & 0x3e00) == 0);
+          sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
         }
       first = false;
     }
   while (ind);
   
-  return y;
+  return y & 0x7fff;
 }
 
 bool Proc::optimize_io_poll(unsigned short instr)
