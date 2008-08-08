@@ -93,6 +93,7 @@ public:
   void set_plt_filename(char *filename);
   void set_lpt_filename(char *filename);
   void set_asr_ptr_filename(char *filename);
+  void asr_ptr_on(char *filename);
   void set_asr_ptp_filename(char *filename);
   void asr_ptp_on(char *filename);
   bool special(char k);

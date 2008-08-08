@@ -30,6 +30,7 @@ public:
   void put_asrch(char c);
   void set_filename(char *filename, bool asr_ptp);
   void asr_ptp_on(char *filenamep);
+  void asr_ptr_on(char *filenamep);
   bool file_input(){return (running[ASR_PTR]);};
 
   bool special(char c);

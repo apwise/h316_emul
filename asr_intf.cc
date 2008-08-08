@@ -262,6 +262,11 @@ void ASR_INTF::set_filename(char *filename, bool asr_ptp)
   asr->set_filename(filename, asr_ptp);
 }
  
+void ASR_INTF::asr_ptr_on(char *filename)
+{
+  asr->asr_ptr_on(filename);
+}
+ 
 void ASR_INTF::asr_ptp_on(char *filename)
 {
   asr->asr_ptp_on(filename);

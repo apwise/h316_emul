@@ -59,6 +59,7 @@ private:
   bool plt(bool &run, int words, char **cmd);
   bool lpt(bool &run, int words, char **cmd);
   bool asr_ptr(bool &run, int words, char **cmd);
+  bool asr_ptr_on(bool &run, int words, char **cmd);
   bool asr_ptp(bool &run, int words, char **cmd);
   bool asr_ptp_on(bool &run, int words, char **cmd);
   bool a(bool &run, int words, char **cmd);
