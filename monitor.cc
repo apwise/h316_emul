@@ -67,6 +67,7 @@ struct CmdTab Monitor::commands[] =
     {"plt",        1, 1, 1, "filename : Set Plotter filename",              &Monitor::plt},
     {"lpt",        1, 1, 1, "filename : Set Lineprinter filename",          &Monitor::lpt},
     {"asr_ptr",    1, 1, 1, "filename : Set ASR Papertape Reader filename", &Monitor::asr_ptr},
+    {"asr_ptr_on", 1, 0, 1, "[filename] : Turn on ASR Papertape Reader",    &Monitor::asr_ptr_on},
     {"asr_ptp",    1, 1, 1, "filename : Set ASR Papertape Punch filename",  &Monitor::asr_ptp},
     {"asr_ptp_on", 1, 0, 1, "[filename] : Turn on ASR Papertape Punch",     &Monitor::asr_ptp_on},
     {"clear",      1, 0, 0, "Master clear",                                 &Monitor::clear},
@@ -456,6 +457,15 @@ bool Monitor::asr_ptp(bool &run, int words, char **cmd)
   bool ok = 1;
   
   p->set_asr_ptp_filename(cmd[1]);
+
+  return ok;
+}
+
+bool Monitor::asr_ptr_on(bool &run, int words, char **cmd)
+{
+  bool ok = 1;
+  
+  p->asr_ptr_on(((words>0) ? cmd[1] : 0));
 
   return ok;
 }

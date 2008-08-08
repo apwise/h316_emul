@@ -26,6 +26,7 @@
 #include "asr.hh"
 
 #define WRU  005
+#define BS   010
 #define SO   016 // ^N shift into black
 #define SI   017 // ^O shift into red
 #define XON  021
@@ -223,12 +224,19 @@ void ASR::echo_asrch(char c, bool from_serial)
     {
       k = c & 0x7f;
 
+
       //if (((c & 0xff) > 0240) && (!from_serial) && running[ASR_PTR])
       if ((c & 0x80) && (!from_serial) && running[ASR_PTR])
         return; // Don't echo reader data with MSB set
 
+      // MAP delete to backspace
+      if (k == 0177)
+        k = BS;
+
+      //printf("ASR: c = 0x%02x k = 0x%02x\n", c&0xff, k&0xff);
+
       if ((k == 007) || (k == 012) || (k == 015) ||
-          ((k >= 040) && (k < 0174)) || (k == 0177))
+          ((k >= 040) && (k < 0174)) || (k == BS))
         stdtty->putch(k);
 
     }
@@ -262,6 +270,16 @@ void ASR::asr_ptp_on(char *filename)
     set_filename(filename, ASR_PTP);
 
   open_punch_file();
+}
+
+void ASR::asr_ptr_on(char *filename)
+{
+  //printf ("ASR::asr_ptr_on(%s)\n", (filename) ? filename : "NULL");
+
+  if (filename)
+    set_filename(filename, ASR_PTR);
+
+  open_reader_file();
 }
 
 #define BUFLEN 256
