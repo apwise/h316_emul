@@ -62,6 +62,7 @@ static const char *ptr_reason[PTR_REASON_NUM] __attribute__ ((unused)) =
 };
 
 PTR::PTR(Proc *p, STDTTY *stdtty)
+  : IODEV(p)
 {
   this->p = p;
   this->stdtty = stdtty;

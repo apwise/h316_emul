@@ -40,6 +40,9 @@ public:
       STATUS_INCOMPLETE // Instruction incomplete - go to GUI
     };
 
+  IODEV(Proc *p);
+  virtual ~IODEV();
+
   virtual STATUS ina(unsigned short instr, signed short &data);
   virtual STATUS ocp(unsigned short instr);
   virtual STATUS sks(unsigned short instr);
@@ -53,6 +56,9 @@ public:
   static void set_mask(IODEV **dt, unsigned short mask);
 
   static STATUS status(bool b){return (b)?STATUS_READY:STATUS_WAIT;};
+
+protected:
+  Proc *p;
 };
 
 #define REASON_MASTER_CLEAR -1

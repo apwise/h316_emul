@@ -28,29 +28,39 @@
 #include "asr_intf.hh"
 #include "lpt.hh"
 #include "plt.hh"
+#include "proc.hh"
+
+IODEV::IODEV(Proc *p)
+  : p(p)
+{
+}
+
+IODEV::~IODEV()
+{
+}
 
 IODEV::STATUS IODEV::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "INA with undefined device: '%02o\n", instr & 0x3f);
-  exit(1);
+  p->abort();
 }
 
 IODEV::STATUS IODEV::ocp(unsigned short instr)
 {
   fprintf(stderr, "OCP with undefined device: '%02o\n", instr & 0x3f);
-  exit(1);
+  p->abort();
 }
 
 IODEV::STATUS IODEV::sks(unsigned short instr)
 {
   fprintf(stderr, "SKS with undefined device: '%02o\n", instr & 0x3f);
-  exit(1);
+  p->abort();
 }
 
 IODEV::STATUS IODEV::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "OTA with undefined device: '%02o\n", instr & 0x3f);
-  exit(1);
+  p->abort();
 }
 
 IODEV::STATUS IODEV::smk(unsigned short mask)
@@ -64,7 +74,7 @@ void IODEV::event(int reason)
     {
       fprintf(stderr, "Event called for undefined device with reason %d\n",
               reason);
-      exit(1);
+      p->abort();
     }
 }
 
@@ -72,7 +82,7 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
 {
   IODEV **dt = (IODEV **) malloc(sizeof(IODEV *) * 64);
   int i;
-  IODEV *dummy = new IODEV;
+  IODEV *dummy = new IODEV(p);
   
   for(i=0; i<64; i++)
     dt[i] = dummy;
