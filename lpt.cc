@@ -44,6 +44,7 @@ static const char *ptp_reason[LPT_REASON_NUM] __attribute__ ((unused)) =
 };
 
 LPT::LPT(Proc *p, STDTTY *stdtty)
+  : IODEV(p)
 {
   this->p = p;
   this->stdtty = stdtty;

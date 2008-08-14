@@ -45,6 +45,7 @@ static const char *ptp_reason[PTP_REASON_NUM] __attribute__ ((unused)) =
 };
 
 PTP::PTP(Proc *p, STDTTY *stdtty)
+  : IODEV(p)
 {
   this->p = p;
   this->stdtty = stdtty;

@@ -59,7 +59,8 @@ bool PLT::is_limit() {
 
 
 PLT::PLT(Proc *p, STDTTY *stdtty)
-  : p(p),
+  : IODEV(p),
+    p(p),
     stdtty(stdtty),
     fp(NULL),
     ascii_file(false),

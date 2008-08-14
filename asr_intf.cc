@@ -49,6 +49,7 @@ static const char *asr_reason[ASR_REASON_NUM] __attribute__ ((unused)) =
 };
 
 ASR_INTF::ASR_INTF(Proc *p, STDTTY *stdtty)
+  : IODEV(p)
 {
   this->p = p;
   asr = new ASR(stdtty);

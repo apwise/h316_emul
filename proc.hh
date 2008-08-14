@@ -99,6 +99,8 @@ public:
   bool special(char k);
 
   bool optimize_io_poll(unsigned short instr);
+
+  void abort();
   
 private:
   /*

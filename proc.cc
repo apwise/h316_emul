@@ -984,11 +984,8 @@ bool Proc::special(char k)
 /******************************************************************/
 
 
-void Proc::unimplemented(unsigned short instr)
+void Proc::abort()
 {
-  printf("%s\n", __PRETTY_FUNCTION__);
-  printf("Instr = `%06o at `%06o\n", instr, p);
-
   printf("Dumping \"tracefile\"\n");
 
   dump_trace("tracefile",0);
@@ -998,6 +995,14 @@ void Proc::unimplemented(unsigned short instr)
   dump_memory();
 
   exit(1);
+}
+
+void Proc::unimplemented(unsigned short instr)
+{
+  printf("%s\n", __PRETTY_FUNCTION__);
+  printf("Instr = `%06o at `%06o\n", instr, p);
+
+  Proc::abort();
 }
 
 void Proc::do_CRA(unsigned short instr)
