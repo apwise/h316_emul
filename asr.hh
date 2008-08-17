@@ -26,7 +26,7 @@ class ASR
 {
 public:
   ASR(STDTTY *stdtty);
-  bool get_asrch(char &c);
+  bool get_asrch(char &c, bool local_echo=true);
   void put_asrch(char c);
   void set_filename(char *filename, bool asr_ptp);
   void asr_ptp_on(char *filenamep);

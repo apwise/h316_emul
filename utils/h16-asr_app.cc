@@ -74,7 +74,7 @@ int main(int argc, char **argv)
               //  fprintf(stderr, "Serial output ready\n");
               
               /* Input from keyboard */
-              ok = asr.get_asrch(c);
+              ok = asr.get_asrch(c, false);
               if (ok)
                 serial.transmit(c, ok);
             }
@@ -85,8 +85,11 @@ int main(int argc, char **argv)
               
               /* Input from serial */
               c = serial.receive(ok);
-              if (ok)
+              if (ok) {
+		//printf("<%03o>", c & 0xff);
+		fflush(stdout);
                 asr.put_asrch(c);
+	      }
             }
         }
     }

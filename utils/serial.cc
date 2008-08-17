@@ -13,7 +13,8 @@
 #include <sys/types.h>
 
 #define DEVICE "/dev/ttyS0"
-#define BAUD B110
+#define BAUD B600
+//#define BAUD B110
 //#define BAUD B9600
 
 #include "stdtty.hh"

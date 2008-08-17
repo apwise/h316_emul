@@ -68,7 +68,7 @@ void ASR::clear_ptr_flags()
   xoff_read = false;
 }
 
-bool ASR::get_asrch(char &c)
+bool ASR::get_asrch(char &c, bool local_echo)
 {
   char k;
   bool r = false;
@@ -157,7 +157,7 @@ bool ASR::get_asrch(char &c)
         c = k | ((k != 0) ? 0x80 : 0);
     }
   
-  if ((r) &&
+  if ((r) && (local_echo) &&
       ((!running[ASR_PTR]) || (!silent_file[ASR_PTR])))
     echo_asrch(c, false);
 
