@@ -9,13 +9,14 @@
 /*
  * usage:
  *
- * h16-tabify [-c<tab-char>] [-o[ ]filename] [-] [<input-filename>]
+ * h16-tabify [-c<tab-char>] [-o[ ]filename] [-l] [-] [<input-filename>]
  *
  */
 
 static char tab_char = '\\';
 static char *in_filename = 0;
 static char *out_filename = 0;
+static bool listing = false;
 
 struct Pseudos
 {
@@ -86,11 +87,10 @@ static void process_line(char i_buffer[], char o_buffer[])
   int pending_tabs=0;
   char word[MAX_LINE];
 
-  if (!instr_table)
-    {
-      instr_table = new InstrTable();
-      //instr_table->dump_dispatch_table();
-    }
+  if (!instr_table) {
+    instr_table = new InstrTable();
+    //instr_table->dump_dispatch_table();
+  }
 
   /* Clip any trailing spaces */
   int k=strlen(i_buffer)-1;
@@ -101,135 +101,150 @@ static void process_line(char i_buffer[], char o_buffer[])
   while (isspace(i_buffer[ib]))
     ib++;
 
+  if (listing) {
+    //
+    // A 4-digit decimal number at the end of the
+    // line is probably the source line number
+    // delete it.
+    //
+    k=strlen(i_buffer)-1;
+    int n = k-4;
+    if (n<0) n = 0;
+
+    while ((k>n) && (isdigit(i_buffer[k])))
+      k--;
+
+    if (k <= n) // All four were digits
+      i_buffer[k] = '\0';
+
+    //
+    // Digits at the start of the line
+    // are probably the source line number and the
+    // assembled opcodes - discard.
+    // A single minus '-' sign may also be deleted since
+    // it is used in the opcode of memory reference instructions
+    // that have the top (indirect) bit set.
+    //
+    bool first_minus = true;
+    while (isspace(i_buffer[ib]) ||
+           isdigit(i_buffer[ib]) ||
+           ((i_buffer[ib] == '-') && (first_minus))) {
+      if (i_buffer[ib] == '-')
+        first_minus = false;
+      ib++;
+    }
+  }
+
   /* Is it a line comment character? */
-  if (i_buffer[ib] == '*')
-    {
-      /* Yes, copy the whole line across - then we're done */
-      while (i_buffer[ib])
-	o_buffer[ob++] = i_buffer[ib++];
-    }
-  else
-    {
-      bool is_instr = false;
-      bool is_mr = false;
-      bool operands = false;
-      int j;
-      int instr_count;
-
-      for (instr_count=0; instr_count<2; instr_count++)
-	{
-	  while (i_buffer[ib] && isspace(i_buffer[ib]))
-	    ib++; // Discard leading space
-	  j = 0;
-
-	  while (i_buffer[ib] &&
-		 (isalnum(i_buffer[ib]) ||
-		  ((i_buffer[ib]=='*') && (j<3)))) // Pseudo could be "***"
-	    {
-	      word[j++] = i_buffer[ib];
-	      ib++;
-	    }
-	  word[j] = '\0';
-	  
-	  InstrTable::Instr *instr = instr_table->lookup(word);
-
-	  if (instr)
-	    {
-	      is_instr = true;
-	      InstrTable::Instr::INSTR_TYPE type = instr->get_type();
-	      if (type == InstrTable::Instr::MR)
-		is_mr = operands = true;
-	      else if ((type == InstrTable::Instr::SH) ||
-		       (type == InstrTable::Instr::IO) ||
-		       (type == InstrTable::Instr::IOG))
-		operands = true;
-	    }
-	  else
-	    {
-	      /* Is it a pseudo-op ? */
-	      int k = 0;
-	      while (pseudos[k].mnemonic)
-		{
-		  if (strcmp(pseudos[k].mnemonic, word)==0)
-		    {
-		      is_instr = true;
-		      operands = pseudos[k].operands;
-		      is_mr    = pseudos[k].is_mr;
-		      break;
-		    }
-		  k++;
-		}
-	    }
-	  
-	  if (is_instr)
-	    {
-	      /* Word is an instruction.
-	       * If it's a memory-reference it might be indirect,
-	       * and so followed by an asterix */
-	      if (is_mr && (i_buffer[ib] == '*'))
-		{
-		  word[j++] = i_buffer[ib++];
-		  word[j] = '\0';
-		}
-	      
-	      o_buffer[ob++] = tab_char;
-	      int k=0;
-	      while (word[k])
-		o_buffer[ob++] = word[k++];
-	      break;
-	    }
-	  else
-	    {
-	      /* Word isn't an instruction - 
-	       * if first time through loop assume it's a label
-	       * if second time - confused put space separator before */
-	      if (instr_count==1)
-		o_buffer[ob++] = ' ';
-	      int k=0;
-	      while (word[k])
-		o_buffer[ob++] = word[k++];
-	    }
-	}
-
-      if (is_instr)
-	pending_tabs++;
-      else
-	o_buffer[ob++] = ' ';
-
-      if (is_instr && operands)
-	{
-	  while (i_buffer[ib] && isspace(i_buffer[ib]))
-	    ib++; // Discard leading space
-
-	  while (i_buffer[ib] && (!isspace(i_buffer[ib])))
-	    {
-	      while (pending_tabs)
-		{
-		  o_buffer[ob++] = tab_char;
-		  pending_tabs--;
-		}
-	      o_buffer[ob++] = i_buffer[ib++];
-	    }
-	}
-
-      if (is_instr)
-	pending_tabs++;
-      else
-	o_buffer[ob++] = ' ';
-
+  if (i_buffer[ib] == '*') {
+    /* Yes, copy the whole line across - then we're done */
+    while (i_buffer[ib])
+      o_buffer[ob++] = i_buffer[ib++];
+  } else {
+    bool is_instr = false;
+    bool is_mr = false;
+    bool operands = false;
+    int j;
+    int instr_count;
+    
+    for (instr_count=0; instr_count<2; instr_count++) {
       while (i_buffer[ib] && isspace(i_buffer[ib]))
-	ib++; // Discard leading space
+        ib++; // Discard leading space
+      j = 0;
       
-      while (i_buffer[ib])
-	{
-	  while (pending_tabs)
-	    {
-	      o_buffer[ob++] = tab_char;
-	      pending_tabs--;
-	    }
-	  o_buffer[ob++] = i_buffer[ib++];
-	}      
+      while (i_buffer[ib] &&
+             (isalnum(i_buffer[ib]) ||
+              ((i_buffer[ib]=='*') && (j<3)))) { // Pseudo could be "***"
+        word[j++] = i_buffer[ib];
+        ib++;
+      }
+      word[j] = '\0';
+      
+      InstrTable::Instr *instr = instr_table->lookup(word);
+      
+      if (instr) {
+        is_instr = true;
+        InstrTable::Instr::INSTR_TYPE type = instr->get_type();
+        if (type == InstrTable::Instr::MR)
+          is_mr = operands = true;
+        else if ((type == InstrTable::Instr::SH) ||
+                 (type == InstrTable::Instr::IO) ||
+                 (type == InstrTable::Instr::IOG))
+          operands = true;
+      } else {
+        /* Is it a pseudo-op ? */
+        int k = 0;
+        while (pseudos[k].mnemonic) {
+          if (strcmp(pseudos[k].mnemonic, word)==0) {
+            is_instr = true;
+            operands = pseudos[k].operands;
+            is_mr    = pseudos[k].is_mr;
+            break;
+          }
+          k++;
+        }
+      }
+      
+      if (is_instr) {
+        /* Word is an instruction.
+         * If it's a memory-reference it might be indirect,
+         * and so followed by an asterix */
+        if (is_mr && (i_buffer[ib] == '*')) {
+          word[j++] = i_buffer[ib++];
+          word[j] = '\0';
+        }
+        
+        o_buffer[ob++] = tab_char;
+        int k=0;
+        while (word[k])
+          o_buffer[ob++] = word[k++];
+        break;
+      } else {
+        /* Word isn't an instruction - 
+         * if first time through loop assume it's a label
+         * if second time - confused put space separator before */
+        if (instr_count==1)
+          o_buffer[ob++] = ' ';
+        int k=0;
+        while (word[k])
+          o_buffer[ob++] = word[k++];
+      }
     }
+    
+    if (is_instr)
+      pending_tabs++;
+    else
+      o_buffer[ob++] = ' ';
+    
+    if (is_instr && operands) {
+      while (i_buffer[ib] && isspace(i_buffer[ib]))
+        ib++; // Discard leading space
+      
+      while (i_buffer[ib] && (!isspace(i_buffer[ib]))) {
+        while (pending_tabs) {
+          o_buffer[ob++] = tab_char;
+          pending_tabs--;
+        }
+        o_buffer[ob++] = i_buffer[ib++];
+      }
+    }
+    
+    if (is_instr)
+      pending_tabs++;
+    else
+      o_buffer[ob++] = ' ';
+    
+    while (i_buffer[ib] && isspace(i_buffer[ib]))
+      ib++; // Discard leading space
+    
+    while (i_buffer[ib]) {
+      while (pending_tabs) {
+        o_buffer[ob++] = tab_char;
+        pending_tabs--;
+      }
+      o_buffer[ob++] = i_buffer[ib++];
+    }      
+  }
   o_buffer[ob] = '\0';
 }
 
@@ -246,13 +261,13 @@ static void tabify(FILE *in_file, FILE *out_file)
     b = 0;
     while ((b < (MAX_LINE-1)) && (c != EOF) && (c != '\n'))
       {
-	if (c != '\0')
-	  i_buffer[b++] = c;
-	c = fgetc(in_file);
+        if (c != '\0')
+          i_buffer[b++] = c;
+        c = fgetc(in_file);
       }
       
     if (c == '\n')
-	c = fgetc(in_file); /* Discard line end character */
+        c = fgetc(in_file); /* Discard line end character */
     
     i_buffer[b] = '\0';
     
@@ -262,8 +277,8 @@ static void tabify(FILE *in_file, FILE *out_file)
     b = 0;
     while ((b < MAX_LINE) && o_buffer[b])
       {
-	fputc(o_buffer[b], out_file);
-	b++;
+        fputc(o_buffer[b], out_file);
+        b++;
       }
       fputc('\n', out_file);
   }
@@ -283,79 +298,83 @@ int main(int argc, char **argv)
   while (a < argc)
     {
       if (pending_filename)
-	{
-	  out_filename = argv[a];
-	  pending_filename = 0;
-	}
+        {
+          out_filename = argv[a];
+          pending_filename = 0;
+        }
       else if ((argv[a][0] == '-') && (reading_args))
-	{
-	  switch(argv[a][1])
-	    {
-	    case '\0':
-	      /*
-	       * Just '-' turn off arg-reading to
-	       * allow a '-' to start the input
-	       * filename.
-	       */
-	      reading_args = 0;
-	      break;
+        {
+          switch(argv[a][1])
+            {
+            case '\0':
+              /*
+               * Just '-' turn off arg-reading to
+               * allow a '-' to start the input
+               * filename.
+               */
+              reading_args = 0;
+              break;
 
-	    case 'c':
-	      /*
-	       * Specify tab char
-	       */
-	      switch(argv[a][2])
-		{
-		case '\\':
-		  switch(argv[a][3])
-		    {
-		    case '\\': tab_char = '\\'; break;
-		    case 't':tab_char = '\t'; break;
-		    case 'v':tab_char = '\v'; break;
-		    case 'n':tab_char = '\n'; break;
-		    case 'r':tab_char = '\r'; break;
-		    case '\'':tab_char = '\''; break;
-		    case '\"':tab_char = '\"'; break;
-		    default:
-		      usage = 1;
-		    }
-		  break;
-		case '\0':
-		  usage = 1;
-		  break;
-		default:
-		  tab_char = argv[a][2];
-		}
-	      break;
+            case 'c':
+              /*
+               * Specify tab char
+               */
+              switch(argv[a][2])
+                {
+                case '\\':
+                  switch(argv[a][3])
+                    {
+                    case '\\': tab_char = '\\'; break;
+                    case 't':tab_char = '\t'; break;
+                    case 'v':tab_char = '\v'; break;
+                    case 'n':tab_char = '\n'; break;
+                    case 'r':tab_char = '\r'; break;
+                    case '\'':tab_char = '\''; break;
+                    case '\"':tab_char = '\"'; break;
+                    default:
+                      usage = 1;
+                    }
+                  break;
+                case '\0':
+                  usage = 1;
+                  break;
+                default:
+                  tab_char = argv[a][2];
+                }
+              break;
 
-	    case 'o':
-	      if (argv[a][2])
-		out_filename = &argv[a][2];
-	      else
-		pending_filename = 1;
-	      break;
+            case 'o':
+              if (argv[a][2])
+                out_filename = &argv[a][2];
+              else
+                pending_filename = 1;
+              break;
 
-	    default:
-	      usage = 1;
-	    }
-	}
+            case 'l':
+              listing = true;
+              break;
+
+            default:
+              usage = 1;
+            }
+        }
       else
-	{
-	  /*
-	   * Should be the input filename
-	   */
-	  if (a == (argc-1))
-	    in_filename = argv[a];
-	  else
-	    usage = 1;
-	}
+        {
+          /*
+           * Should be the input filename
+           */
+          if (a == (argc-1))
+            in_filename = argv[a];
+          else
+            usage = 1;
+        }
       a++;
     }
 
   if (usage)
     {
-      fprintf(stderr, "usage: %s [-c<tab-char>] [-t[ ]<comma-separated-list>] [-o[ ]filename] [-] [<input-filename>]\n",
-	      argv[0]);
+      fprintf(stderr, "usage: %s [-c<tab-char>] [-o[ ]filename] [-l] [-] [<input-filename>]\n",
+              argv[0]);
       exit(1);
     }
 
