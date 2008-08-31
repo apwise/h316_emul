@@ -111,11 +111,16 @@ static void process_line(char i_buffer[], char o_buffer[])
     int n = k-4;
     if (n<0) n = 0;
 
-    while ((k>n) && (isdigit(i_buffer[k])))
+    while ((k>n) &&
+           (isdigit(i_buffer[k]) ||
+            (i_buffer[k]=='O'))) // Common OCR error
       k--;
 
-    if (k <= n) // All four were digits
-      i_buffer[k] = '\0';
+    if (k <= n) { // All four were digits
+      k++;
+      while ((k>0) && (isspace(i_buffer[k])))
+        i_buffer[k--] = '\0';
+    }
 
     //
     // Digits at the start of the line
