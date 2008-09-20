@@ -1,7 +1,7 @@
 ptr SLSTNAM
 g'1
 clear
-a'000321
+a'AREG
 ptr SRCNAM
 ptp OBJNAM
 lpt LSTNAM
