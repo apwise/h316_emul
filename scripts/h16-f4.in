@@ -24,15 +24,21 @@ grepprog="${GREPPROG-grep}"
 rmprog="${RMPROG-rm}"
 mktempprog="${MKTEMPPROG-mktemp}"
 m4prog="${M4PROG-m4}"
+exprprog="${EXPRPROG-expr}"
+printfprog="${PRINTFPROG-printf}"
 
 h16prog="${H16PROG-h16}"
 
 #
 # help and usage information
 #
-usage="Usage: $0 [--help] [-o <object-file>] [-a <listing-file>] <source-file>" 
+usage="Usage: $0 [--help] [-l] [-s] [-b] [-t] [-o <object-file>] [-a <listing-file>] <source-file>" 
 help="Options:
 --help     display this help and exit.
+-l         Set library option flag
+-s         Include side-by-side octal information in symbolic listing
+-b         Include object block information in symbolic listing
+-t         Force inclusion of trace coupling information
 -o         Specify object filename
            (default: source-file with extension replaced by \".obj\")
 -a         Specify listing filename
@@ -44,6 +50,11 @@ help="Options:
 have_srcnam=false
 have_objnam=false
 have_lstnam=false
+
+library_flag=0
+octal_flag=0
+block_flag=0
+trace_flag=0
 
 while test -n "$1"; do
   case $1 in
@@ -57,6 +68,22 @@ while test -n "$1"; do
           echo "$usage"; exit 1
 	fi
 	continue;;
+
+    -l) library_flag=1
+        shift
+        continue;;
+
+    -s) octal_flag=1
+        shift
+        continue;;
+
+    -b) block_flag=1
+        shift
+        continue;;
+
+    -t) trace_flag=1
+        shift
+        continue;;
 
     -o) if [ "$#" -gt 2 ]; then
           have_objnam=true
@@ -108,7 +135,20 @@ fi
 tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
 tmpobjnam=`$mktempprog -t h16-f4-obj.XXXXXX` || tmpnam=/tmp/h16-f4-obj.$$
 
-$m4prog -DSLSTNAM=$f4_slstnam -DSRCNAM=\&$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$tmpobjnam $f4_m4_filename > $tmpnam && \
+src_dev=3
+lst_dev=2
+obj_dev=1
+
+devices=`$exprprog \( $src_dev \* 64 \) + \( $lst_dev \* 8 \) + $obj_dev`
+
+devices=`$exprprog $devices + \( $library_flag \* 32768 \)`
+devices=`$exprprog $devices + \( $octal_flag   \* 16384 \)`
+devices=`$exprprog $devices + \( $block_flag    \* 4096 \)`
+devices=`$exprprog $devices + \( $trace_flag    \* 1024 \)`
+
+octal_devices=`$printfprog "%06o" $devices`
+
+$m4prog -DSLSTNAM=$f4_slstnam -DSRCNAM=\&$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$tmpobjnam -DAREG=$octal_devices $f4_m4_filename > $tmpnam && \
 $h16prog -t $tmpnam > /dev/null && \
 errors=`$grepprog -c "\*\*\*\*\*\*\*\*\*\*" $lstnam`
 
