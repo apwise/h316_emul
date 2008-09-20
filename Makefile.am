@@ -84,7 +84,11 @@ EXTRA_DIST = 	data/m4h_defines.m4 \
 		scripts/h16-as.m4 \
 		scripts/h16-mac.m4 \
 		tapes/dap-16_mod2_slst.ptp \
-		tapes/mac_slst.ptp
+		tapes/mac_slst.ptp \
+		scripts/h16-f4.in \
+		scripts/h16-f4.m4 \
+		tapes/fortran_slst.ptp \
+
 
 install-data-local: h16-as
 	test -z "$(DESTDIR)$(pkgdatadir)/data" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/data"
@@ -99,20 +103,27 @@ install-data-local: h16-as
 	$(INSTALL_DATA) $(srcdir)/tapes/dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 	$(INSTALL_DATA) $(srcdir)/tapes/mac_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 
-CLEANFILES = h16-as version.h
+CLEANFILES = h16-as h16-f4 version.h
 
 do_subst = sed -e 's,[@]pkgdatadir[@],$(pkgdatadir),g'
 
 h16-as: $(srcdir)/scripts/h16-as.in Makefile
 	$(do_subst) < $< > $@
 
+h16-f4: $(srcdir)/scripts/h16-f4.in Makefile
+	$(do_subst) < $< > $@
+
 install-exec-local:
 	rm -f $(bindir)/h16-as && \
 	{ ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-as $(DESTDIR)$(bindir)/h16-as || \
 	  $(INSTALL_PROGRAM) h16-as $(DESTDIR)$(bindir); }
+	rm -f $(bindir)/h16-f4 && \
+	{ ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-f4 $(DESTDIR)$(bindir)/h16-f4 || \
+	  $(INSTALL_PROGRAM) h16-f4 $(DESTDIR)$(bindir); }
 
 uninstall-local:
 	rm -rf $(DESTDIR)$(pkgdatadir)/tapes
 	rm -rf $(DESTDIR)$(pkgdatadir)/data
 	rm -rf $(DESTDIR)$(pkgdatadir)/scripts
 	rm -f  $(DESTDIR)$(bindir)/h16-as
+	rm -f  $(DESTDIR)$(bindir)/h16-f4

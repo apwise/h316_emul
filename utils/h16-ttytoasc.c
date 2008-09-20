@@ -89,7 +89,7 @@ int main(int argc, char **argv)
       c = c & 0x7f;  /* loose the top bit */
       d = 0;
 
-      if (c < 0x20)
+      if ((c < 0x20) || (c == 0x7f))
 	{
 	  /* replace LF by newline (let local OS where this
 	     code is running worry about how to represent \n */

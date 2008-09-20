@@ -20,7 +20,6 @@ tape_dir=$pkgdatadir/tapes
 #
 cpprog="${CPPROG-cp}"
 sedprog="${SEDPROG-sed}"
-awkprog="${AWKPROG-awk}"
 grepprog="${GREPPROG-grep}"
 rmprog="${RMPROG-rm}"
 mktempprog="${MKTEMPPROG-mktemp}"
@@ -94,11 +93,8 @@ fi
 #
 # Files used by this script
 #
-dap_m4_filename=$m4_dir/h16-as.m4
-dapslstnam=$tape_dir/dap-16_mod2_slst.ptp
-
-mac_m4_filename=$m4_dir/h16-mac.m4
-macslstnam=$tape_dir/mac_slst.ptp
+f4_m4_filename=$m4_dir/h16-f4.m4
+f4_slstnam=$tape_dir/fortran_slst.ptp
 
 #
 # Compute filenames
@@ -117,54 +113,25 @@ fi
 tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
 tmpobjnam=`$mktempprog -t h16-f4-obj.XXXXXX` || tmpnam=/tmp/h16-f4-obj.$$
 
-if [ $run_mac != false ]; then
-
-  prenam=`$mktempprog -t h16-mac.XXXXXX` || tmpnam=/tmp/h16-mac.$$
-  asrnam=`$mktempprog -t h16-mac-asr.XXXXXX` || tmpnam=/tmp/h16-mac-asr.$$
-
-  $m4prog -DSLSTNAM=$macslstnam -DSRCNAM=\&$srcnam -DPRENAM=$prenam $mac_m4_filename > $tmpnam &&
-  $h16prog -t $tmpnam > $asrnam &&
-  errors=`$awkprog -- '/MACRO ERRORS/{print $1}' $asrnam`
-
-  if [ "$errors" = "NO" ]; then
-    errors=0;
-  elif [ "$errors" = '**' ]; then
-    errors=1;
-  fi
-  status=$errors
-
-  $rmprog -f $asrnam
-
-  if [ $errors -ne 0 ]; then
-    echo $errors MACRO ERRORS >&2
-    $rmprog -f $prenam;
-    exit $status;
-  fi
-
-  srcnam=$prenam
-else
-  srcnam=\&$srcnam
-fi
-
-$m4prog -DSLSTNAM=$dapslstnam -DSRCNAM=$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$tmpobjnam $dap_m4_filename > $tmpnam && \
+$m4prog -DSLSTNAM=$f4_slstnam -DSRCNAM=\&$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$tmpobjnam $f4_m4_filename > $tmpnam && \
 $h16prog -t $tmpnam > /dev/null && \
-errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{status = $1}
-                     END {print status}' $lstnam`
+errors=`$grepprog -c "\*\*\*\*\*\*\*\*\*\*" $lstnam`
+
+if [ $errors -eq 1 ]; then
+  echo $errors "ERROR" >&2
+elif [ $errors -ne 0 ]; then
+  echo $errors "ERRORS" >&2
+fi
 
 status=$errors
 
 if [ $errors -eq 0 ]; then
   $cpprog $tmpobjnam $objnam
 else
-  echo $errors WARNING OR ERROR FLAGS >&2
-  $grepprog "^[^ ]" $lstnam >&2
+  $grepprog -B 5 "\*\*\*\*\*\*\*\*\*\*" $lstnam >&2
 fi
-
 
 $rmprog -f $tmpnam
-
-if [ $run_mac != false ]; then
-  $rmprog -f $prenam;
-fi
+$rmprog -f $tmpobjnam
 
 exit $status
