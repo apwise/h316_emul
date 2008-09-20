@@ -87,21 +87,23 @@ EXTRA_DIST = 	data/m4h_defines.m4 \
 		tapes/mac_slst.ptp \
 		scripts/h16-f4.in \
 		scripts/h16-f4.m4 \
-		tapes/fortran_slst.ptp \
+		tapes/fortran_slst.ptp
 
-
-install-data-local: h16-as
+install-data-local: h16-as h16-f4
 	test -z "$(DESTDIR)$(pkgdatadir)/data" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/data"
 	$(INSTALL_DATA) $(srcdir)/data/m4h_defines.m4 $(DESTDIR)$(pkgdatadir)/data
 	$(INSTALL_DATA) $(srcdir)/data/main.css $(DESTDIR)$(pkgdatadir)/data
 	$(INSTALL_DATA) $(srcdir)/data/dap.css $(DESTDIR)$(pkgdatadir)/data
 	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
 	$(INSTALL_PROGRAM) h16-as $(DESTDIR)$(pkgdatadir)/scripts
+	$(INSTALL_PROGRAM) h16-f4 $(DESTDIR)$(pkgdatadir)/scripts
 	$(INSTALL_DATA) $(srcdir)/scripts/h16-as.m4 $(DESTDIR)$(pkgdatadir)/scripts
 	$(INSTALL_DATA) $(srcdir)/scripts/h16-mac.m4 $(DESTDIR)$(pkgdatadir)/scripts
+	$(INSTALL_DATA) $(srcdir)/scripts/h16-f4.m4 $(DESTDIR)$(pkgdatadir)/scripts
 	test -z "$(DESTDIR)$(pkgdatadir)/tapes" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/tapes"
 	$(INSTALL_DATA) $(srcdir)/tapes/dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 	$(INSTALL_DATA) $(srcdir)/tapes/mac_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
+	$(INSTALL_DATA) $(srcdir)/tapes/fortran_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 
 CLEANFILES = h16-as h16-f4 version.h
 

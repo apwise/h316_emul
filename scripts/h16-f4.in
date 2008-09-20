@@ -30,10 +30,9 @@ h16prog="${H16PROG-h16}"
 #
 # help and usage information
 #
-usage="Usage: $0 [--help] [-m] [-o <object-file>] [-a <listing-file>] <source-file>" 
+usage="Usage: $0 [--help] [-o <object-file>] [-a <listing-file>] <source-file>" 
 help="Options:
 --help     display this help and exit.
--m         Run the macro preprocessor
 -o         Specify object filename
            (default: source-file with extension replaced by \".obj\")
 -a         Specify listing filename
@@ -45,13 +44,9 @@ help="Options:
 have_srcnam=false
 have_objnam=false
 have_lstnam=false
-run_mac=false
 
 while test -n "$1"; do
   case $1 in
-    -m) run_mac=true
-        shift
-        continue;;
 
     -a) if [ "$#" -gt 2 ]; then
           have_lstnam=true
