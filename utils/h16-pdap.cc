@@ -1649,8 +1649,10 @@ void File::file_title()
   
   while ( (i!=lines.end()) && (*i) &&
           ( ((*i)->get_type() == Line::LINE_BLANK) ||
-            ((*i)->get_type() == Line::LINE_HEAD)))
+            ((*i)->get_type() == Line::LINE_HEAD))) {
+    //std::cout << (*i)->get_src_line() << std::endl;
     i++;
+  }
   
   Line *lp = (*i);
   
@@ -1661,7 +1663,7 @@ void File::file_title()
       if (s[j]=='*') j++;
       while (s[j]==' ') j++;
       c_comment = get_substr(s, j, s.size());
-      comment = c_comment;
+      comment = (c_comment)?c_comment:"";
       delete [] c_comment;
     }
 
