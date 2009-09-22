@@ -322,9 +322,9 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
     if (mod && skip) {
       // Need an @ line
       if (octal)
-        fprintf(fp, "@%04x\n", i);
-      else
         fprintf(fp, "@%06o\n", i);
+      else
+        fprintf(fp, "@%04x\n", i);
     }
 
     if (mod) {
