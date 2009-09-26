@@ -259,6 +259,7 @@ void STDTTY::putch(const char &c)
   bool send = true;
   char ch = c;
   bool send_cr_or_lf = false;
+  int n;
 
   if (last_was_cr)
     {
@@ -292,10 +293,10 @@ void STDTTY::putch(const char &c)
     }
 
   if (send_cr_or_lf)
-    write(STDOUT_FILENO, &cr_or_lf, 1);
+    n = write(STDOUT_FILENO, &cr_or_lf, 1);
 
   if (send)
-    write(STDOUT_FILENO, &ch, 1);
+    n = write(STDOUT_FILENO, &ch, 1);
 }
 
 /*
@@ -306,7 +307,7 @@ void STDTTY::putch(const char &c)
 
 #define NRL_BUFLEN 256
 
-static char *no_readline(char *prompt)
+static char *no_readline(const char *prompt)
 {
   static char buf[NRL_BUFLEN];
   int i, j, n;
