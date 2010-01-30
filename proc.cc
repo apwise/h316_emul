@@ -441,16 +441,39 @@ struct FP_INTF *Proc::fp_intf()
 static signed short short_add(signed short a, signed short m,
                               bool &c)
 {
-  signed short r, v;
+  long aa, mm, rr;
+  signed short r;
 
-  v = ~(a ^ m);      // MSB is signs same
-  r = a + m;
-  v &= (r ^ m);      // if signs were same and now differ
-  c = (v >> 15) & 1; // set overflow
+  aa = static_cast<signed long>(a);
+  mm = static_cast<signed long>(m);
+  rr = aa + mm;
+  
+  r = static_cast<signed short>(rr);
+
+  c = (rr != static_cast<signed long>(r));
+
   return r;
 }
 
 // }}}
+
+static signed short short_sub(signed short a, signed short m,
+                              bool &c)
+{
+  long aa, mm, rr;
+  signed short r;
+
+  aa = static_cast<signed long>(a);
+  mm = static_cast<signed long>(m);
+  rr = aa - mm;
+  
+  r = static_cast<signed short>(rr);
+
+  c = (rr != static_cast<signed long>(r));
+
+  return r;
+}
+
 // {{{ static signed short short_adc(signed short a, signed short m,
 
 /*****************************************************************
@@ -693,59 +716,58 @@ unsigned short Proc::ea(unsigned short instr)
 {
   unsigned short d;
   bool sec_zero;
-  bool ind;
+  bool indirect;
+  bool indexing;
   bool first = true;
 
   m = instr;
-  y = p; // program counter
-  sec_zero = ((instr & 0x0200) == 0);
+  y = p; // Address of instr (i.e. before increment)
 
-  do
-    {      
-      ind = ((m & 0x8000) != 0);
-      
-      if (sec_zero)
-        d = (j & 0x7e00) | (m & 0x81ff);
-      else
-        {
-          if (first)
-            d = (y & 0xfe00) | (m & 0x01ff);
-          else
-            {
-              if (extend)
-                d = m;
-              else
-                d = (p & 0x4000) | (m & 0xbfff);
-            }
-        }
-      
-      if ( ((m & 0x4000) && (!extend)) ||
-           ((instr & 0x4000) && extend && (!ind)) )
-        {
-          // If in extend mode then normal indexing is
-          // not allowed.
-          // But when done with indirection the original
-          // instr can call for indexing
-
-          d += x;
-        }
-      
+  sec_zero = ((m & 0x0200) == 0);
+  indexing = ((m & 0x4000) != 0);
+  
+  do {      
+    indirect = ((m & 0x8000) != 0);
+    
+    if (sec_zero) {
       if (extend)
-        y = d;
+        d = ((j & 0x7e00) | (m & 0x81ff));
       else
-        y = (d & 0xbfff) | (y & 0x4000);
-      
-      if (ind)
-        {
-          half_cycles += 2;
-    
-          (void) read(y & 0x7fff); /* sets m */
-    
-          sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
-        }
-      first = false;
+        d = ((j & 0x3e00) | (m & 0x81ff)) | (p & 0x4000);
+    } else {
+      if (first)
+        d = ((y & 0xfe00) | (m & 0x01ff));
+      else {
+        if (extend)
+          d = m;
+        else
+          d = (m & 0xbfff) | (p & 0x4000);
+      }        
     }
-  while (ind);
+ 
+    if ((indexing) &&  // Looks like indexing called for
+        ((!extend) ||  // Can always do it in non-extended mode
+         (!indirect))) // and when no more indirection
+      d += x;
+      
+    if (extend)
+      y = d;
+    else
+      y = (d & 0xbfff) | (y & 0x4000);
+    
+    if (indirect) {
+      half_cycles += 2;
+    
+      (void) read(y & 0x7fff); /* sets m */
+    
+      sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
+      if (!extend)
+        indexing = ((m & 0x4000) != 0);
+    }
+
+    first = false;
+
+  } while (indirect);
   
   return y & 0x7fff;
 }
@@ -862,7 +884,7 @@ void Proc::write(unsigned short addr, signed short data)
   m = data;
   y = addr;
   
-  if (addr == j)
+  if (((addr ^ j) & ((extend) ? 0x7fff : 0x3fff)) == 0)
     {
       core[addr] = x = data;
       modified[addr] = 1;
@@ -1084,7 +1106,8 @@ void Proc::do_LDX(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 4;
-  write(j, read(ea(instr & 0xbfff)));
+  write(((extend) ? j : ((j & 0x3fff) | (p & 0x4000))),
+        read(ea(instr & 0xbfff)));
 }
 
 void Proc::do_OTK(unsigned short instr)
@@ -1232,7 +1255,7 @@ void Proc::do_SUB(unsigned short instr)
       sc = 0;
     }
   else
-    a = short_add(a, (-read(ea(instr))), c);
+    a = short_sub(a, read(ea(instr)), c);
 }
 
 void Proc::do_TCA(unsigned short instr)
@@ -1243,7 +1266,7 @@ void Proc::do_TCA(unsigned short instr)
   half_cycles += 1;
   // C remains unmodified
   bool v = c;
-  a = short_add(((signed short)0), (-a), v);
+  a = short_sub(((signed short)0), a, v);
 }
 
 void Proc::do_ANA(unsigned short instr)
@@ -2444,6 +2467,14 @@ void Proc::generic_shift(unsigned short instr)
 #endif
   int cccc = (instr >> 6) & 0x0f;
   short d;
+
+  // XXXXX - this was missing XXXXXXXXXX
+  if ((cccc == 007) ||
+      (cccc == 017))
+    c = 0;
+  // But is it for all shifts? Or just those that
+  // set C by overflow? Matters if SC == 0. But can it be?
+  // is zero lots?
 
   sc = ex_sc(instr);
   while (sc < 0)
