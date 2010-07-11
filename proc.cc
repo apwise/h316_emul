@@ -28,6 +28,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <cassert>
 
 #include "iodev.hh"
 #include "ptr.hh"
@@ -1073,12 +1074,14 @@ void Proc::do_INK(unsigned short instr)
 #endif
   a = ((c & 1) << 15) | ((dp & 1) << 14) |
     ((extend & 1) << 13) |
-    (sc & 0x1f);
+    (sc & 0x3f);/* NB Programmers' Reference is wrong,
+                 * 6 bits to A (not 5) from schematics */
 }
 
 void Proc::do_LDA(unsigned short instr)
 {
   unsigned addr;
+  signed short original_a = a;
 
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
@@ -1087,7 +1090,7 @@ void Proc::do_LDA(unsigned short instr)
 
   addr = ea(instr);
 
-  if (dp) addr &= 0xfffffffe; // loose the LSB if double precision
+  if (dp) addr &= ((~0)<<1); // loose the LSB if double precision
 
   a = read(addr);
 
@@ -1095,8 +1098,8 @@ void Proc::do_LDA(unsigned short instr)
     {
       half_cycles += 2;
       addr |= 1;
+      sc = original_a & 0x3f;
       b = read(addr);
-      sc = 0;
     }
 }
 
@@ -1126,7 +1129,7 @@ void Proc::do_OTK(unsigned short instr)
   else
     disable_extend_pending = 1;
       
-  sc = (a & 0x1f);
+  sc = (a & 0x1f); /* Really is only 5 bits (schematics) */
 }
 
 void Proc::do_STA(unsigned short instr)
@@ -1139,6 +1142,8 @@ void Proc::do_STA(unsigned short instr)
   half_cycles += 2;
 
   addr = ea(instr);
+  if (dp)
+    addr &= ((~0L)<<1); // loose the LSB if double precision
 
   write(addr, a);
 
@@ -1148,10 +1153,10 @@ void Proc::do_STA(unsigned short instr)
 
   if (dp)
     {
+      sc = a & 0x3f;
       half_cycles += 2;
       addr |= 1;
       write(addr, b);
-      sc = 0;
     }
 }
 
@@ -1175,6 +1180,8 @@ void Proc::do_ACA(unsigned short instr)
 
 void Proc::do_ADD(unsigned short instr)
 {
+  signed short original_a = a;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
@@ -1187,14 +1194,14 @@ void Proc::do_ADD(unsigned short instr)
 
       half_cycles += 2;
 
-      if (dp) addr &= 0xfffffffe; // loose the LSB
+      if (dp) addr &= ((~0)<<1); // loose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
-        dm |= 0x80000000;
+        dm |= ((~0) << 31);
       
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
-        da |= 0x80000000;
+        da |= ((~0) << 31);
 
       v = ~(da ^ dm);        // Bit 30 is signs same
       da += dm;
@@ -1205,7 +1212,7 @@ void Proc::do_ADD(unsigned short instr)
       b = da & 0x7fff;
       c = (v >> 30) & 1;
 
-      sc = 0;
+      sc = original_a & 0x3f;
     }
   else
     a = short_add(a, read(ea(instr)), c);
@@ -1221,6 +1228,8 @@ void Proc::do_AOA(unsigned short instr)
 
 void Proc::do_SUB(unsigned short instr)
 {
+  signed short original_a = a;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
@@ -1233,14 +1242,14 @@ void Proc::do_SUB(unsigned short instr)
 
       half_cycles += 2;
 
-      if (dp) addr &= 0xfffffffe; // loose the LSB
+      if (dp) addr &= ((~0)<<1); // loose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
-        dm |= 0x80000000;
+        dm |= ((~0) << 31);
       
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
-        da |= 0x80000000;
+        da |= ((~0) << 31);
 
       dm = -dm;
 
@@ -1252,7 +1261,7 @@ void Proc::do_SUB(unsigned short instr)
       b = da & 0x7fff;
       c = (v >> 30) & 1;
 
-      sc = 0;
+      sc = original_a & 0x3f;
     }
   else
     a = short_sub(a, read(ea(instr)), c);
@@ -1340,139 +1349,166 @@ signed short Proc::ex_sc(unsigned short instr)
 
 void Proc::do_ALR(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  
+  lsc = ex_sc(instr);
+
+  while (lsc < 0)
     {
       half_cycles ++;
       c = (a >> 15) & 1;
       a = ((a & 0x7fff) << 1) | c;
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_ALS(unsigned short instr)
 {
+  signed short lsc;
   unsigned short d;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
+  lsc = ex_sc(instr);
   c = 0;
-  while (sc < 0)
+  while (lsc < 0)
     {
       half_cycles ++;
       d = ((a & 0x7fff) << 1);
       if ((a ^ d) & 0x8000)
         c = 1;
       a = d;
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_ARR(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = a & 1;
       a = ((a >> 1) & 0x7fff) | (c << 15);
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_ARS(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = a & 1;
       a = (a & 0x8000)|((a >> 1) & 0x7fff);
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LGL(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = (a >> 15) & 1;
       a = (a << 1) & 0xfffe;
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LGR(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = a & 1;
       a = ((a >> 1) & 0x7fff);
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LLL(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = (a >> 15) & 1;
       a = ((a << 1) & 0xfffe) | ((b >> 15) & 1);
       b = (b << 1) & 0xfffe;
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LLR(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = (a >> 15) & 1;
       a = ((a << 1) & 0xfffe) | ((b >> 15) & 1);
       b = ((b << 1) & 0xfffe) | c;
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LLS(unsigned short instr)
 {
+  signed short lsc;
   signed short d;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
+  lsc = ex_sc(instr);
   c = 0;
-  while (sc < 0)
+  while (lsc < 0)
     {
       half_cycles ++;
       d = ((a << 1) & 0xfffe) | ((b >> 14) & 1);
@@ -1480,56 +1516,66 @@ void Proc::do_LLS(unsigned short instr)
         c = 1;
       a = d;
       b = (b & 0x8000) | ((b << 1) & 0x7ffe);
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LRL(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = b & 1;
       b = ((a & 1) << 15) | ((b >> 1) & 0x7fff);
       a = (a >> 1) & 0x7fff;
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LRR(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = b & 1;
       b = ((a & 1) << 15) | ((b >> 1) & 0x7fff);
       a = (c << 15) | ((a >> 1) & 0x7fff);
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_LRS(unsigned short instr)
 {
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
       c = b & 1;
       b = (b & 0x8000) | ((a & 1) << 14) | ((b >> 1) & 0x3fff);
       a = (a & 0x8000) | ((a >> 1) & 0x7fff);
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 void Proc::do_INA(unsigned short instr)
@@ -2351,7 +2397,105 @@ void Proc::do_DIV(unsigned short instr)
     a & 0xffff, da & 0xffffffff, b & 0xffff, c);
   */
 
-  sc = 0;
+  sc = b & 0x3f;;
+}
+
+static long multiply(short &ra, short &rb, const short &rm, short &sc)
+{
+  int m = rm;
+  int a = ra;
+  int b = rb;
+  int lsc = -8;
+  bool b17, madff;
+  int g, h;
+  int d, e;
+  long p, q;
+  
+  if (m & 0x8000) m |= ((~0) << 16);
+  if (a & 0x8000) a |= ((~0) << 16);
+  
+  q = a * m;
+
+  b = a;
+  b17 = 0;
+  a = 0;
+
+  g = h = 0;
+
+  while (lsc < 0) {
+
+    if (lsc != -8) {
+      if (madff) {
+        b = ((((d & 1) != 0) ? ((~0) << 15) : 0) |
+             ((a & 1) << 14) |
+             ((e >> 2) & 0x3fff));
+        b17 = ((e & 2) != 0);
+        a = d >> 1;
+      } else {
+        b = ((((d & 2) != 0) ? ((~0) << 15) : 0) |
+             ((d & 1) << 14) |
+             ((e >> 2) & 0x3fff));
+        b17 = ((e & 2) != 0);        
+        a = d >> 2;
+      }
+    }
+
+    lsc++;
+
+    if ((b & 1) == b17) {
+      madff = true;
+      g = (a >> 1);
+      if ((b & 2) != 0) { // B15 == 0?
+        // No
+        if (b17) {
+          h = 0;
+        } else {
+          h = -m;
+        }
+      } else {
+        // Yes (B15 == 0)
+        if (b17) {
+          h = m;
+        } else {
+          h = 0;
+        }
+      }
+    } else {
+      madff = false;
+      g = a;
+      if ((b & 2) != 0) { // B15 == 0?
+        // No
+        h = -m;
+      } else {
+        // Yes (B15 == 0)
+        h = m;
+      }
+    }
+
+    d = g + h;
+    e = b;
+
+  }
+
+  if (madff) {
+    b = (((a & 1) << 14) |
+         ((e >> 2) & 0x3fff));
+    a = d;
+  } else {
+    b = (((d & 1) << 14) |
+         ((e >> 2) & 0x3fff));
+    a = d >> 1;
+  }
+
+  p = (a << 15) | (b & 0x7fff);
+
+  assert(p == q);
+
+  ra = a;
+  rb = b;
+  sc = e & 0x3f;
+
+  return p;
 }
 
 void Proc::do_MPY(unsigned short instr)
@@ -2360,26 +2504,11 @@ void Proc::do_MPY(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
 
-  signed long da;
-  signed short sm;
+  const short rm = (signed short) read(ea(instr));
 
   half_cycles += 9;
 
-  // read returns unsigned so cast to a
-  // signed value
-
-  sm = (signed short) read(ea(instr));
-
-  da = a * sm;
-
-  // Now fix up the result to get the strange
-  // 31 bit format in which the sign bit of the
-  // lower 16-bit word is always zero.
-
-  a = (da >> 15) & 0xffff;
-  b = da & 0x7fff;
-
-  sc = 0;
+  (void) multiply(a, b, rm, sc);
 }
 
 void Proc::do_NRM(unsigned short instr)
@@ -2462,11 +2591,13 @@ void Proc::do_iab_sca(unsigned short instr)
 
 void Proc::generic_shift(unsigned short instr)
 {
+  int cccc = (instr >> 6) & 0x0f;
+  short d;
+  signed short lsc;
+
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  int cccc = (instr >> 6) & 0x0f;
-  short d;
 
   // XXXXX - this was missing XXXXXXXXXX
   if ((cccc == 007) ||
@@ -2476,8 +2607,8 @@ void Proc::generic_shift(unsigned short instr)
   // set C by overflow? Matters if SC == 0. But can it be?
   // is zero lots?
 
-  sc = ex_sc(instr);
-  while (sc < 0)
+  lsc = ex_sc(instr);
+  while (lsc < 0)
     {
       half_cycles ++;
 
@@ -2517,8 +2648,9 @@ void Proc::generic_shift(unsigned short instr)
         default:
           abort();
         }
-      sc++;
+      lsc++;
     }
+  sc = b & 0x3f;
 }
 
 
