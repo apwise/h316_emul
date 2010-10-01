@@ -2,18 +2,19 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(h16, 1.4.9, apw@adrianwise.co.uk)
+AC_INIT(h16, 1.4.10, apw@adrianwise.co.uk)
 
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997, 1998, 1999, 2004, 2005, 2006, 2007, 2008, 2009 Adrian Wise])
+AC_COPYRIGHT([Copyright (c) 1997, 1998, 1999, 2004, 2005, 2006, 2007, 2008, 2009, 2010 Adrian Wise])
 AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_CXX
+AM_PROG_CC_C_O
 
 AC_ARG_ENABLE([gui],
               AS_HELP_STRING([--disable-gui],[Compile a text-only version with no GUI]),
