@@ -37,7 +37,7 @@
  * The file is opened by the first time (since master clear)
  * that the reader is started.
  *
- * Another filename will not be requested until eother a
+ * Another filename will not be requested until either a
  * master-clear occurs, or that the reader is started and the
  * tape is at EOT (i.e. at EOF).
  *
