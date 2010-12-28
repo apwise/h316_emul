@@ -33,78 +33,73 @@ int main(int argc, char **argv)
   FILE *fpi, *fpo;
   int c, d;
 
-  while (argv[a])
-    {
-      if ((strncmp(argv[a], "-h", 2)==0) || (strncmp(argv[a], "--h", 3)==0))
-	{
-	  help = 1;
-	  break;
-	}
-      else
-	break;
-    }
+  while (argv[a]) {
+    if ((strncmp(argv[a], "-h", 2)==0) || (strncmp(argv[a], "--h", 3)==0))
+      {
+        help = 1;
+        break;
+      }
+    else
+      break;
+  }
   
-  if (help)
-    {
-      printf(USAGE, argv[0]);
-      printf("Options:\n");
-      printf("-h|--help  Print this help and exit\n");
-      printf("\n");
-      printf("           CR-LF replaced by newline,\n");
-      printf("           other control codes are deleted.\n");
-      printf("           Most significant bit of all characters forced to 0.\n");
-      exit(0);
-    }
+  if (help) {
+    printf(USAGE, argv[0]);
+    printf("Options:\n");
+    printf("-h|--help  Print this help and exit\n");
+    printf("\n");
+    printf("           LF-CR replaced by newline,\n");
+    printf("           other control codes are deleted.\n");
+    printf("           Most significant bit of all characters forced to 0.\n");
+    exit(0);
+  }
 
   if ((argc-a) != 2)
     usage = 1;
 
-  if (usage)
-    {
-      fprintf(stderr, USAGE, argv[0]);
-      exit(1);
-    }
+  if (usage) {
+    fprintf(stderr, USAGE, argv[0]);
+    exit(1);
+  }
 
   fpi = fopen(argv[a], "rb");
-  if (!fpi)
-    {
-      fprintf(stderr, "Could not open <%s> for reading\n",
-	      argv[a]);
-      exit(1);
-    }
+  if (!fpi) {
+    fprintf(stderr, "Could not open <%s> for reading\n",
+            argv[a]);
+    exit(1);
+  }
   a++;
 
   fpo = fopen(argv[a], "w");
-  if (!fpi)
-    {
-      fprintf(stderr, "Could not open <%s> for writing\n",
-	      argv[a]);
-      exit(1);
-    }
+  if (!fpi) {
+    fprintf(stderr, "Could not open <%s> for writing\n",
+            argv[a]);
+    exit(1);
+  }
 
   c = getc(fpi);
 
-  while (c != EOF)
-    {
-      c = c & 0x7f;  /* loose the top bit */
-      d = 0;
+  while (c != EOF) {
+    c = c & 0177;  /* lose the top bit */
+    d = 0;
 
-      if ((c < 0x20) || (c == 0x7f))
-	{
-	  /* replace LF by newline (let local OS where this
-	     code is running worry about how to represent \n */
-	  if (c == 0x0a)
-	    d = '\n';
+    if ((c < 0040) || (c == 0177)) {
+      /* replace LF by newline (let local OS where this
+         code is running worry about how to represent \n) */
+      if (c == 0012)
+        d = '\n';
 
-	  /* CR and other ctrl chars are ignored */
-	}
-      else
-	d = c;
-      
-      if (d > 0)
-	putc(d, fpo);
-      c = getc(fpi);
+      /* CR and other ctrl chars are ignored, including
+       * X-OFF, RUBOUT that may occur at the end of each source line
+       * (for ASR reader control) and the EOM record, if any. */
     }
+    else
+      d = c;
+      
+    if (d > 0)
+      putc(d, fpo);
+    c = getc(fpi);
+  }
 
   fclose(fpi);
   fclose(fpo);
