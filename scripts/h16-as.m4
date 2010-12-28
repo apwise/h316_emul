@@ -1,7 +1,7 @@
 ptr SLSTNAM
 g'1
 clear
-a'140223
+a CTRLNUM
 ptr SRCNAM
 g'400
 ptr SRCNAM

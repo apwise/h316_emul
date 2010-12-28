@@ -31,13 +31,14 @@ h16prog="${H16PROG-h16}"
 #
 # help and usage information
 #
-usage="Usage: $0 [--help] [-m] [-o <object-file>] [-a <listing-file>] <source-file>" 
+usage="Usage: $0 [--help] [-m] [-ac] [-o <object-file>] [-a <listing-file>] <source-file>" 
 help="Options:
 --help     display this help and exit.
--m         Run the macro preprocessor
--o         Specify object filename
+-m         Run the macro preprocessor.
+-ac        Omit false conditionals from the listing.
+-o         Specify object filename.
            (default: source-file with extension replaced by \".obj\")
--a         Specify listing filename
+-a         Specify listing filename.
            (default: source-file with extension replaced by \".lst\")"
 
 #
@@ -47,10 +48,15 @@ have_srcnam=false
 have_objnam=false
 have_lstnam=false
 run_mac=false
+omit_cond=false
 
 while test -n "$1"; do
   case $1 in
     -m) run_mac=true
+        shift
+        continue;;
+
+    -ac) omit_cond=true
         shift
         continue;;
 
@@ -114,16 +120,23 @@ if [ $have_lstnam = false ]; then
   lstnam=$dirnam/$basnam.lst
 fi
 
+if [ $omit_cond = false ]; then
+  ctrlnum="'140223"
+else
+  ctrlnum="'100223"
+fi
+
 tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
-tmpobjnam=`$mktempprog -t h16-f4-obj.XXXXXX` || tmpnam=/tmp/h16-f4-obj.$$
+tmpobjnam=`$mktempprog -t h16-dap-obj.XXXXXX` || tmpnam=/tmp/h16-dap-obj.$$
 
 if [ $run_mac != false ]; then
 
   prenam=`$mktempprog -t h16-mac.XXXXXX` || tmpnam=/tmp/h16-mac.$$
   asrnam=`$mktempprog -t h16-mac-asr.XXXXXX` || tmpnam=/tmp/h16-mac-asr.$$
 
-  $m4prog -DSLSTNAM=$macslstnam -DSRCNAM=\&$srcnam -DPRENAM=$prenam $mac_m4_filename > $tmpnam &&
-  $h16prog -t $tmpnam > $asrnam &&
+  $m4prog "-DSLSTNAM=$macslstnam" "-DSRCNAM=&$srcnam" "-DPRENAM=$prenam" \
+          $mac_m4_filename > $tmpnam && \
+  $h16prog -t $tmpnam > $asrnam && \
   errors=`$awkprog -- '/MACRO ERRORS/{print $1}' $asrnam`
 
   if [ "$errors" = "NO" ]; then
@@ -146,7 +159,8 @@ else
   srcnam=\&$srcnam
 fi
 
-$m4prog -DSLSTNAM=$dapslstnam -DSRCNAM=$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$tmpobjnam $dap_m4_filename > $tmpnam && \
+$m4prog "-DSLSTNAM=$dapslstnam" "-DSRCNAM=$srcnam" "-DLSTNAM=&$lstnam" \
+        "-DOBJNAM=$tmpobjnam" "-DCTRLNUM=$ctrlnum" $dap_m4_filename > $tmpnam && \
 $h16prog -t $tmpnam > /dev/null && \
 errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{status = $1}
                      END {print status}' $lstnam`
