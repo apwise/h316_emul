@@ -2305,99 +2305,166 @@ void Proc::do_DBL(unsigned short instr)
 }
 
 
+static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
+{
+  int d, e;
+  bool azzzz, a00ff, m01ff, d01ff, remok;
+  bool e00dj;
+
+  int m = rm;
+  int a = ra;
+  int b = rb;
+
+  bool c = true;
+  int lsc = -17;
+  int count = 0;
+
+  bool madff = false;
+  bool dogff = false;
+
+  // T1
+  a00ff = azzzz = (a < 0);
+  m01ff = (m < 0);
+
+  d = a;
+  e = b;
+
+  while (!dogff) {
+    // T2
+
+    // Some intermediate signals...
+    d01ff = (d >> 15) & 1;
+    remok = (d == 0) || (d01ff == azzzz);
+
+    /* printf("lsc = %d, madff=%d, remok=%d, d01ff=%d\n",
+       lsc, madff, remok, d01ff); */
+
+    e00dj = (d01ff ^ m01ff ^ 1) & 1;
+
+    if (lsc == -17) {
+      // Essentially nothing happens
+    } else if (lsc < -1) {
+
+      if ((lsc == -16) && 
+          (d01ff != azzzz))
+        c = false;
+
+      if (!c) {
+        a00ff = d01ff;
+        a = ((d << 1) & 0xfffe) | ((e >> 14) & 1);
+        if ((a >> 15) & 1)
+          a |= (-1 << 16);
+        b = ((e << 1) & 0xfffe) | e00dj;
+        if ((b >> 15) & 1)
+          b |= (-1 << 16);
+      }
+
+    } else if (lsc == -1) {
+
+      if (!c) {
+        a00ff = d01ff;
+        a = d;
+        if ((a >> 15) & 1)
+          a |= (-1 << 16);
+        b = ((e << 1) & 0xfffe) | e00dj;
+        if ((b >> 15) & 1)
+          b |= (-1 << 16);
+
+        if ((lsc == -1) && remok && (!d01ff))
+         madff = true;
+      }
+
+    } else { // lsc == 0
+
+      a00ff = d01ff;
+
+      if (remok) {
+        a = e & 0xffff;
+        if ((a >> 15) & 1)
+          a |= (-1 << 16);
+        b = d & 0xffff;
+        if ((b >> 15) & 1)        
+          b |= (-1 << 16);
+        madff = true;
+        dogff = true;
+      } else {
+        a = d & 0xffff;
+      }
+    }
+
+    /* printf("  a = %06d:%06o b = %06d:%06o a0=%d c=%d\n",
+       a, (a & 0xffff),
+       b, (b & 0xffff),
+       a00ff, c); */
+
+    if (lsc != 0)
+      lsc++;
+
+    // TLATE
+
+    if (madff) {
+      if ((a00ff != m01ff) &&
+          (dogff))
+        d = a + 1;
+      else
+        d = a;
+    } else {
+      if (a00ff == m01ff)
+        d = a - m;
+      else
+        d = a + m;
+      //printf("a00ff = %d, m01ff = %d\n", a00ff, m01ff);
+    }
+    e = b;
+
+    /* 
+       printf("   d = %06d:%07o e = %06d:%06o\n",
+       d, (d & 0x1ffff),
+       e, (e & 0xffff));
+    */
+
+    count++;
+    assert(count < 20);
+  }
+
+  // T4
+  if ((((d >> 15) & 3) != 0) &&
+      (((d >> 15) & 3) != 3))
+    c = 1;
+
+  a = d & 0xffff;
+  if ((a >> 15) & 1)
+    a |= (-1 << 16);
+        
+  /*
+    printf("T4\n");
+    printf("  a = %06d:%06o b = %06d:%06o a0=%d c=%d\n",
+    a, (a & 0xffff),
+    b, (b & 0xffff),
+    a00ff, c);
+  */
+  
+  ra = a;
+  rb = b;
+  cbitf = c;
+  sc = e & 0x3f;
+
+  //printf("divide() count = %d\n", count);
+
+  assert((count == 18) || (count == 19));
+
+  return count;
+}
+
 void Proc::do_DIV(unsigned short instr)
 {
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
 
-  signed long da;
-  unsigned short um;
-  signed short sm, sa;
+  const short rm = (signed short) read(ea(instr));
 
-  half_cycles += 19;
-  //
-  // This is a guess since the actual divide time may
-  // be 20, 21 or 22 half cycles. Since 2 are acounted for
-  // by the fetch 18, 19 or 20 should be added here
-  // however I haven't bothered with the data dependency
-  // that determines the execution time.
-  //
-
-  // get the divisor, save its sign and then
-  // convert it to unsigned.
-  um = read(ea(instr));
-  sm = (signed short) um;
-  if (sm < 0)
-    um = (-sm);
-
-  sa = a; // Preserve the the sign of A
-  da = ((a & 0xffff) << 15) | (b & 0x7fff);
-  // Note that the sign bit is now in bit 30
-
-  if (da & 0x40000000)
-    da = (-da) & 0x7fffffff;
-
-  /*
-    printf("%s um=0x%04x sm=0x%04x\n", __PRETTY_FUNCTION__,
-    um & 0xffff, sm & 0xffff);
-    printf("%s a=0x%04x b=0x%04x c=%d\n", __PRETTY_FUNCTION__,
-    a & 0xffff, b & 0xffff, c);
-    printf("%s da=0x%08x\n", __PRETTY_FUNCTION__, da);
-  */
-
-  if (um == 0)
-    c = 1;
-  else
-    {
-      b = da % um;
-      da = da / um;
-
-      //
-      // At this point an unsigned divide has
-      // taken place.
-      //
-      // According to handwritten notes in the programmers'
-      // manual the following holds:
-      //
-      // +/- gives -
-      // -/- gives -
-      // -/+ gives +
-      // +/+ gives +
-      //
-      // However this appears to be wrong since in the
-      // test code the following is expected:
-      //
-      // +/- gives - remainder +
-      // -/- gives + remainder - 
-      // -/+ gives - remainder -
-      // +/+ gives + remainder +
-      //
-      // so, if the signs of the dividend and divisor
-      // differ then the result is -ve
-      
-
-      if (((sm ^ sa) & 0x8000) != 0)
-        da = -da;
-
-      if (sa & 0x8000)
-        b = -b;
-
-      a = da & 0xffff;
-      //
-      // Test the upper bits of da for overflow
-      // 
-      c = ( ((a < 0) && ((da & 0xffff0000) != 0xffff0000)) ||
-            ((a > 0) && ((da & 0xffff0000) != 0)) );
-
-    }
-    
-  /*
-    printf("%s a=0x%04x da=0x%08x b=0x%04x c=%d\n", __PRETTY_FUNCTION__,
-    a & 0xffff, da & 0xffffffff, b & 0xffff, c);
-  */
-
-  sc = b & 0x3f;;
+  half_cycles += divide(a, b, rm, sc, c);
 }
 
 static long multiply(short &ra, short &rb, const short &rm, short &sc)
