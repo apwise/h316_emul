@@ -49,7 +49,7 @@ public:
   unsigned short read(unsigned short addr)
   {
     y = addr;
-    m = core[addr];
+    m = core[addr & addr_mask];
     return m;
   };
   
@@ -65,8 +65,15 @@ public:
   void set_b(unsigned short n) {b = n;};
   unsigned short get_b(void) {return b;};
   void set_x(unsigned short n);
+  void set_just_x(unsigned short n);
   unsigned short get_x(void) {return x;};
   
+  bool get_c() {return c;};
+  bool get_ex() {return extend;};
+  bool get_dp() {return dp;};
+
+  unsigned short get_sc() {return sc & 0x3f;};
+
   /* 
    * Get and set sense switches
    */
@@ -101,7 +108,12 @@ public:
   bool optimize_io_poll(unsigned short instr);
 
   void abort();
-  
+
+  void sampled_io(bool drlin, unsigned short inb){
+    this->drlin=drlin; this->inb=inb;};
+
+  int get_wrt_info(unsigned short addr[2], unsigned short data[2]);
+
 private:
   /*
    * the following are the machine registers
@@ -115,12 +127,22 @@ private:
   unsigned short y; // Address register
   unsigned short j; // base sector relocation
 
+  // sampled I/O values
+  bool drlin;
+  unsigned short inb;
+
+  // Memory write testing
+  int wrts;
+  unsigned short wrt_addr[2];
+  unsigned short wrt_data[2];
+
   /*
    * Various flags
    */
-  bool pi, pi_pending, pi_enable;
+  bool pi, pi_pending;
   unsigned short interrupts;
   bool start_button_interrupt;
+  bool break_flag;
 
   bool goto_monitor_flag;
   bool jmp_self_minus_one;
@@ -130,7 +152,8 @@ private:
   bool dp;
   bool extend;
   bool disable_extend_pending;
-  bool extend_allowed;
+  const bool extend_allowed; // i.e. whether CPU has extended addressing
+  const unsigned short addr_mask;
 
   signed short sc; // shift count
 
@@ -147,6 +170,7 @@ private:
 
   bool run;     // flag to say we're still running
   bool fetched; // flag to say that an instruction has been fetched
+  unsigned short fetched_p;
 
   unsigned long half_cycles;
 
@@ -165,6 +189,8 @@ private:
    */
   int trace_ptr;
   struct Btrace *btrace_buf;
+
+  void increment_p(unsigned short n = 1);
 
   /* These routines are public in order that the instruction
      tables can refer to them. */

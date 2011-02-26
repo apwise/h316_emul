@@ -20,8 +20,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef RTL_SIM
 #include "stdtty.hh"
-
+#endif
 #include <iostream>
 
 #ifdef NO_DO_PROCS
