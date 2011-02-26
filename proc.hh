@@ -84,6 +84,7 @@ public:
 
   void set_interrupt(unsigned short bit);
   void clear_interrupt(unsigned short bit);
+  void set_rtclk(bool v);
 
   void dump_memory();
   void dump_trace(const char *filename, int n);
@@ -142,7 +143,10 @@ private:
   bool pi, pi_pending;
   unsigned short interrupts;
   bool start_button_interrupt;
+  bool rtclk;
   bool break_flag;
+  bool break_intr;
+  unsigned int break_addr;
 
   bool goto_monitor_flag;
   bool jmp_self_minus_one;

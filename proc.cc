@@ -402,7 +402,10 @@ void Proc::master_clear(void)
   pi = pi_pending = 0;
   interrupts = 0;
   start_button_interrupt = 0;
+  rtclk = false;
   break_flag = false;
+  break_intr = false;
+  break_addr = 0;
 
   goto_monitor_flag = 0;
   last_jmp_self_minus_one = jmp_self_minus_one = false;
@@ -565,12 +568,17 @@ void Proc::set_just_x(unsigned short n)
 void Proc::set_interrupt(unsigned short bit)
 {
   interrupts |= bit;
-};
+}
 
 void Proc::clear_interrupt(unsigned short bit)
 {
   interrupts &= (~bit);
-};
+}
+
+void Proc::set_rtclk(bool v)
+{
+  rtclk = v;
+}
 
 /*****************************************************************
  * Front-panel memory access
@@ -620,12 +628,13 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
        * If this was a break then the contents of
        * M are not an instruction, since it was not
        * fetched.
-       * Since, at the moment only one sort of break
-       * is modelled - an interrupt = this can be
-       * substituted unconditionally here.
        */
 
-      instr = 0120063; // JST *'63
+      instr = (((break_intr) ?
+                0120000 :  // JST *
+                0024000) | // IRS
+               break_addr);
+
       fetched_p = 0;
     } else {
       instr = m;
@@ -685,12 +694,16 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
   break_flag = false;
 
   /*
-   * If pi is set (interrupts enabled)
-   * then we might interrupt instead of executing
-   * the next instruction
+   * Figure out what break, if any, to do.
    */
-  if (pi && (interrupts || start_button_interrupt)) {
+  if (rtclk) {
     break_flag = true;
+    break_intr = false;
+    break_addr = 061;
+  } else if (pi && (interrupts || start_button_interrupt)) {
+    break_flag = true;
+    break_intr = true;
+    break_addr = 063;
 
     pi = pi_pending = 0; // disable interrupts
     extend = extend_allowed; // force extended addressing
@@ -1797,8 +1810,7 @@ void Proc::do_IRS(unsigned short instr)
   y = ea(instr);
   d = read(y) + 1;
   write(y, d);
-  increment_p((d==0) ? 1 : 0);
-  //printf("p = %06o\n", p);
+  increment_p(((!break_flag) && (d==0)) ? 1 : 0);
 }
 
 void Proc::do_JMP(unsigned short instr)
