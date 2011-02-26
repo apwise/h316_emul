@@ -30,12 +30,16 @@
 #include <stdio.h>
 #include <cassert>
 
+#ifdef RTL_SIM
+#define NO_GTK (1)
+#else
 #include "iodev.hh"
 #include "ptr.hh"
 #include "asr_intf.hh"
 #include "stdtty.hh"
-
 #include "event.hh"
+#endif
+
 #include "instr.hh"
 #include "proc.hh"
 
@@ -130,7 +134,9 @@ static unsigned short keyin[] =
 // {{{ Proc::Proc(STDTTY *stdtty)
 
 Proc::Proc(STDTTY *stdtty)
-  : instr_table()
+  : instr_table(),
+    extend_allowed(1),
+    addr_mask((extend_allowed) ? 0x7fff : 0x3fff)
 {
   long i;
 
@@ -141,11 +147,10 @@ Proc::Proc(STDTTY *stdtty)
   core = (signed short *) malloc(sizeof(signed short) * CORE_SIZE);
   modified = (bool *) malloc(sizeof(bool) * CORE_SIZE);
 
-  for (i=0; i<CORE_SIZE; i++)
-    {
-      core[i] = 0;
-      modified[i] = 0;
-    }
+  for (i=0; i<CORE_SIZE; i++) {
+    core[i] = 0;
+    modified[i] = 0;
+  }
   x = core[0];
 
   for (i=1; i<020; i++)
@@ -171,7 +176,11 @@ Proc::Proc(STDTTY *stdtty)
    * Build a table of IO devices indexed by device
    * address
    */
+#ifdef RTL_SIM
+  devices = 0;
+#else
   devices = IODEV::dispatch_table(this, stdtty);
+#endif
 
   /*
    * Initialize the trace buffer
@@ -193,6 +202,11 @@ Proc::Proc(STDTTY *stdtty)
 #ifdef TEST_GENERIC_GROUP_A
   test_generic_group_A();
 #endif
+
+  wrts = 0;
+  wrt_addr[0] = wrt_addr[1] = 0;
+  wrt_data[0] = wrt_data[1] = 0;
+
 }
 
 // }}}
@@ -278,6 +292,7 @@ void Proc::dump_disassemble(char *filename, int first, int last)
 }
 
 // }}}
+// {{{ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
 
 void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
 {
@@ -351,6 +366,23 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
     fclose(fp);
 }
 
+// }}}
+ 
+// {{{ void Proc::increment_p(unsigned short n)
+
+void Proc::increment_p(unsigned short n)
+{
+  unsigned short g = ((extend) ?
+                      ((p & 0x7fff) | (m & 0x8000)) :
+                      ((p & 0x3fff) | (m & 0xc000)));
+  unsigned short d = g + n;
+
+  p = (((extend) || (!extend_allowed)) ? d :
+       ((d & 0xbfff) | (fetched_p & 0x4000)));
+}
+
+// }}}
+
 // {{{ void Proc::master_clear(void)
 
 /*****************************************************************
@@ -367,9 +399,11 @@ void Proc::master_clear(void)
   
   fetched = false;
   
-  pi = pi_pending = pi_enable = 0;
+  pi = pi_pending = 0;
   interrupts = 0;
   start_button_interrupt = 0;
+  break_flag = false;
+
   goto_monitor_flag = 0;
   last_jmp_self_minus_one = jmp_self_minus_one = false;
  
@@ -377,16 +411,18 @@ void Proc::master_clear(void)
   dp = 0;
   extend = 0;
   disable_extend_pending = 0;
-  extend_allowed = 1;
-  sc = 0;
-  
+
+  sc = 0x3f;
+#ifndef RTL_SIM
   IODEV::master_clear_devices(devices);
   Event::discard_events();
+#endif
 }
 
 // }}}
 
 #ifndef NO_GTK
+// {{{ struct FP_INTF *Proc::fp_intf()
 /*****************************************************************
  * Build the front-panel interface structure
  *****************************************************************/
@@ -431,6 +467,8 @@ struct FP_INTF *Proc::fp_intf()
   
   return intf;
 }
+
+// }}}
 #endif
 
 // {{{ static signed short short_add(signed short a, signed short m,
@@ -457,6 +495,7 @@ static signed short short_add(signed short a, signed short m,
 }
 
 // }}}
+// {{{ static signed short short_sub(signed short a, signed short m,
 
 static signed short short_sub(signed short a, signed short m,
                               bool &c)
@@ -475,6 +514,7 @@ static signed short short_sub(signed short a, signed short m,
   return r;
 }
 
+// }}}
 // {{{ static signed short short_adc(signed short a, signed short m,
 
 /*****************************************************************
@@ -508,6 +548,11 @@ void Proc::set_x(unsigned short n)
   m = n;
   y = j;
   core[j] = n;
+}
+
+void Proc::set_just_x(unsigned short n)
+{
+  x = n;
 }
 
 // }}}
@@ -550,7 +595,7 @@ void Proc::mem_access(bool p_not_pp1, bool store)
  *****************************************************************/
 void Proc::do_instr(bool &run, bool &monitor_flag)
 {
-  unsigned short instr, dp;
+  unsigned short instr;
 
   this->run = 1; // else we wouldn't have gotten here!
 
@@ -558,156 +603,134 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
    * fetched records whether or not an instruction
    * has already been fetched (into the M register)
    */
-  if (fetched)
-    {
-      /*
-       * Yes, it has been fetched
-       * Normal executions sequence...
-       */
-
-      if(goto_monitor_flag)
-        {
-          monitor_flag = 1;
-          goto_monitor_flag = 0;
-        }
-
-      /*
-       * Interrupt enable is delayed by one instruction
-       * (to enable return from interrupt). This is achieved
-       * by setting pi_pending, which is copied to 
-       * pi_enable here, and on to pi below.
-       */
-      pi_enable = pi_pending;
-
-      /*
-       * If pi is set (interrupts enabled)
-       * then we might interrupt instead of executing
-       * the fetched instruction
-       */
-      if (pi && (interrupts || start_button_interrupt))
-        {
-          pi = pi_pending = 0; // disable interrupts
-          extend = extend_allowed; // force extended addressing
-          
-          //printf("Interrupt, P = `%06o `63=`%06o intr=%06o\n",
-          //  p, core[063], interrupts);
-          
-          instr = 0120063; // JST *'63
-          
-          p -= 1; // so that when JST adds 1 we store correct address
-          (this->*instr_table.dispatch(instr))(instr);
-          
-          dp = 0xffff;
-          btrace_buf[trace_ptr].brk = 1; // It was a break
-        }
-      else
-        {
-          dp = p; /* save P for the trace report
-                   * since it may be modified */
-          instr = m;
-          
-          last_jmp_self_minus_one = jmp_self_minus_one;
-          jmp_self_minus_one = false;
-
-          /*
-           * Now simply jump to the routine that handles
-           * this instruction.
-           */
-          (this->*instr_table.dispatch(instr))(instr);
-          
-          btrace_buf[trace_ptr].brk = 0; // It was a normal instruction
-        }
-      
-      // binary trace ...
-      
-      btrace_buf[trace_ptr].v = 1; // valid
-      btrace_buf[trace_ptr].half_cycles = half_cycles;
-      btrace_buf[trace_ptr].a = a;
-      btrace_buf[trace_ptr].b = b;
-      btrace_buf[trace_ptr].c = c;
-      btrace_buf[trace_ptr].x = x;
-      btrace_buf[trace_ptr].p = dp; // saved pc
-      btrace_buf[trace_ptr].y = y;  // EA of MR instructions
-      btrace_buf[trace_ptr].instr = instr;
-      
-      trace_ptr = (trace_ptr + 1) % TRACE_BUF;
-
-      //       static bool trace_on = false;
-      //       if (dp == 001461) trace_on = true;
-
-      //       if (trace_on)
-      //         {
-      //           printf("A:%06o B:%06o X:%06o C:%d %s\n",
-      //                   (a & 0xffff),
-      //                   (b & 0xffff),
-      //                   (x & 0xffff),
-      //                   (c & 1),
-      //                  Instr::disassemble(dp, instr,  false));
-      //         }
-
-      //       static long count=0;
-      //       count ++;
-      //       if ((count % 1000000) == 0)
-      //         printf("count=%ld\n", count);
-      //       if (count == 4000000)
-      //         this->run = false;
-
-      //       if ((half_cycles > 7500000) && ((half_cycles % 100000)==0))
-      //         printf("%010lu\n", half_cycles);
-      //       if (half_cycles == 33500000)
-      //         this->run = false;
-
-      /*
-       * We either interrupted, or interrupts weren't
-       * enabled. Either way clear this flag.
-       */
-      start_button_interrupt = 0;
-     
-      /*
-       * Finally step the program counter
-       */
-      if (extend_allowed)
-        p = (p + 1) & 0x7fff;
-      else
-        p = (p + 1) & 0x3fff;
+  if (fetched) {
+    
+    /*
+     * Yes, it has been fetched
+     * Normal executions sequence...
+     */
+    
+    if (goto_monitor_flag) {
+      monitor_flag = 1;
+      goto_monitor_flag = 0;
     }
-  else
+    
+    if (break_flag) {
+      /*
+       * If this was a break then the contents of
+       * M are not an instruction, since it was not
+       * fetched.
+       * Since, at the moment only one sort of break
+       * is modelled - an interrupt = this can be
+       * substituted unconditionally here.
+       */
+
+      instr = 0120063; // JST *'63
+      fetched_p = 0;
+    } else {
+      instr = m;
+
+      /*
+       * Step the program counter
+       */
+      fetched_p = p;
+
+      /*
+       * On the real hardware, at the instant that the
+       * p comes through the adder, m is zero (which can
+       * affect the upper bits of the resulting p.
+       * So model that, but then the instruction gets
+       * put (back) into the m register.
+       */ 
+      m = 0;
+      increment_p();
+      m = instr;
+    }
+ 
+    last_jmp_self_minus_one = jmp_self_minus_one;
+    jmp_self_minus_one = false;
+    
+    /*
+     * Now simply jump to the routine that handles
+     * this instruction.
+     */
+    (this->*instr_table.dispatch(instr))(instr);
+    
+    // binary trace ...
+    
+    btrace_buf[trace_ptr].brk = break_flag;
+    btrace_buf[trace_ptr].v = true;
+    btrace_buf[trace_ptr].half_cycles = half_cycles;
+    btrace_buf[trace_ptr].a = a;
+    btrace_buf[trace_ptr].b = b;
+    btrace_buf[trace_ptr].c = c;
+    btrace_buf[trace_ptr].x = x;
+    btrace_buf[trace_ptr].p = (break_flag) ? 0xffff : fetched_p;
+    btrace_buf[trace_ptr].y = y;  // EA of MR instructions
+    btrace_buf[trace_ptr].instr = instr;
+    
+    trace_ptr = (trace_ptr + 1) % TRACE_BUF;
+        
+    /*
+     * We either interrupted, or interrupts weren't
+     * enabled. Either way clear this flag.
+     */
+    start_button_interrupt = 0;
+
+    
+  } else
     p = y; /* Front panel updates Y not P
             * So copy Y into P before fetching */
 
-  (void) read(p);   // leaving the instruction in the m register
-  half_cycles += 2; /* Fetch */
-  
-  if (fetched)
-    {
-      /*
-       * Enable the interrupts
-       */
-      if (pi_enable && (!pi))
-        {
-          pi = 1;
-          pi_enable = pi_pending = 0;
-          //printf("Enabling Interrupt @ `%06o", dp);
-        }
-      
-      /*
-       * If we're still running then service any
-       * events that are due now.
-       * If we just halted then flush all pending
-       * events.
-       */
-      if (this->run)
-        (void) Event::call_devices(half_cycles, 1);
-      else
-        Event::flush_events(half_cycles);
-    }
+  break_flag = false;
 
+  /*
+   * If pi is set (interrupts enabled)
+   * then we might interrupt instead of executing
+   * the next instruction
+   */
+  if (pi && (interrupts || start_button_interrupt)) {
+    break_flag = true;
+
+    pi = pi_pending = 0; // disable interrupts
+    extend = extend_allowed; // force extended addressing
+      
+  } else {
+    (void) read(p);   // Leaving the instruction in the m register
+    half_cycles += 2; // Due to the fetch
+  }
+
+  if (fetched) {
+    /*
+     * Enable the interrupts
+     */
+    if (pi_pending && (!pi)) {
+      pi = true;
+      pi_pending = false;
+    }
+    
+#ifndef RTL_SIM
+    /*
+     * If we're still running then service any
+     * events that are due now.
+     * If we just halted then flush all pending
+     * events.
+     */
+    if (this->run)
+      (void) Event::call_devices(half_cycles, 1);
+    else
+      Event::flush_events(half_cycles);
+#endif
+  }
+  
+#ifndef RTL_SIM
   /*
    * If there is TTY input then service it
    */
   if (STDTTY::get_tty_input())
     STDTTY::service_tty_input();
-
+#endif
+  
   fetched = true;
   run = this->run; // pass back the run status
   monitor_flag = goto_monitor_flag; // and the monitor flag
@@ -722,7 +745,7 @@ unsigned short Proc::ea(unsigned short instr)
   bool first = true;
 
   m = instr;
-  y = p; // Address of instr (i.e. before increment)
+  y = fetched_p; // Address of instr (i.e. before increment)
 
   sec_zero = ((m & 0x0200) == 0);
   indexing = ((m & 0x4000) != 0);
@@ -734,7 +757,7 @@ unsigned short Proc::ea(unsigned short instr)
       if (extend)
         d = ((j & 0x7e00) | (m & 0x81ff));
       else
-        d = ((j & 0x3e00) | (m & 0x81ff)) | (p & 0x4000);
+        d = ((j & 0x3e00) | (m & 0x81ff)) | (fetched_p & 0x4000);
     } else {
       if (first)
         d = ((y & 0xfe00) | (m & 0x01ff));
@@ -742,7 +765,7 @@ unsigned short Proc::ea(unsigned short instr)
         if (extend)
           d = m;
         else
-          d = (m & 0xbfff) | (p & 0x4000);
+          d = (m & 0xbfff) | (fetched_p & 0x4000);
       }        
     }
  
@@ -770,9 +793,11 @@ unsigned short Proc::ea(unsigned short instr)
 
   } while (indirect);
   
-  return y & 0x7fff;
+  //printf("ea() y = %06o\n", y);
+  return y;
 }
 
+#ifndef RTL_SIM
 bool Proc::optimize_io_poll(unsigned short instr)
 {
   bool r = false;
@@ -855,6 +880,7 @@ bool Proc::optimize_io_poll(unsigned short instr)
 
   return r;
 }
+#endif
 
 void Proc::dump_memory()
 {
@@ -884,21 +910,43 @@ void Proc::write(unsigned short addr, signed short data)
 {
   m = data;
   y = addr;
-  
-  if (((addr ^ j) & ((extend) ? 0x7fff : 0x3fff)) == 0)
-    {
-      core[addr] = x = data;
-      modified[addr] = 1;
+
+  unsigned short ma = addr & addr_mask;
+
+  if (((addr ^ j) & ((extend) ? 0x7fff : 0x3fff)) == 0) {
+    core[ma] = x = data;
+    modified[ma] = 1;
+    if (wrts < 2) {
+      wrt_addr[wrts] = ma;
+      wrt_data[wrts] = data;
+      wrts++;
     }
-  else
-    if ((addr<=0) || (addr>=020))
-      {
-        core[addr] = data;
-        modified[addr] = 1;
+  } else {
+    if ((ma == 0) || (ma >= 020)) {
+      core[ma] = data;
+      modified[ma] = 1;
+      if (wrts < 2) {
+        wrt_addr[wrts] = ma;
+        wrt_data[wrts] = data;
+        wrts++;
       }
+    }
+  }
   
   //if (((addr >= 03000) && (addr < 03010)) || (addr == 0107))
   //  printf("Write %06o @ %06o\n", data & 0xffff, addr&0xffff );
+}
+
+int Proc::get_wrt_info(unsigned short addr[2], unsigned short data[2])
+{
+  int r = wrts;
+  int i;
+  for (i=0; i<wrts; i++) {
+    addr[i] = wrt_addr[i] & addr_mask;
+    data[i] = wrt_data[i];
+  }
+  wrts = 0;
+  return r;
 }
 
 /*
@@ -931,53 +979,72 @@ const char *Proc::dis()
 
 void Proc::flush_events()
 {
+#ifndef RTL_SIM
   Event::flush_events(half_cycles);
+#endif
 }
 
 void Proc::set_ptr_filename(char *filename)
 {
+#ifndef RTL_SIM
   ((PTR *) devices[IODEV::PTR_DEVICE])->set_filename(filename);
+#endif
 }
 
 void Proc::set_ptp_filename(char *filename)
 {
+#ifndef RTL_SIM
   ((PTR *) devices[IODEV::PTP_DEVICE])->set_filename(filename);
+#endif
 }
 
 void Proc::set_plt_filename(char *filename)
 {
+#ifndef RTL_SIM
   ((PTR *) devices[IODEV::PLT_DEVICE])->set_filename(filename);
+#endif
 }
 
 void Proc::set_lpt_filename(char *filename)
 {
+#ifndef RTL_SIM
   ((PTR *) devices[IODEV::LPT_DEVICE])->set_filename(filename);
+#endif
 }
 
 void Proc::set_asr_ptr_filename(char *filename)
 {
+#ifndef RTL_SIM
   ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->set_filename(filename, false);
+#endif
 }
 
 void Proc::set_asr_ptp_filename(char *filename)
 {
+#ifndef RTL_SIM
   ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->set_filename(filename, true);
+#endif
 }
 
 void Proc::asr_ptp_on(char *filename)
 {
+#ifndef RTL_SIM
   ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->asr_ptp_on(filename);
+#endif
 }
 
 void Proc::asr_ptr_on(char *filename)
 {
+#ifndef RTL_SIM
   ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->asr_ptr_on(filename);
+#endif
 }
 
 bool Proc::special(char k)
 {
   bool r = false;
   
+#ifndef RTL_SIM
   r = ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->special(k);
   
   if ( (k & 0x7f) == 'h' )
@@ -1000,7 +1067,7 @@ bool Proc::special(char k)
           break;
         }
     }
-
+#endif
   return r;
 }
 
@@ -1022,10 +1089,12 @@ void Proc::abort()
 
 void Proc::unimplemented(unsigned short instr)
 {
+#ifndef RTL_SIM
   printf("%s\n", __PRETTY_FUNCTION__);
   printf("Instr = `%06o at `%06o\n", instr, p);
-
+  
   Proc::abort();
+#endif
 }
 
 void Proc::do_CRA(unsigned short instr)
@@ -1074,8 +1143,8 @@ void Proc::do_INK(unsigned short instr)
 #endif
   a = ((c & 1) << 15) | ((dp & 1) << 14) |
     ((extend & 1) << 13) |
-    (sc & 0x3f);/* NB Programmers' Reference is wrong,
-                 * 6 bits to A (not 5) from schematics */
+    (sc & 0x3f); /* NB Programmers' Reference is wrong,
+                  * 6 bits to A (not 5) from schematics */
 }
 
 void Proc::do_LDA(unsigned short instr)
@@ -1142,8 +1211,8 @@ void Proc::do_STA(unsigned short instr)
   half_cycles += 2;
 
   addr = ea(instr);
-  if (dp)
-    addr &= ((~0L)<<1); // loose the LSB if double precision
+
+  if (dp) addr &= ((~0L)<<1); // loose the LSB if double precision
 
   write(addr, a);
 
@@ -1354,7 +1423,7 @@ void Proc::do_ALR(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  
+
   lsc = ex_sc(instr);
 
   while (lsc < 0)
@@ -1585,19 +1654,27 @@ void Proc::do_INA(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 2;
-  bool rerun = 0;
+  bool rerun = false;
 
   do {
-    if (devices[instr & 077]->ina(instr, d))
-      {
-        p++;
-        if (instr & 01000)
-          a = 0;
-        a |= d;
-        rerun = 0;
-      }
-    else
+#ifdef RTL_SIM
+    if (drlin) {
+      increment_p();
+      if (instr & 01000)
+        a = 0;
+      a |= inb;
+      rerun = false;
+    }
+#else
+    if (devices[instr & 077]->ina(instr, d)) {
+      increment_p();
+      if (instr & 01000)
+        a = 0;
+      a |= d;
+      rerun = false;
+    } else
       rerun = optimize_io_poll(instr);
+#endif
   } while (rerun);
 }
 
@@ -1607,25 +1684,32 @@ void Proc::do_OCP(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 2;
+#ifndef RTL_SIM
   devices[instr & 0x3f]->ocp(instr);
+#endif
 }
 
 void Proc::do_OTA(unsigned short instr)
 {
-  bool rerun = 0;
+  bool rerun = false;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 2;
 
   do {
-    if (devices[instr & 0x3f]->ota(instr, a))
-      {
-        p++;
-        rerun = 0;
-      }
-    else
+#ifdef RTL_SIM
+    if (drlin) {
+      increment_p();
+      rerun = false;
+    }
+#else
+    if (devices[instr & 0x3f]->ota(instr, a)) {
+      increment_p();
+      rerun = false;
+    } else
       rerun = optimize_io_poll(instr);
+#endif
   } while (rerun);
 }
 
@@ -1634,7 +1718,9 @@ void Proc::do_SMK(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
+#ifndef RTL_SIM
   IODEV::set_mask(devices, a);
+#endif
   half_cycles += 2;
 }
 
@@ -1647,13 +1733,18 @@ void Proc::do_SKS(unsigned short instr)
   half_cycles += 2;
 
   do {
-    if (devices[instr & 0x3f]->sks(instr))
-      {
-        p++;
-        rerun = 0;
-      }
-    else
+#ifdef RTL_SIM
+    if (drlin) {
+      increment_p();
+      rerun = 0;
+    }
+#else
+    if (devices[instr & 0x3f]->sks(instr)) {
+      increment_p();
+      rerun = 0;
+    } else
       rerun = optimize_io_poll(instr);
+#endif
   } while (rerun);
 }
 
@@ -1692,7 +1783,7 @@ void Proc::do_INH(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  pi_enable = pi_pending = pi = 0;
+  pi_pending = pi = 0;
 }
 
 void Proc::do_IRS(unsigned short instr)
@@ -1706,22 +1797,24 @@ void Proc::do_IRS(unsigned short instr)
   y = ea(instr);
   d = read(y) + 1;
   write(y, d);
-  if (d==0)
-    p++;
+  increment_p((d==0) ? 1 : 0);
+  //printf("p = %06o\n", p);
 }
 
 void Proc::do_JMP(unsigned short instr)
 {
-  unsigned short new_p;
+  unsigned short new_p, mask;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
+
   new_p = ea(instr);
-
-  if (new_p == (p-1))
+  
+  if ((new_p & addr_mask) == ((fetched_p-1) & addr_mask))
     jmp_self_minus_one = 1;
-
-  p = new_p - 1; // 1 added on when p increments
+  
+  p = (((extend) || (!extend_allowed)) ? new_p :
+       ((new_p & 0xbfff) | (fetched_p & 0x4000)));
 
   if (disable_extend_pending)
     extend = disable_extend_pending = 0;
@@ -1743,12 +1836,12 @@ void Proc::do_JST(unsigned short instr)
    */
 
   if (extend)
-    return_addr = (read(y) & 0x8000) | ((p+1) & 0x7fff);
+    return_addr = (read(y) & 0x8000) | (p & 0x7fff);
   else
-    return_addr = (read(y) & 0xc000) | ((p+1) & 0x3fff);
+    return_addr = (read(y) & 0xc000) | (p & 0x3fff);
 
   write(y, return_addr);
-  p = y; // +1 added as standard
+  p = y+1;
 }
 
 void Proc::do_NOP(unsigned short instr)
@@ -1779,7 +1872,7 @@ void Proc::do_SKP(unsigned short instr)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  p++;
+  increment_p();
 }
 
 void Proc::do_SLN(unsigned short instr)
@@ -1788,7 +1881,7 @@ void Proc::do_SLN(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (a & 0x0001)
-    p++;
+    increment_p();
 }
 
 void Proc::do_SLZ(unsigned short instr)
@@ -1797,7 +1890,7 @@ void Proc::do_SLZ(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if ((a & 0x0001) == 0)
-    p++;
+    increment_p();
 }
 
 void Proc::do_SMI(unsigned short instr)
@@ -1806,7 +1899,7 @@ void Proc::do_SMI(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (a<0)
-    p++;
+    increment_p();
 }
 
 void Proc::do_SNZ(unsigned short instr)
@@ -1815,7 +1908,7 @@ void Proc::do_SNZ(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (a != 0)
-    p++;
+    increment_p();
 }
 
 void Proc::do_SPL(unsigned short instr)
@@ -1824,7 +1917,7 @@ void Proc::do_SPL(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (a >= 0)
-    p++;
+    increment_p();
 }
 
 void Proc::do_SR1(unsigned short instr)
@@ -1833,7 +1926,7 @@ void Proc::do_SR1(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (!ss[0])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SR2(unsigned short instr)
@@ -1842,7 +1935,7 @@ void Proc::do_SR2(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (!ss[1])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SR3(unsigned short instr)
@@ -1851,7 +1944,7 @@ void Proc::do_SR3(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (!ss[2])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SR4(unsigned short instr)
@@ -1860,7 +1953,7 @@ void Proc::do_SR4(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (!ss[3])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SRC(unsigned short instr)
@@ -1869,7 +1962,7 @@ void Proc::do_SRC(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (!c)
-    p++;
+    increment_p();
 }
 
 void Proc::do_SS1(unsigned short instr)
@@ -1878,7 +1971,7 @@ void Proc::do_SS1(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (ss[0])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SS2(unsigned short instr)
@@ -1887,7 +1980,7 @@ void Proc::do_SS2(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (ss[1])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SS3(unsigned short instr)
@@ -1896,7 +1989,7 @@ void Proc::do_SS3(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (ss[2])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SS4(unsigned short instr)
@@ -1905,7 +1998,7 @@ void Proc::do_SS4(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (ss[3])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SSC(unsigned short instr)
@@ -1914,7 +2007,7 @@ void Proc::do_SSC(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (c)
-    p++;
+    increment_p();
 }
 
 void Proc::do_SSR(unsigned short instr)
@@ -1923,7 +2016,7 @@ void Proc::do_SSR(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if ((!ss[0]) && (!ss[1]) && (!ss[2]) && (!ss[3]))
-    p++;
+    increment_p();
 }
 
 void Proc::do_SSS(unsigned short instr)
@@ -1932,7 +2025,7 @@ void Proc::do_SSS(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (ss[0] || ss[1] || ss[2] || ss[3])
-    p++;
+    increment_p();
 }
 
 void Proc::do_SZE(unsigned short instr)
@@ -1941,7 +2034,7 @@ void Proc::do_SZE(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   if (a==0)
-    p++;
+    increment_p();
 }
 
 void Proc::do_CAL(unsigned short instr)
@@ -2304,7 +2397,6 @@ void Proc::do_DBL(unsigned short instr)
   dp = 1;
 }
 
-
 static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
 {
   int d, e;
@@ -2361,17 +2453,25 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
 
     } else if (lsc == -1) {
 
+      a00ff = d01ff;
+      a = d;
+      if ((a >> 15) & 1)
+        a |= (-1 << 16);
+
+      if (remok && (!d01ff))
+        madff = true;
+
       if (!c) {
-        a00ff = d01ff;
-        a = d;
-        if ((a >> 15) & 1)
-          a |= (-1 << 16);
+        //a00ff = d01ff;
+        //a = d;
+        //if ((a >> 15) & 1)
+        //  a |= (-1 << 16);
         b = ((e << 1) & 0xfffe) | e00dj;
         if ((b >> 15) & 1)
           b |= (-1 << 16);
 
-        if ((lsc == -1) && remok && (!d01ff))
-         madff = true;
+        //if ((lsc == -1) && remok && (!d01ff))
+        // madff = true;
       }
 
     } else { // lsc == 0
@@ -2754,7 +2854,7 @@ void Proc::generic_skip(unsigned short instr)
 
   if (instr & 0x200) cond ^= 1;
 
-  if (cond) p++;
+  if (cond) increment_p();
 }
 
 #ifdef TEST_GENERIC_SKIP
