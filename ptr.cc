@@ -126,7 +126,7 @@ PTR::STATUS PTR::ina(unsigned short instr, signed short &data)
            * to do the second pass. On the real machine, this
            * is simply done by taking the tape out of the
            * reader, rewinding it, and putting it back at the
-           * start ofthe tape. Master clear would cause the
+           * start of the tape. Master clear would cause the
            * PTR to ask for the name of the file again, but then
            * the PC is lost, and the second pass cannot be easily
            * started.
