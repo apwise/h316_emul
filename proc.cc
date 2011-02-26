@@ -1,7 +1,7 @@
 // {{{ GPL copyright notice
 
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 1999, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 1999, 2005, 2010, 2011  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
