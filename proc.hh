@@ -80,7 +80,7 @@ public:
   bool get_ss(int sw) {return ss[sw];};
   void set_ss(int sw, bool v) {ss[sw] = v;};
   
-  unsigned long get_half_cycles(void){return half_cycles;};
+  unsigned long long get_half_cycles(void){return half_cycles;};
 
   void set_interrupt(unsigned short bit);
   void clear_interrupt(unsigned short bit);
@@ -176,7 +176,7 @@ private:
   bool fetched; // flag to say that an instruction has been fetched
   unsigned short fetched_p;
 
-  unsigned long half_cycles;
+  unsigned long long half_cycles;
 
   /*
    * Instruction decode & dispatch

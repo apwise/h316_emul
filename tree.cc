@@ -60,14 +60,14 @@ static const char *RcsId __attribute__ ((unused)) = "$Id: tree.cc,v 1.2 1999/02/
  *   6 -1 -1 +1 +1 +1 +1  0 -1
  *   7 -1 -1 -1 +1 +1 +1 +1  0
  */
-int lt(unsigned long a, unsigned long b)
+int lt(unsigned long long a, unsigned long long b)
 {
   signed long s = a-b;
   
   return (s < 0) ? -1 : ((s>0) ? +1 : 0);
 }
 
-void tree_add(TREE *t, unsigned long name, void *record)
+void tree_add(TREE *t, unsigned long long name, void *record)
 {
   const char *PN = "tree_add()";
   TREE n;
@@ -114,7 +114,7 @@ void tree_free(TREE *t, void (*free_fn)(void *ptr))
 }
 
 void tree_for_all(TREE *t, void *data,
-                  void (*proc)(TREE *t, unsigned long name, void *record, void *data))
+                  void (*proc)(TREE *t, unsigned long long name, void *record, void *data))
 {
   //    char *PN="tree_for_all()";
   
@@ -174,8 +174,8 @@ void tree_dump(TREE *t, FILE *fp, int depth,
 }
 
 
-extern void *tree_remove_left_most(TREE *t, unsigned long &left_name,
-                                   unsigned long name, bool check_time)
+extern void *tree_remove_left_most(TREE *t, unsigned long long &left_name,
+                                   unsigned long long name, bool check_time)
 {
   TREE p=(*t);
   TREE q = NULL;
@@ -217,7 +217,7 @@ extern void *tree_remove_left_most(TREE *t, unsigned long &left_name,
   return record;
 }
 
-extern bool tree_left_name(TREE *t, unsigned long &left_name)
+extern bool tree_left_name(TREE *t, unsigned long long &left_name)
 {
   TREE p=(*t);
   TREE q = NULL;

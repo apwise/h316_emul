@@ -624,6 +624,8 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
     }
     
     if (break_flag) {
+      half_cycles -= 2; // Due to the fetch
+
       /*
        * If this was a break then the contents of
        * M are not an instruction, since it was not
@@ -706,12 +708,12 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
     break_addr = 063;
 
     pi = pi_pending = 0; // disable interrupts
-    extend = extend_allowed; // force extended addressing
-      
+    extend = extend_allowed; // force extended addressing    
   } else {
     (void) read(p);   // Leaving the instruction in the m register
-    half_cycles += 2; // Due to the fetch
   }
+
+  half_cycles += 2; // Due to the fetch
 
   if (fetched) {
     /*
@@ -2565,7 +2567,7 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
 
   assert((count == 18) || (count == 19));
 
-  return count;
+  return count+1;
 }
 
 void Proc::do_DIV(unsigned short instr)

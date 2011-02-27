@@ -68,10 +68,10 @@ public:
   
   static void initialize();
   static void queue(Proc *p, unsigned long microseconds, IODEV *device, int reason = 0);
-  static bool call_devices(unsigned long &half_cycles, bool check_time);
-  static void flush_events(unsigned long &half_cycles);
+  static bool call_devices(unsigned long long &half_cycles, bool check_time);
+  static void flush_events(unsigned long long &half_cycles);
   static void discard_events();
-  static bool next_event_time(unsigned long &half_cycles);
+  static bool next_event_time(unsigned long long &half_cycles);
 
 private:
   Proc *p;

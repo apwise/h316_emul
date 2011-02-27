@@ -31,7 +31,7 @@
 
 struct TREE_STRUCT
 {
-  unsigned long name;
+  unsigned long long name;
   void *record;
   
   struct TREE_STRUCT *l;
@@ -40,16 +40,16 @@ struct TREE_STRUCT
 
 typedef struct TREE_STRUCT *TREE;
 
-extern void tree_add(TREE *t, unsigned long name, void *record);
+extern void tree_add(TREE *t, unsigned long long name, void *record);
 
 extern void tree_free(TREE *t, void (*free_fn)(void *ptr));
 extern void tree_for_all(TREE *t, void *data,
-			 void (*proc)(TREE *t, unsigned long name,
-				      void *record, void *data));
+                         void (*proc)(TREE *t, unsigned long long name,
+                                      void *record, void *data));
 extern void tree_dump(TREE *t, FILE *fp, int depth,
-		      void (*dump_proc)(TREE *t, char *space, void *record));
+                      void (*dump_proc)(TREE *t, char *space, void *record));
 
-extern void *tree_remove_left_most(TREE *t, unsigned long &left_name,
-				   unsigned long name, bool check_name);
+extern void *tree_remove_left_most(TREE *t, unsigned long long &left_name,
+                                   unsigned long long name, bool check_name);
 
-extern bool tree_left_name(TREE *t, unsigned long &left_name);
+extern bool tree_left_name(TREE *t, unsigned long long &left_name);
