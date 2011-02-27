@@ -422,26 +422,24 @@ void InstrTable::build_one_instr_table(Instr itable[])
           break;
           
         case Instr::IO: // IO intructions
-          for (addr=0; addr<1024; addr++)
-            {
-              i = ((ip->get_opcode() & 0x3f) << 10) | (addr & 0x3ff);
-              if ( ((addr &0x3f) == 020) || ((addr &0x3f) == 024) )
-                {
-                  // device code is SMK
-                  if (i != 0171020) // OTK
-                    {
-                      if (ip->get_opcode() & 0x40)
-                        // opcode is flagged as SMK too 
-                        dispatch_table[i] = ip;
-                    }
-                }
-              else
-                {
-                  // device code is OTA
-                  if (!(ip->get_opcode() & 0x40))
+          for (addr=0; addr<1024; addr++) {
+            i = ((ip->get_opcode() & 0x3f) << 10) | (addr & 0x3ff);
+            if ((ip->get_opcode() & 077) == 074) { // OTA or SMK
+              if (((addr &0x3f) == 020) || ((addr &0x3f) == 024)) {
+                // device code is SMK
+                if (i != 0171020) { // OTK
+                  if (ip->get_opcode() & 0x40)
+                    // opcode is flagged as SMK too 
                     dispatch_table[i] = ip;
                 }
-            }
+              } else {
+                // device code is OTA
+                if (!(ip->get_opcode() & 0x40))
+                  dispatch_table[i] = ip;
+              }
+            } else
+              dispatch_table[i] = ip;
+          }
           break;
     
         case Instr::IOG: // IO instuction pretending to be Generic
