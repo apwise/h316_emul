@@ -31,6 +31,8 @@ h16_SOURCES = 	asr_intf.cc \
 		proc.hh \
 		ptr.hh \
 		tree.hh \
+		rtc.cc \
+		rtc.hh \
 		gpl.h
 
 if ENABLE_GUI

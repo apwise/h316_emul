@@ -59,23 +59,23 @@ void Event::queue(Proc *p, unsigned long microseconds, IODEV *device, int reason
   unsigned long half_cycles;
   
   half_cycles = (unsigned long) (((double) microseconds) * 
-				 half_cycles_per_microsecond);
+                                 half_cycles_per_microsecond);
   
   ev = new Event(device, reason);
   tree_add( &event_queue,
-	    half_cycles + p->get_half_cycles(), ev);
+            half_cycles + p->get_half_cycles(), ev);
 }
 
-bool Event::call_devices(unsigned long &half_cycles, bool check_time)
+bool Event::call_devices(unsigned long long &half_cycles, bool check_time)
 {
   Event *ev;
-  unsigned long ev_time;
+  unsigned long long ev_time;
   unsigned long event_count = 0;
   bool r = 0;
   
   while ( (ev = (Event *) tree_remove_left_most(&event_queue,
-						ev_time, half_cycles,
-						check_time)))
+                                                ev_time, half_cycles,
+                                                check_time)))
     {
       r = 1;
       if (!check_time) half_cycles = ev_time;
@@ -85,16 +85,16 @@ bool Event::call_devices(unsigned long &half_cycles, bool check_time)
       
       event_count ++;
       if (event_count > MAXIMUM_EVENTS)
-	{
-	  fprintf(stderr, "More than %d Events at time %ld, Infinite loop ?\n",
-		  MAXIMUM_EVENTS, half_cycles);
-	  exit(1);
-	}
+        {
+          fprintf(stderr, "More than %d Events at time %llu, Infinite loop ?\n",
+                  MAXIMUM_EVENTS, half_cycles);
+          exit(1);
+        }
     }
   return r;
 }
 
-void Event::flush_events(unsigned long &half_cycles)
+void Event::flush_events(unsigned long long &half_cycles)
 {
   while(call_devices(half_cycles, 0));
 }
@@ -110,7 +110,7 @@ void Event::discard_events()
   tree_free( &event_queue, free_event);
 }
 
-bool Event::next_event_time(unsigned long &half_cycles)
+bool Event::next_event_time(unsigned long long &half_cycles)
 {
   return tree_left_name(&event_queue, half_cycles);
 }

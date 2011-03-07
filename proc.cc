@@ -34,6 +34,7 @@
 #define NO_GTK (1)
 #else
 #include "iodev.hh"
+#include "rtc.hh"
 #include "ptr.hh"
 #include "asr_intf.hh"
 #include "stdtty.hh"
@@ -638,6 +639,12 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
                break_addr);
 
       fetched_p = 0;
+
+#ifndef RTL_SIM
+      if ((!break_intr) && (break_addr == 061)) {
+        rtclk = false;
+      }
+#endif
     } else {
       instr = m;
 
@@ -835,7 +842,7 @@ bool Proc::optimize_io_poll(unsigned short instr)
        * for keyboard input).
        */
       
-      unsigned long next_event_time;
+      unsigned long long next_event_time;
       
       if (Event::next_event_time(next_event_time))
         {
@@ -1813,6 +1820,11 @@ void Proc::do_IRS(unsigned short instr)
   d = read(y) + 1;
   write(y, d);
   increment_p(((!break_flag) && (d==0)) ? 1 : 0);
+
+  if ((d == 0) && break_flag &&
+      (break_addr = 061) && (devices[IODEV::RTC_DEVICE])) {
+    static_cast<RTC *>(devices[IODEV::RTC_DEVICE])->rollover();
+  }
 }
 
 void Proc::do_JMP(unsigned short instr)
