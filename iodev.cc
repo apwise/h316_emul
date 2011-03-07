@@ -27,6 +27,7 @@
 #include "ptp.hh"
 #include "asr_intf.hh"
 #include "lpt.hh"
+#include "rtc.hh"
 #include "plt.hh"
 #include "proc.hh"
 
@@ -91,6 +92,7 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
   dt[PTR_DEVICE] = new PTR(p, stdtty);
   dt[PTP_DEVICE] = new PTP(p, stdtty);
   dt[LPT_DEVICE] = new LPT(p, stdtty);
+  dt[RTC_DEVICE] = new RTC(p);
   dt[PLT_DEVICE] = new PLT(p, stdtty);
   
   return dt;

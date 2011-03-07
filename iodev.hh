@@ -30,6 +30,7 @@ public:
       PTP_DEVICE = 002,
       LPT_DEVICE = 003,
       ASR_DEVICE = 004,
+      RTC_DEVICE = 020,
       PLT_DEVICE = 027
     };
 
