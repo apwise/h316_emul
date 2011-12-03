@@ -29,7 +29,7 @@ struct FP_INTF;
 class Proc{
 
 public:
-  Proc(STDTTY *stdtty);
+  Proc(STDTTY *stdtty, bool HasEa);
 
   void mem_access(bool p_not_pp1, bool store);
   void do_instr(bool &run, bool &monitor_flag);
@@ -110,8 +110,8 @@ public:
 
   void abort();
 
-  void sampled_io(bool drlin, unsigned short inb){
-    this->drlin=drlin; this->inb=inb;};
+  void sampled_io(bool x_drlin, unsigned short x_inb){
+    drlin=x_drlin; inb=x_inb;};
 
   int get_wrt_info(unsigned short addr[2], unsigned short data[2]);
 

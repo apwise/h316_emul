@@ -68,7 +68,7 @@ void Tape::double_buffer_size()
   if (buffer)
     {
       for (p=0; p<buffer_used; p++)
-	new_buffer[p] = buffer[p];
+        new_buffer[p] = buffer[p];
       
       delete [] buffer;
     }
@@ -92,8 +92,6 @@ void Tape::add_to_buffer(unsigned char c)
 
 void Tape::read_file(char *filename)
 {
-  unsigned char c;
-
   std::ifstream ifs(filename);
 
   while (ifs.good())
@@ -148,7 +146,6 @@ static void skip_leader(FILE *fp)
 
 static int read_8_8_block(FILE *fp, unsigned short *buffer)
 {
-  int c=0;
   int i=0;
   unsigned short n;
 
@@ -263,11 +260,10 @@ static unsigned short core_high = 0;
 // {{{ static int read_silent_block(FILE *fp, int find_start,
 
 static int read_silent_block(FILE *fp, int find_start,
-			     unsigned short *core,
-			     unsigned short bc)
+                             unsigned short *core,
+                             unsigned short bc)
 {
   unsigned short addr, a, n;
-  signed short zeros = 0;
   bool zero_flag, xof;
   unsigned short checksum = bc;
   unsigned short old_checksum = checksum;
@@ -283,7 +279,7 @@ static int read_silent_block(FILE *fp, int find_start,
   if (find_start)
     {
       while (c != 0201)
-	c = gc(fp);
+        c = gc(fp);
     }
   else if (c!=0201)
     {
@@ -344,7 +340,7 @@ static int read_silent_block(FILE *fp, int find_start,
 
   if (checksum != old_checksum)
     printf("Expected: %06o Actual: %06o XOR: %06o\n",
-	   old_checksum, checksum, (old_checksum ^ checksum));
+           old_checksum, checksum, (old_checksum ^ checksum));
 
   if (addr < core_low) core_low = addr;
   if ((a-1) > core_high) core_high = (a-1);
@@ -402,16 +398,16 @@ static void dissassemble_block(unsigned short *block, int size, int addr)
   for (i=0; i<size;i++)
     {
       if (verilog)
-	printf("%04x /* %-35s %-4s */\n",
-	       block[i],
-	       instr_table.disassemble((i+addr), block[i], false),
-	       printable(block[i]));
+        printf("%04x /* %-35s %-4s */\n",
+               block[i],
+               instr_table.disassemble((i+addr), block[i], false),
+               printable(block[i]));
       else
-	printf("  0%06o%c /* %-35s %-4s */\n",
-	       block[i],
-	       ((i ==(size-1)) ? ' ' : ','),
-	       instr_table.disassemble((i+addr), block[i], false),
-	       printable(block[i]));
+        printf("  0%06o%c /* %-35s %-4s */\n",
+               block[i],
+               ((i ==(size-1)) ? ' ' : ','),
+               instr_table.disassemble((i+addr), block[i], false),
+               printable(block[i]));
 
     }
 
@@ -430,15 +426,16 @@ enum WORD_INFO {
   WI_EXEC = 1  // Can be reached as code
 };
 
+/*
 static unsigned int instr_may_reach(uint16_t addr, uint16_t instr,
-				    uint16_t addresses[3])
+                                    uint16_t addresses[3])
 {
-  
+  return 0;
 }
 
 static void control_flow_analysis(const uint16_t core[],
-				  const std::list<uint16_t> entry_points,
-				  std::map<uint16_t, WORD_INFO> &info)
+                                  const std::list<uint16_t> entry_points,
+                                  std::map<uint16_t, WORD_INFO> &info)
 {
   std::pair<std::set<uint16_t>::iterator, bool> sr;
 
@@ -454,9 +451,9 @@ static void control_flow_analysis(const uint16_t core[],
     sr = analyse.insert(*li);
     if (!sr.second) {
       std::cout << "Entry point <" 
-		<< std::oct << (*li) << std::dec 
-		<< "> already dealt with - duplicate ignored." 
-		<< std::endl;
+                << std::oct << (*li) << std::dec 
+                << "> already dealt with - duplicate ignored." 
+                << std::endl;
     }
   }
 
@@ -474,11 +471,11 @@ static void control_flow_analysis(const uint16_t core[],
   }
 
 }
+*/
 
 int main(int argc, char **argv)
 {
   FILE *fp;
-  int c;
   int bootstrap_length;
   unsigned short bootstrap[256];
   int loader_length, loader_addr;
@@ -506,12 +503,12 @@ int main(int argc, char **argv)
   while (parsing_args && (a < argc))
     {
       if (strcmp(argv[a], "-v")==0)
-	{
-	  verilog = true;
-	  a++;
-	}
+        {
+          verilog = true;
+          a++;
+        }
       else
-	parsing_args = false;
+        parsing_args = false;
     }
 
   if (a != (argc-1))

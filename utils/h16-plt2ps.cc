@@ -621,7 +621,7 @@ static bool parse_double(const std::string &str, double &v)
   const char *nptr = str.c_str();
   char *endptr;
   v = strtod(nptr, &endptr);
-  return ((endptr-nptr) == str.size());
+  return ((endptr-nptr) == ((signed long) str.size()));
 }
 
 static bool ascii_file;

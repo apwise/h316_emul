@@ -105,7 +105,7 @@ Block::~Block()
 
 unsigned char Block::read_char(std::istream &st)
 {
-  char c;
+  char c = 0;
   if (ok()) {
     if (st.good()) {
       st.get(c);
@@ -140,7 +140,7 @@ void Block::write_char(std::ostream &st, unsigned char uc)
 bool Block::read_block_start(std::istream &st)
 {
   bool r = true;
-  unsigned char c;
+  unsigned char c = 0;
   if (ok()) c = read_char(st);
   while ((ok()) && (c == 0)) {
     leader_frames++;
@@ -196,7 +196,7 @@ int Block::read_invisible_char(std::istream &st, bool first)
   if (ok()) {
     r = read_char(st);
 
-    if (r == DC3) {
+    if (r == ((int) DC3)) {
       if (first)
         r = -1;
       else
@@ -355,7 +355,7 @@ void Block::write(std::ostream &st)
   if (eot) {
     write_eot(st);
   } else {
-    int i;
+    unsigned int i;
     
     compute_checksum();
     
@@ -390,6 +390,7 @@ Block *Block::read_new_block(std::istream &st, ERROR *p_error)
       exit(1);
     }
   }
+  return block;
 }
 
 void Block::make_eot()
@@ -656,7 +657,7 @@ void ObjectFile::read(const std::string &filename, ObjectBlock::ERROR *p_error)
 
 void ObjectFile::write(std::ostream &st, Block::ERROR &r_error)
 {
-  int i=0;
+  unsigned int i=0;
   Block::ERROR error = Block::ERR_NONE;
 
   while ((error == Block::ERR_NONE) &&
@@ -823,7 +824,7 @@ int main(int argc, char **argv)
   }
   
   std::vector<ObjectFile *> object_files;
-  int i;
+  unsigned int i;
 
   for (i=0; i<filenames.size(); i++)
     object_files.push_back(ObjectFile::read_new_file(filenames[i]));

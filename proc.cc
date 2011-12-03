@@ -134,10 +134,10 @@ static unsigned short keyin[] =
 
 // {{{ Proc::Proc(STDTTY *stdtty)
 
-Proc::Proc(STDTTY *stdtty)
-  : instr_table(),
-    extend_allowed(1),
-    addr_mask((extend_allowed) ? 0x7fff : 0x3fff)
+Proc::Proc(STDTTY *stdtty, bool HasEa)
+  : extend_allowed(HasEa),
+    addr_mask((HasEa) ? 0x7fff : 0x3fff),
+    instr_table()
 {
   long i;
 
@@ -602,11 +602,11 @@ void Proc::mem_access(bool p_not_pp1, bool store)
  * This is where the action happens!
  *
  *****************************************************************/
-void Proc::do_instr(bool &run, bool &monitor_flag)
+void Proc::do_instr(bool &x_run, bool &monitor_flag)
 {
   unsigned short instr;
 
-  this->run = 1; // else we wouldn't have gotten here!
+  run = true; // else we wouldn't have gotten here!
 
   /*
    * fetched records whether or not an instruction
@@ -738,7 +738,7 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
      * If we just halted then flush all pending
      * events.
      */
-    if (this->run)
+    if (run)
       (void) Event::call_devices(half_cycles, 1);
     else
       Event::flush_events(half_cycles);
@@ -754,7 +754,7 @@ void Proc::do_instr(bool &run, bool &monitor_flag)
 #endif
   
   fetched = true;
-  run = this->run; // pass back the run status
+  x_run = run; // pass back the run status
   monitor_flag = goto_monitor_flag; // and the monitor flag
 }
 
@@ -776,7 +776,7 @@ unsigned short Proc::ea(unsigned short instr)
     indirect = ((m & 0x8000) != 0);
     
     if (sec_zero) {
-      if (extend)
+      if ((extend) || (!extend_allowed))
         d = ((j & 0x7e00) | (m & 0x81ff));
       else
         d = ((j & 0x3e00) | (m & 0x81ff)) | (fetched_p & 0x4000);
@@ -784,7 +784,7 @@ unsigned short Proc::ea(unsigned short instr)
       if (first)
         d = ((y & 0xfe00) | (m & 0x01ff));
       else {
-        if (extend)
+        if ((extend) || (!extend_allowed))
           d = m;
         else
           d = (m & 0xbfff) | (fetched_p & 0x4000);
@@ -796,7 +796,7 @@ unsigned short Proc::ea(unsigned short instr)
          (!indirect))) // and when no more indirection
       d += x;
       
-    if (extend)
+    if ((extend) || (!extend_allowed))
       y = d;
     else
       y = (d & 0xbfff) | (y & 0x4000);
@@ -907,21 +907,21 @@ bool Proc::optimize_io_poll(unsigned short instr)
 void Proc::dump_memory()
 {
   FILE *fp = fopen("memdump", "w");
-  int i, j;
+  int i, k;
   unsigned short instr;
 
-  j = -1;
+  k = -1;
   for (i=0; i<32768; i++)
     {
       if (modified[i])
         {
-          if ((j+1) != i)
+          if ((k+1) != i)
             fprintf(fp, "\n");
 
           instr = core[i];
           fprintf(fp, "%s\n",
                   instr_table.disassemble(i, instr, 0));
-          j = i;
+          k = i;
         }
     }
 
@@ -1145,17 +1145,17 @@ void Proc::do_IAB(unsigned short instr)
 
 void Proc::do_IMA(unsigned short instr)
 {
-  unsigned short y;
-  signed short m;
+  unsigned short yy;
+  signed short mm;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 4;
 
-  y = ea(instr);
-  m = read(y);
-  write(y, a);
-  a = m;
+  yy = ea(instr);
+  mm = read(yy);
+  write(yy, a);
+  a = mm;
 }
 
 void Proc::do_INK(unsigned short instr)
@@ -1671,7 +1671,9 @@ void Proc::do_LRS(unsigned short instr)
 
 void Proc::do_INA(unsigned short instr)
 {
+#ifndef RTL_SIM
   signed short d;
+#endif
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
@@ -1772,15 +1774,15 @@ void Proc::do_SKS(unsigned short instr)
 
 void Proc::do_CAS(unsigned short instr)
 {
-  signed short m;
+  signed short mm;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 4;
-  m = read(ea(instr));
-  if (a == m)
+  mm = read(ea(instr));
+  if (a == mm)
     p += 1;
-  else if (a < m)
+  else if (a < mm)
     p += 2;
 }
 
@@ -1810,26 +1812,28 @@ void Proc::do_INH(unsigned short instr)
 
 void Proc::do_IRS(unsigned short instr)
 {
-  unsigned short y;
+  unsigned short yy;
   signed short d;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 4;
-  y = ea(instr);
-  d = read(y) + 1;
-  write(y, d);
+  yy = ea(instr);
+  d = read(yy) + 1;
+  write(yy, d);
   increment_p(((!break_flag) && (d==0)) ? 1 : 0);
 
+#ifndef RTL_SIM
   if ((d == 0) && break_flag &&
       (break_addr = 061) && (devices[IODEV::RTC_DEVICE])) {
     static_cast<RTC *>(devices[IODEV::RTC_DEVICE])->rollover();
   }
+#endif
 }
 
 void Proc::do_JMP(unsigned short instr)
 {
-  unsigned short new_p, mask;
+  unsigned short new_p;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
@@ -1848,12 +1852,12 @@ void Proc::do_JMP(unsigned short instr)
 
 void Proc::do_JST(unsigned short instr)
 {
-  unsigned short y, return_addr;
+  unsigned short yy, return_addr;
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   half_cycles += 4;
-  y = ea(instr);
+  yy = ea(instr);
 
   /*
    * Operation depends on extend mode.
@@ -1862,12 +1866,12 @@ void Proc::do_JST(unsigned short instr)
    */
 
   if (extend)
-    return_addr = (read(y) & 0x8000) | (p & 0x7fff);
+    return_addr = (read(yy) & 0x8000) | (p & 0x7fff);
   else
-    return_addr = (read(y) & 0xc000) | (p & 0x3fff);
+    return_addr = (read(yy) & 0xc000) | (p & 0x3fff);
 
-  write(y, return_addr);
-  p = y+1;
+  write(yy, return_addr);
+  p = yy+1;
 }
 
 void Proc::do_NOP(unsigned short instr)
@@ -2926,12 +2930,12 @@ void Proc::generic_group_A(unsigned short instr)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
   // first break the instruction into bits
-  bool m[17];
+  bool M[17];
   int i;
 
   for (i=0; i<16; i++)
-    m[16-i] = (instr >> i) & 1;
-  m[0] = false; // (unused)
+    M[16-i] = (instr >> i) & 1;
+  M[0] = false; // (unused)
 
   bool azzzz = false;
 
@@ -2953,12 +2957,12 @@ void Proc::generic_group_A(unsigned short instr)
 
       // tlate
 
-      EASBM = (m[9] || m[11] || azzzz);
-      JAMKN = ((m[12] || m[16]) && (!azzzz));
+      EASBM = (M[9] || M[11] || azzzz);
+      JAMKN = ((M[12] || M[16]) && (!azzzz));
       EASTL = (JAMKN) || (EASBM);
 
-      //      EIK17 = ((m[15] || (c && (!m[13]))) && (!JAMKN));
-      EIK17 = (m[15] && (c || (!m[13])) && (!JAMKN));
+      //      EIK17 = ((M[15] || (c && (!M[13]))) && (!JAMKN));
+      EIK17 = (M[15] && (c || (!M[13])) && (!JAMKN));
 
       s1 = (EASTL) ? a : 0;
       s2 = (EASBM) ? 0 : 0xffff;
@@ -2979,22 +2983,22 @@ void Proc::generic_group_A(unsigned short instr)
       d = 0xffff; // Due to CLDTR
       d &= s;     // Due to ESTDS
 
-      azzzz = (m[8] && m[15] && (!azzzz));
+      azzzz = (M[8] && M[15] && (!azzzz));
 
     } while (azzzz);
 
   // T4
-  CLATR = (m[11] || m[15] || m[16]);
-  CLA1R = (m[10] || m[14]);
-  EDAHS = ((m[11] && m[14]) || m[15] || m[16]);
-  EDALS = ((m[11] && m[13]) || m[15] || m[16]);
-  ETAHS = (m[9] && m[11]);
-  ETALS = (m[10] && m[11]);
-  EDA1R = ((m[8] && m[10]) || m[14]);
+  CLATR = (M[11] || M[15] || M[16]);
+  CLA1R = (M[10] || M[14]);
+  EDAHS = ((M[11] && M[14]) || M[15] || M[16]);
+  EDALS = ((M[11] && M[13]) || M[15] || M[16]);
+  ETAHS = (M[9] && M[11]);
+  ETALS = (M[10] && M[11]);
+  EDA1R = ((M[8] && M[10]) || M[14]);
 
-  overflow_to_c = (m[9] && (!m[11]));
-  set_c = (m[8] && m[9]);
-  d1_to_c = (m[10] && m[12]);
+  overflow_to_c = (M[9] && (!M[11]));
+  set_c = (M[8] && M[9]);
+  d1_to_c = (M[10] && M[12]);
 
   if (CLATR) // clear A register
     a = 0;

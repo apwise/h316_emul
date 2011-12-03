@@ -83,7 +83,7 @@ void tree_add(TREE *t, unsigned long long name, void *record)
     {
       if (!record)
         {
-          fprintf(stderr, "%s: (name <%ld>) NULL record", PN, name);
+          fprintf(stderr, "%s: (name <%lld>) NULL record", PN, name);
           exit(1);
         }
       n = (TREE) malloc(sizeof(struct TREE_STRUCT));
@@ -148,7 +148,7 @@ void tree_dump(TREE *t, FILE *fp, int depth,
   
   if (*t)
     {
-      fprintf(fp, "%sNode <%ld> -> 0x%08x\n", s,
+      fprintf(fp, "%sNode <%lld> -> 0x%08x\n", s,
               ((*t)->name), (unsigned int)((*t)->record));
       if (dump_proc)
         dump_proc(t, s, (*t)->record);

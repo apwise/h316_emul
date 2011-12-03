@@ -44,29 +44,34 @@ IODEV::STATUS IODEV::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "INA with undefined device: '%02o\n", instr & 0x3f);
   p->abort();
+  return STATUS_WAIT;
 }
 
 IODEV::STATUS IODEV::ocp(unsigned short instr)
 {
   fprintf(stderr, "OCP with undefined device: '%02o\n", instr & 0x3f);
   p->abort();
+  return STATUS_WAIT;
 }
 
 IODEV::STATUS IODEV::sks(unsigned short instr)
 {
   fprintf(stderr, "SKS with undefined device: '%02o\n", instr & 0x3f);
   p->abort();
+  return STATUS_WAIT;
 }
 
 IODEV::STATUS IODEV::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "OTA with undefined device: '%02o\n", instr & 0x3f);
   p->abort();
+  return STATUS_WAIT;
 }
 
 IODEV::STATUS IODEV::smk(unsigned short mask)
 {
   // quite likely to get here from set_mask();
+  return STATUS_WAIT;
 }
 
 void IODEV::event(int reason)

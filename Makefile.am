@@ -35,6 +35,8 @@ h16_SOURCES = 	asr_intf.cc \
 		rtc.hh \
 		gpl.h
 
+AM_CXXFLAGS = -Wall -Werror
+
 if ENABLE_GUI
 
 h16_SOURCES += 	gtk/fp.c \
@@ -69,7 +71,7 @@ h16_asctotty_SOURCES = utils/h16-asctotty.c
 h16_ttytoasc_SOURCES = utils/h16-ttytoasc.c
 
 h16_tabify_SOURCES = utils/h16-tabify.cc instr.cc
-h16_tabify_CXXFLAGS = -DNO_DO_PROCS
+h16_tabify_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
 h16_asr_SOURCES = utils/h16-asr_app.cc utils/serial.cc utils/serial.hh \
 		utils/dummy_proc.cc utils/dummy_proc.hh \
@@ -83,14 +85,14 @@ h16_pp_asr_CXXFLAGS = -pthread
 h16_pp_asr_LDADD = -lpthread
 
 h16_tape_SOURCES = utils/h16-tape.cc instr.cc
-h16_tape_CXXFLAGS = -DNO_DO_PROCS
+h16_tape_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
 h16_plt2ps_SOURCES = utils/h16-plt2ps.cc
 
 h16_lib_SOURCES = utils/h16-lib.cc
 
 h16_disasm_SOURCES = utils/h16-disasm.cc instr.cc
-h16_disasm_CXXFLAGS = -DNO_DO_PROCS
+h16_disasm_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
 EXTRA_DIST = 	data/m4h_defines.m4 \
 		data/main.css \
