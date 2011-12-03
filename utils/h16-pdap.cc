@@ -361,14 +361,13 @@ class File
   list<Line *> lines;
   string heading_line;
 
-  bool is_toc;
-  bool use_comment_as_title;
-  bool use_supplied_title;
-  string supplied_title;
-
-  bool end_read;
   bool end_really_read; // And lines with literals after END
   int pages;
+  bool is_toc;
+  bool use_comment_as_title;
+  bool end_read;
+  bool use_supplied_title;
+  string supplied_title;
 
   string basename(string filename);
   enum RENDER_STATE render_state;
@@ -932,9 +931,9 @@ void Line::render(FILE *fp, bool html_per_page)
   enum File::RENDER_STATE state=file->get_render_state();
   map<int, Annotation *>::iterator ap;
   Annotation *a;
-  Annotation::A a_type;
-  int a_first;
-  int a_len;
+  Annotation::A a_type = Annotation::A_SLN;
+  int a_first=0;
+  int a_len=0;
 
   //printf("type = %d\n", type);
   //printf("state = %d, type=%d\n", ((int)state), ((int)type));
@@ -1355,12 +1354,12 @@ map<string, Symbol *> File::global_symbol_table;
 
 File::File(const char *filename, bool is_toc)
   : filename(filename),
-    end_read(false),
     end_really_read(false),
     pages(0),
+    is_toc(is_toc),
     use_comment_as_title(false),
-    use_supplied_title(false),
-    is_toc(is_toc)
+    end_read(false),
+    use_supplied_title(false)
 {
   FILE *fp;
   string str;

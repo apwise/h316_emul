@@ -461,7 +461,7 @@ void STDTTY::service_tty_input()
 
   if (!cannonical)
     {
-      while (r = (read (STDIN_FILENO, &pending_char, 1) == 1))
+      while ((r = read (STDIN_FILENO, &pending_char, 1)) == 1)
         {
           /*
            * if pending is already set then at this point

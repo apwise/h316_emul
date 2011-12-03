@@ -35,18 +35,18 @@ class Proc;
 
 #include "instr.hh"
 
-InstrTable::Instr::Instr(const char *mnemonic,
-                         INSTR_TYPE type,
-                         unsigned short opcode,
-                         const char *description,
-                         ExecFunc_pt exec,
-                         bool alloc)
-  : mnemonic(mnemonic),
-    type(type),
-    opcode(opcode),
-    description(description),
-    exec(exec),
-    alloc(alloc)
+InstrTable::Instr::Instr(const char *x_mnemonic,
+                         INSTR_TYPE x_type,
+                         unsigned short x_opcode,
+                         const char *x_description,
+                         ExecFunc_pt x_exec,
+                         bool x_alloc)
+  : mnemonic(x_mnemonic),
+    type(x_type),
+    opcode(x_opcode),
+    description(x_description),
+    exec(x_exec),
+    alloc(x_alloc)
 {
 }
 

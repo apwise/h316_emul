@@ -143,11 +143,11 @@ int main(int argc, char **argv)
       printf("     : [-h|--h] Prints this help\n");
       printf("     : -t Selects text-only mode. %s\n",
 #ifdef ENABLE_GUI
-	     "(Disables the GUI)"
+             "(Disables the GUI)"
 #else
-	     "(Assumed, because compiled without GUI support)"
+             "(Assumed, because compiled without GUI support)"
 #endif
-	     );
+             );
       printf("     : type \"help\" at \"MON>\" prompt in text-only mode for help on script file commands\n");
 
       exit(0);
@@ -193,7 +193,7 @@ int main(int argc, char **argv)
    * how to contact the other!
    */
   stdtty = new STDTTY;
-  p = new Proc(stdtty);
+  p = new Proc(stdtty, true);
   stdtty->set_proc(p, call_special_chars);
 
 #ifdef ENABLE_GUI
