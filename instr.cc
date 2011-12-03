@@ -153,6 +153,7 @@ const char *InstrTable::Instr::str_ea(unsigned short addr,
     default:
       sprintf(a, "'%06o", ea);
       full_ea = true;
+      break;
     }
   
   if (((instr & 0x4000)!=0) && (!is_ldx))
@@ -446,7 +447,7 @@ void InstrTable::build_one_instr_table(Instr itable[])
           dispatch_table[ip->get_opcode()] = ip;
           break;
           
-        default: abort();
+        default: abort(); break;
         }
       ip++;
     } 
