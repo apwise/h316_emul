@@ -37,6 +37,7 @@ static const char *RcsId __attribute__ ((unused)) = "$Id: tree.cc,v 1.2 1999/02/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "stdtty.hh"
 #include "tree.hh"
@@ -149,7 +150,7 @@ void tree_dump(TREE *t, FILE *fp, int depth,
   if (*t)
     {
       fprintf(fp, "%sNode <%lld> -> 0x%08x\n", s,
-              ((*t)->name), (unsigned int)((*t)->record));
+              ((*t)->name), ((unsigned int) ((uintptr_t)((*t)->record))));
       if (dump_proc)
         dump_proc(t, s, (*t)->record);
       
