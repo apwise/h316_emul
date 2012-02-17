@@ -1395,7 +1395,8 @@ File::File(const char *filename, bool is_toc)
 
 string File::basename(string filename)
 {
-  int i, j;
+  int i;
+  size_t j;
   int len = filename.size();
 
   j = string::npos;
