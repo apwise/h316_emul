@@ -1,6 +1,6 @@
 /* Convert plot file from h316 emulator to postscript
  *
- * Copyright (C) 2008  Adrian Wise
+ * Copyright (C) 2008, 2012  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -299,7 +299,7 @@ void PlotFile::preprocess(bool scale_flag,
   int iy_max = ix_max;
   int iy_min = ix_min;
 
-  int x_range, y_range;
+  int /*x_range,*/ y_range;
   int ix_range, iy_range;
 
   // Find the extent of the image, both all movements and
@@ -336,7 +336,7 @@ void PlotFile::preprocess(bool scale_flag,
   //std::cout << "imin = (" << ix_min << ", " << iy_min << ")" << std::endl;
   //std::cout << "imax = (" << ix_max << ", " << iy_max << ")" << std::endl;
   
-  x_range = 1 + x_max - x_min;
+  //x_range = 1 + x_max - x_min;
   y_range = 1 + y_max - y_min;
 
   ix_range = 1 + ix_max - ix_min;

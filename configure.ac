@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(h16, 1.5.1, apw@adrianwise.co.uk)
+AC_INIT(h16, 1.5.2, apw@adrianwise.co.uk)
 
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997, 1998, 1999, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Adrian Wise])
+AC_COPYRIGHT([Copyright (c) 1997, 1998, 1999, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Adrian Wise])
 AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADER([config.h])
 
@@ -22,28 +22,7 @@ AC_ARG_ENABLE([gui],
 AM_CONDITIONAL([ENABLE_GUI], [test x$enable_gui = xyes])
 if test x$enable_gui = xyes; then
   AC_DEFINE_UNQUOTED([ENABLE_GUI], [1], [Define to 1 to compile with the GUI])
-  ifdef([PKG_CHECK_MODULES],
-	[
-  	  PKG_CHECK_MODULES(GTK,
-	    [gtk+-2.0 >= 2.2 glib-2.0 >= 2.2],
-	    [],	
-	    [
-	      ifdef([AM_PATH_GLIB],
-                    [
-                      AM_PATH_GLIB([1.2.10])
-                    ], [:])
-	      ifdef([AM_PATH_GTK],
-                    [
-                      AM_PATH_GTK([1.2.10])
-                    ], [:])
-	    ])
-        ],
-	[
-          AM_PATH_GLIB([1.2.10])
-          AM_PATH_GTK([1.2.10])
-	])
-  AC_SUBST(GTK_CFLAGS)
-  AC_SUBST(GTK_LIBS)
+  PKG_CHECK_MODULES(GTK, gtk+-2.0)
 fi
 
 # Checks for libraries.
