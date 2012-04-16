@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005, 2006  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2006, 2012  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -263,7 +263,6 @@ void STDTTY::putch(const char &c)
   bool send = true;
   char ch = c;
   bool send_cr_or_lf = false;
-  int n;
 
   if (last_was_cr)
     {
@@ -296,11 +295,15 @@ void STDTTY::putch(const char &c)
       cr_or_lf = ch;
     }
 
-  if (send_cr_or_lf)
-    n = write(STDOUT_FILENO, &cr_or_lf, 1);
+  if (send_cr_or_lf) {
+    if (write(STDOUT_FILENO, &cr_or_lf, 1) != 1)
+      abort();
+  }
 
-  if (send)
-    n = write(STDOUT_FILENO, &ch, 1);
+  if (send) {
+    if (write(STDOUT_FILENO, &ch, 1) != 1)
+      abort();
+  }
 }
 
 /*

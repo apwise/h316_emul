@@ -1,6 +1,6 @@
 /* Manipulate library files
  *
- * Copyright (C) 2008  Adrian Wise
+ * Copyright (C) 2008, 2012  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -772,7 +772,7 @@ int main(int argc, char **argv)
   std::string output_filename;
   std::vector<std::string> filenames;
 
-  bool concatenate = false;
+  //bool concatenate = false;
 
   bool usage = false;
   bool pending_filename = false;
@@ -794,7 +794,7 @@ int main(int argc, char **argv)
         break;
 
       case 'c':
-        concatenate = true;
+        //concatenate = true;
         break;
 
       case 'o':
