@@ -1,5 +1,5 @@
-/* Honeywell Series 16 emulator $Id: play.c,v 1.2 2001/06/09 22:23:46 adrian Exp $
- * Copyright (C) 1998  Adrian Wise
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1999, 2001  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,13 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: play.c,v $
- * Revision 1.2  2001/06/09 22:23:46  adrian
- * Updated version number
- *
- * Revision 1.1  1999/02/20 00:11:29  adrian
- * Initial revision
  *
  */
 
