@@ -227,7 +227,7 @@ static GtkWidget *make_file_menu()
 
 static void help_menu_about(GtkWidget *widget, gpointer data)
 {
-  int d = (int) data;
+  enum ABOUT_SECTIONS d = ((enum ABOUT_SECTIONS) ((int) ((size_t) data)));
 
   popup_about_notebook(d);
 }
