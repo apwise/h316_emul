@@ -1,4 +1,4 @@
-/* Honeywell Series 16 emulator $Id: fp.c,v 1.2 1999/06/04 07:56:19 adrian Exp $
+/* Honeywell Series 16 emulator
  * Copyright (C) 1998  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,13 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
- * $Log: fp.c,v $
- * Revision 1.2  1999/06/04 07:56:19  adrian
- * Fixed bugs apparent with RH6.0 version of gtk
- *
- * Revision 1.1  1999/02/20 00:11:29  adrian
- * Initial revision
  *
  */
 
