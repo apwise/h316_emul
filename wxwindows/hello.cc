@@ -7,7 +7,7 @@
 #include <wx/tglbtn.h>
 #include <wx/stattext.h>
 
-#include "button.xpm"
+//#include "button.xpm"
 
 class MyApp: public wxApp
 {
@@ -41,7 +41,7 @@ IMPLEMENT_APP(MyApp)
 
 bool MyApp::OnInit()
 {
-    MyFrame *frame = new MyFrame( "Hello World", wxPoint(50,50), wxSize(450,340) );
+  MyFrame *frame = new MyFrame( wxT("Hello World"), wxPoint(50,50), wxSize(450,340) );
     frame->Show(TRUE);
     SetTopWindow(frame);
     return TRUE;
@@ -52,31 +52,33 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 {
     wxMenu *menuFile = new wxMenu;
 
-    menuFile->Append( ID_About, "&About..." );
+    menuFile->Append( ID_About, wxT("&About...") );
     menuFile->AppendSeparator();
-    menuFile->Append( ID_Quit, "E&xit" );
+    menuFile->Append( ID_Quit, wxT("E&xit") );
 
     wxMenuBar *menuBar = new wxMenuBar;
-    menuBar->Append( menuFile, "&File" );
+    menuBar->Append( menuFile, wxT("&File") );
 
     SetMenuBar( menuBar );
 
     CreateStatusBar();
-    SetStatusText( "Welcome to wxWindows!" );
+    SetStatusText( wxT("Welcome to wxWindows!") );
 
     /* Adrian */
 
+    /*
     wxBitmap *bitmap = new wxBitmap( button_xpm );
     wxBitmapButton *bb = new wxBitmapButton( this, -1, *bitmap );
+    */
 
     wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
-    sizer->Add(bb, 0, wxALIGN_CENTRE);
-    sizer->Add(new wxStaticText(this, -1, "1"), 0, wxALIGN_CENTRE);
+    //sizer->Add(bb, 0, wxALIGN_CENTRE);
+    sizer->Add(new wxStaticText(this, -1, wxT("1")), 0, wxALIGN_CENTRE);
 
-    wxToggleButton *button = new wxToggleButton(this, 42, " ");
+    wxToggleButton *button = new wxToggleButton(this, 42, wxT(" "));
     sizer->Add(button, 0, wxALIGN_CENTRE);
 
-    sizer->Add(new wxStaticText(this, -1, "T1"), 0, wxALIGN_CENTRE );
+    sizer->Add(new wxStaticText(this, -1, wxT("T1")), 0, wxALIGN_CENTRE );
 
     SetSizer( sizer );      // use the sizer for layout
     sizer->SetSizeHints( this );   // set size hints to honour minimum size
@@ -89,7 +91,7 @@ void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-    wxMessageBox("This is a wxWindows Hello world sample",
-        "About Hello World", wxOK | wxICON_INFORMATION, this);
+  wxMessageBox(wxT("This is a wxWindows Hello world sample"),
+               wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
 }
 
