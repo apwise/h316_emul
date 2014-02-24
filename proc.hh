@@ -336,3 +336,11 @@ public:
 
 };
 
+/* Bodge around missing "long long" support with mingw */
+#ifndef PRIuLL
+#if defined(_WIN32) || defined(__WIN32__)
+#define PRIuLL "%l64u"
+#else
+#define PRIuLL "%llu"
+#endif
+#endif

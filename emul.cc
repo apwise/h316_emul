@@ -132,7 +132,9 @@ int main(int argc, char **argv)
 {
   STDTTY *stdtty;
   Proc *p;
+#ifdef ENABLE_GUI
   bool front_panel = 1;
+#endif
   int arg = 1;
 
   if ((argc>arg) &&
@@ -161,7 +163,9 @@ int main(int argc, char **argv)
 
   if ((argc>arg) && (strcmp(argv[arg], "-t")==0))
     {
+#ifdef ENABLE_GUI
       front_panel = 0;
+#endif
       arg++;
     }
 

@@ -936,8 +936,8 @@ static void button(FILE *fp, const char *legend, const char *filename)
     sprintf(ref, "<a href=%s>", filename);
     sprintf(eref, "</a>");
   } else {
-    sprintf(ref, "");
-    sprintf(eref, "");
+    ref[0] = '\0';
+    eref[0] = '\0';
   }
   
   fprintf(fp, "      %s%s%s%s%s%s%s%s%s\n",
