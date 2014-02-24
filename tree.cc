@@ -40,6 +40,7 @@ static const char *RcsId __attribute__ ((unused)) = "$Id: tree.cc,v 1.2 1999/02/
 #include <stdint.h>
 
 #include "stdtty.hh"
+#include "proc.hh"
 #include "tree.hh"
 
 /*
@@ -84,7 +85,7 @@ void tree_add(TREE *t, unsigned long long name, void *record)
     {
       if (!record)
         {
-          fprintf(stderr, "%s: (name <%lld>) NULL record", PN, name);
+          fprintf(stderr, "%s: (name <" PRIuLL ">) NULL record", PN, name);
           exit(1);
         }
       n = (TREE) malloc(sizeof(struct TREE_STRUCT));
@@ -149,7 +150,7 @@ void tree_dump(TREE *t, FILE *fp, int depth,
   
   if (*t)
     {
-      fprintf(fp, "%sNode <%lld> -> 0x%08x\n", s,
+      fprintf(fp, "%sNode <" PRIuLL "> -> 0x%08x\n", s,
               ((*t)->name), ((unsigned int) ((uintptr_t)((*t)->record))));
       if (dump_proc)
         dump_proc(t, s, (*t)->record);

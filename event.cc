@@ -86,7 +86,7 @@ bool Event::call_devices(unsigned long long &half_cycles, bool check_time)
       event_count ++;
       if (event_count > MAXIMUM_EVENTS)
         {
-          fprintf(stderr, "More than %d Events at time %llu, Infinite loop ?\n",
+          fprintf(stderr, "More than %d Events at time " PRIuLL ", Infinite loop ?\n",
                   MAXIMUM_EVENTS, half_cycles);
           exit(1);
         }

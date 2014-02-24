@@ -287,7 +287,7 @@ void PTR::event(int reason)
         {
           if (ready)
             fprintf(stderr,
-                    "%s %lld Character overrun\n",
+                    "%s " PRIuLL "Character overrun\n",
                     __PRETTY_FUNCTION__, p->get_half_cycles());
 
           if (insert_lf)
