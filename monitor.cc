@@ -76,6 +76,7 @@ struct CmdTab Monitor::commands[] =
     {"disassemble",1, 1, 3, "[filename] first [,last] : Save disassembly",  &Monitor::disassemble},
     {"vmem",       1, 1, 2, "filename [, exec-addr] : Save Verilog Mem.",   &Monitor::vmem},
     {"omem",       1, 1, 2, "filename [, exec-addr] : Save Octal Mem.",     &Monitor::omem},
+    {"coemem",     1, 1, 2, "filename [, exec-addr] : Save Xilinx .coe",    &Monitor::coemem},
     {"license",    1, 0, 0, "Print license information",                    &Monitor::license},
     {"warranty",   1, 0, 0, "Statement of no warranty",                     &Monitor::warranty},
     {NULL,         0, 0, 0, NULL, NULL}
@@ -722,6 +723,30 @@ bool Monitor::omem(bool &run, int words, char **cmd)
   
   return ok;
 }
+
+bool Monitor::coemem(bool &run, int words, char **cmd)
+{
+  bool ok = true;
+  char *filename = NULL;
+  int exec_addr = 0;
+  
+  /*
+   * if cmd[1] is a number then it's assumed to be the
+   * number of lines rather than a filename.
+   * else treat it as the filename
+   */
+  if (words > 1)
+    filename = cmd[1];
+
+  if (words>2)
+    exec_addr = parse_number(cmd[2], ok);
+
+  if (ok)
+    p->dump_coemem(filename, exec_addr);
+  
+  return ok;
+}
+
 
 bool Monitor::license(bool &run, int words, char **cmd)
 {

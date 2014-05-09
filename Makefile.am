@@ -1,7 +1,7 @@
 bin_PROGRAMS = h16 \
 		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
 		h16-tabify h16-asr h16-tape h16-ppl h16-plt2ps \
-		h16-lib h16-pp-asr h16-disasm
+		h16-lib h16-pp-asr h16-depp-asr h16-disasm
 
 h16_SOURCES = 	asr_intf.cc \
 		emul.cc \
@@ -36,6 +36,8 @@ h16_SOURCES = 	asr_intf.cc \
 		gpl.h
 
 AM_CXXFLAGS = -Wall -Werror
+AM_CFLAGS = -Wall -Werror
+AUTOMAKE_OPTIONS = subdir-objects
 
 if ENABLE_GUI
 
@@ -81,8 +83,16 @@ h16_pp_asr_SOURCES = utils/h16-pp-asr_app.cc \
 		utils/dummy_proc.cc utils/dummy_proc.hh \
 		asr.cc asr.hh stdtty.cc stdtty.hh \
 		utils/pp_channel.h utils/pp_channel.c
-h16_pp_asr_CXXFLAGS = -pthread
+h16_pp_asr_CXXFLAGS = -pthread -Wall -Werror
 h16_pp_asr_LDADD = -lpthread
+
+h16_depp_asr_SOURCES = utils/h16-depp-asr_app.cc \
+		utils/dummy_proc.cc utils/dummy_proc.hh \
+		asr.cc asr.hh stdtty.cc stdtty.hh \
+		utils/depp_channel.h utils/depp_channel.c
+h16_depp_asr_CFLAGS = -I/usr/local/include/digilent/adept -Wall -Werror
+h16_depp_asr_CXXFLAGS = -pthread -I/usr/local/include/digilent/adept -Wall -Werror
+h16_depp_asr_LDADD = -lpthread -L/usr/local/lib64/digilent/adept -ldmgr -ldepp
 
 h16_tape_SOURCES = utils/h16-tape.cc instr.cc
 h16_tape_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror

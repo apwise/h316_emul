@@ -948,8 +948,6 @@ static void button(FILE *fp, const char *legend, const char *filename)
 
 static void buttons(FILE *fp, int top)
 {
-  int i;
-
   if (!fp) return;
       
   if (!single_file) {

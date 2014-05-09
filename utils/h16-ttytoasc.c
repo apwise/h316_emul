@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define USAGE "usage: %s [-h|--help] <TTY filename> <ASCII filename>\n"
 

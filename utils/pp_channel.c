@@ -217,12 +217,8 @@ struct pp_channel_s *pp_channel_init(void)
 {
   pthread_attr_t attr;
   struct ppdev_frob_struct frob;
-  struct timespec us50;
   struct timeval tv_us100;
   int modes;
-
-  us50.tv_sec = 0;
-  us50.tv_nsec = 50000L;
 
   tv_us100.tv_sec = 0;
   tv_us100.tv_usec = 100;

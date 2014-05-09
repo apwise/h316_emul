@@ -374,7 +374,67 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
 }
 
 // }}}
- 
+
+void Proc::dump_coemem(char *filename, int exec_addr)
+{
+  int i, j, m, last_addr;
+  unsigned short instr;
+  FILE *fp=stdout;
+  
+  //printf("dump_coemem(): %s %d\n", filename, exec_addr);
+
+  if (filename) {
+    fp = fopen(filename, "w");
+    if (!fp) {
+      fprintf(stderr, "Could not open <%s>\n", filename);
+      return;
+    }
+  }
+  
+  last_addr = 0;
+  for (i=CORE_SIZE-1; i>=0; i--) {
+    if (modified[i]) {
+      last_addr = i;
+      break;
+    }
+  }
+
+  m = 1024 * 12;
+  if (last_addr>=m);
+    last_addr = m-1;
+  
+  fprintf(fp, "memory_initialization_radix=16;\n");
+  fprintf(fp, "memory_initialization_vector=\n");
+   
+  j = 0;
+  for (i=0; i<=last_addr; i++) {
+    instr = core[i];
+    
+    if ((i == 0) && (exec_addr != 0)) {
+      if ((exec_addr & (~0777)) != 0)
+        // Not sector zero
+        instr = 0102020; // JMP *'20
+      else
+        instr = 0002000 | exec_addr; // JMP exec_addr
+    } else if ((i == 020) && ((exec_addr & (~0777)) != 0)) {
+      instr = exec_addr;
+    }
+
+    fprintf(fp, "%04x%c", ((int) instr), ((i == last_addr)?';':','));
+
+    j++;
+    if ((j >= 8) || (i == last_addr)) {
+      fprintf(fp, "\n");
+      j = 0;
+    } else {
+      fprintf(fp, " ");
+    }
+  }
+  
+  if (fp != stdout)
+    fclose(fp);
+}
+
 // {{{ void Proc::increment_p(unsigned short n)
 
 void Proc::increment_p(unsigned short n)
