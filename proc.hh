@@ -90,6 +90,7 @@ public:
   void dump_trace(const char *filename, int n);
   void dump_disassemble(char *filename, int first, int last);
   void dump_vmem(char *filename, int exec_addr, bool octal=false);
+  void dump_coemem(char *filename, int exec_addr);
   
   void start_button();
   void goto_monitor();

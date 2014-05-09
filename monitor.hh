@@ -72,6 +72,7 @@ private:
   bool disassemble(bool &run, int words, char **cmd);
   bool vmem(bool &run, int words, char **cmd);
   bool omem(bool &run, int words, char **cmd);
+  bool coemem(bool &run, int words, char **cmd);
   bool license(bool &run, int words, char **cmd);
   bool warranty(bool &run, int words, char **cmd);
 };

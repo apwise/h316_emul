@@ -6,7 +6,7 @@
 #include "dummy_proc.hh"
 #include "asr.hh"
 #include "stdtty.hh"
-#include "pp_channel.h"
+#include "depp_channel.h"
 
 static bool call_special_chars(Proc *p, int k)
 {
@@ -20,32 +20,33 @@ int main(int argc, char **argv)
   Proc p(&asr);
   char c;
   bool ok;
-  struct pp_channel_s *ppc;
+  struct depp_channel_s *ppc;
 
-  ppc = pp_channel_init();
-
+  if (! (ppc = depp_channel_init()))
+    exit(1);
+  
   stdtty.set_proc(&p, &call_special_chars);
 
   /* loop for input */
   while (1) {
 
-    if (pp_channel_can_send(ppc)) {
+    if (depp_channel_can_send(ppc)) {
       ok = asr.get_asrch(c, true);
       if (ok) {
-        pp_channel_send(ppc, &c, 1);
+        depp_channel_send(ppc, &c, 1);
         /*printf("Sent 0x%02x ('%03o)\n", ((int)c &255), ((int)c &255));
           sleep(5);*/
       }
     }
 
-    if (pp_channel_num_chars(ppc)) {
-      if (pp_channel_read(ppc, &c, 1, -1) == 1) {
+    if (depp_channel_num_chars(ppc)) {
+      if (depp_channel_read(ppc, &c, 1, -1) == 1) {
         fflush(stdout);
         asr.put_asrch(c);
       }
     }
   }
 
-  pp_channel_done(ppc);
+  depp_channel_done(ppc);
   exit(0);
 }
