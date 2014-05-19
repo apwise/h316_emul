@@ -254,10 +254,9 @@ bool depp_channel_can_send(struct depp_channel_s *ppc)
   
   pthread_mutex_lock(&ppc->mutex_port);
   
-  //if(!DeppGetReg(ppc->hif, ADDR_CTRLSTAT, &d, fFalse))
-  //  error("depp_channel_can_send: DeppGetReg: Failed to read status register.", ppc);
-  d = 0;
-
+  if(!DeppGetReg(ppc->hif, ADDR_CTRLSTAT, &d, fFalse))
+    error("depp_channel_can_send: DeppGetReg: Failed to read status register.", ppc);
+  
   if (d & 2)
     r = true;
 
