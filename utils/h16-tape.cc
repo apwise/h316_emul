@@ -123,7 +123,7 @@ void Tape::read_file(char *filename)
 
 // }}}
 
-static InstrTable instr_table;
+static InstrTable *instr_table;
 
 // {{{ static int gc(FILE *fp)
 
@@ -421,13 +421,13 @@ static void dissassemble_block(unsigned short *block, int size, int addr)
       if (verilog)
         printf("%04x /* %-35s %-4s */\n",
                block[i],
-               instr_table.disassemble((i+addr), block[i], false),
+               instr_table->disassemble((i+addr), block[i], false),
                printable(block[i]));
       else
         printf("  0%06o%c /* %-35s %-4s */\n",
                block[i],
                ((i ==(size-1)) ? ' ' : ','),
-               instr_table.disassemble((i+addr), block[i], false),
+               instr_table->disassemble((i+addr), block[i], false),
                printable(block[i]));
 
     }
@@ -513,6 +513,7 @@ int main(int argc, char **argv)
   //malloc(sizeof(void (proc::*)(unsigned short)) * K64);
 
   //instr_table.build_instr_tables();
+  instr_table = new InstrTable;
 
   core = (unsigned short *) malloc(sizeof(unsigned short) * K32);
   for (i=0; i<K32; i++)
@@ -582,6 +583,8 @@ int main(int argc, char **argv)
   dissassemble_block(core+core_low, ((core_high-core_low)+1), core_low);
 
   fclose(fp);
+
+  delete instr_table;
   
   exit(0);
 }

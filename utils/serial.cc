@@ -12,8 +12,9 @@
 #include <sys/signal.h>
 #include <sys/types.h>
 
-#define DEVICE "/dev/ttyS0"
-#define BAUD B600
+#define DEVICE "/dev/ttyUSB0"
+#define BAUD B1200
+//#define BAUD B600
 //#define BAUD B110
 //#define BAUD B9600
 
@@ -26,6 +27,7 @@ Serial::Serial()
   newtio = new struct termios;
 
   /* open the device to be non-blocking (read will return immediatly) */
+  //printf("About to open %s\n", DEVICE);
   fd = open(DEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
   if (fd <0) {perror(DEVICE); exit(1); }
 
@@ -107,9 +109,10 @@ char Serial::receive(bool &ok)
 
   ok = (read (fd, &c, 1) == 1);
 
-  //if (ok)
-  //  Printf("Got %d\n", ((int)c));
-
+  //if (ok) {
+  //  printf("Got 0x%02x\n", ((int)c) & 0xff);
+  //}
+  
   return c;
 }
 

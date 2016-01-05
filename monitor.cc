@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -82,6 +83,22 @@ struct CmdTab Monitor::commands[] =
     {NULL,         0, 0, 0, NULL, NULL}
   };
 
+static Monitor *monitor = 0;
+
+static void sig_handler(int signo)
+{
+  if (monitor) {
+    monitor->sig_handler(signo);
+  }
+}
+
+void Monitor::sig_handler(int signo)
+{
+  if (signo == SIGINT) {
+    p->goto_monitor();
+  }
+}
+
 Monitor::Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv)
 {
   this->p = p;
@@ -90,6 +107,20 @@ Monitor::Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv)
   this->argv = argv;
 
   first_time = 1;
+
+  if (!monitor) {
+    struct sigaction sa;
+
+    bzero(&sa, sizeof(struct sigaction));
+           
+    sa.sa_handler = &::sig_handler;
+    
+    if (sigaction(SIGINT, &sa, 0)) {
+      abort();
+    }
+    monitor = this;
+  }
+
 }
 
 void Monitor::get_line(char *prompt, FILE **fp, char *buffer, int buf_size)

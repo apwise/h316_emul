@@ -75,8 +75,9 @@ int main(int argc, char **argv)
               
               /* Input from keyboard */
               ok = asr.get_asrch(c, false);
-              if (ok)
+              if (ok) {
                 serial.transmit(c, ok);
+              }
             }
           
           if (FD_ISSET(serial.get_fd(), &readfs))
@@ -86,10 +87,10 @@ int main(int argc, char **argv)
               /* Input from serial */
               c = serial.receive(ok);
               if (ok) {
-		//printf("<%03o>", c & 0xff);
-		fflush(stdout);
+                //printf("<%03o>", c & 0xff);
+                fflush(stdout);
                 asr.put_asrch(c);
-	      }
+              }
             }
         }
     }
