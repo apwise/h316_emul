@@ -28,6 +28,7 @@ class Monitor
 public:
   Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv);
   void do_commands(bool &run, FILE **fp);
+  void sig_handler(int signo);
   
 private:
   Proc *p;
