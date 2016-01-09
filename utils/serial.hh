@@ -13,5 +13,5 @@ public:
 private:
   int fd;
   struct termios *oldtio, *newtio;
-  
+  unsigned int character_time;
 };
