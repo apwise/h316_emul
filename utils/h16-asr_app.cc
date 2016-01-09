@@ -126,8 +126,6 @@ unsigned int Pal_monitor::zero_words(char c)
           int n = 0200000 - word;
           if ((n>0) && (n < 50)) { // Maximum PAL block size
             zero_words = n;
-          } else {
-            fprintf(stderr, "Unexpected zero word size = %d\n", n);
           }
         }
         next_state = ST_CHAR1;
