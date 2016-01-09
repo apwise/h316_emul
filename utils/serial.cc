@@ -93,6 +93,24 @@ Serial::Serial()
   newtio->c_cc[VTIME]=0;
   tcflush(fd, TCIFLUSH);
   tcsetattr(fd,TCSANOW,newtio);
+
+  unsigned int baud = 0;
+  switch (BAUD) {
+  case B110:  baud = 110;  break;
+  case B300:  baud = 300;  break;
+  case B600:  baud = 600;  break;
+  case B1200: baud = 1200; break;
+  case B2400: baud = 2400; break;
+  case B4800: baud = 4800; break;
+  case B9600: baud = 9600; break;
+  default:
+    fprintf(stderr, "Unknown baud rate\n");
+    exit(1);
+  }
+
+  // 11 bits per character
+  // in microseconds...
+  character_time = (1000000 * 11) / baud;
 }
 
 Serial::~Serial()
@@ -119,5 +137,7 @@ char Serial::receive(bool &ok)
 void Serial::transmit(char c, bool &ok)
 {
   ok = (write (fd, &c, 1) == 1);
-  usleep(10);
+
+  // Don't get ahead of the line
+  usleep(character_time);
 }
