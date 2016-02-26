@@ -53,7 +53,7 @@ Serial::Serial()
   //  newtio->c_cflag &= ~MDMBUF;
   //  newtio->c_cflag &= ~CIGNORE;
 
-  if (cfsetispeed (newtio, BAUD))
+  if (cfsetispeed(newtio, BAUD))
     {
       fprintf(stderr, "Could not set input baud rate\n");
       exit(1);
@@ -92,10 +92,30 @@ Serial::Serial()
   newtio->c_cc[VMIN]=1;
   newtio->c_cc[VTIME]=0;
   tcflush(fd, TCIFLUSH);
-  tcsetattr(fd,TCSANOW,newtio);
 
+  if (tcsetattr(fd,TCSANOW,newtio)) {
+      fprintf(stderr, "Unable to set terminal attributes\n");
+      exit(1);
+  }
+
+  struct termios check;
+  tcgetattr(fd, &check);
+
+  if (cfgetispeed(&check) != BAUD) {
+    fprintf(stderr, "Input baud rate not correct\n");
+    exit(1);
+  }
+  
+  if (cfgetospeed(&check) != BAUD) {
+    fprintf(stderr, "Output baud rate not correct\n");
+    exit(1);
+  }
+  
+  
   unsigned int baud = 0;
   switch (BAUD) {
+  case B50:   baud = 50;   break;
+  case B75:   baud = 75;   break;
   case B110:  baud = 110;  break;
   case B300:  baud = 300;  break;
   case B600:  baud = 600;  break;
