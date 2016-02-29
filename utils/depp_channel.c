@@ -16,9 +16,10 @@ static const int initial_fifo_size = 0x0400;
 static const long initial_wait = 10000; // 10us - 100kHz
 static const long max_wait = 10000000;  // 10ms - 100Hz
 
-#define ADDR_CTRLSTAT 0
-#define ADDR_ASRKBD   1
-#define ADDR_ASRTYP   2
+#define ADDR_STAT_TYP 0
+#define ADDR_STAT_KBD 1
+#define ADDR_DATA_TYP 2
+#define ADDR_DATA_KBD 3
 
 static inline long next_wait(long current_wait)
 {
@@ -134,48 +135,73 @@ static void *depp_input_thread(void *p)
 
   /*
    * Interrupts are not working so poll the port to look for
-   * ack_N being driven low...
+   * data.
    */
 
   while(ppc->running) {
+
+    unsigned int items;
     
+    current_wait = initial_wait;
     nanowait(current_wait, ppc);
     
     pthread_mutex_lock(&ppc->mutex_port);
     
-    if(!DeppGetReg(ppc->hif, ADDR_CTRLSTAT, &d, fFalse))
-      error("depp_input_thread: DeppGetReg: Failed to read status register.", ppc);
-    //printf("depp_input_thread: Status = 0x%02x\n", ((int) d));
+    if (!DeppGetReg(ppc->hif, ADDR_STAT_TYP, &d, fFalse)) {
+      error("depp_input_thread: DeppGetReg: Failed to read typewriter status register.", ppc);
+    }
 
-    if (!(d & 1)) {
+    items = d & 0x1f; // 5-bits, expect values 0-16
+
+    printf("depp_input_thread: items = %d\n", items);
+    fflush(stdout);
+    
+    if (items == 0) {
       /* No, no character waiting double the wait...*/
       
       current_wait = next_wait(current_wait);
+      
       //printf("current_wait=%ld\n", current_wait);
 
     } else {
 
-      /* There is a character - read some data */
+      /* There is one or more characters - read some data */
       i = 0;
       do {
-	//printf("i=%d\n", i);
-	//printf("(cs) d = 0x%02x\n", d);
-	d = 0;
-	if(!DeppGetReg(ppc->hif, ADDR_ASRTYP, &d, fFalse))
-	  error("DeppGetReg: Failed to read ASR typewriter register.", ppc);
-	
-	//printf("d = 0x%02x\n", d);
+        //printf("i=%d\n", i);
+        //printf("(cs) d = 0x%02x\n", d);
 
-	buf[i++] = d;
-	
-	if(!DeppGetReg(ppc->hif, ADDR_CTRLSTAT, &d, fFalse))
-	  error("depp_input_thread: DeppGetReg (2): Failed to read status register.", ppc);
-	
-      } while ((i<128) && (d & 1));
+        if ((i + items) > 128) {
+          items = 128 - i;
+        }
+
+        do {
+          d = 0;
+          if (!DeppGetReg(ppc->hif, ADDR_DATA_TYP, &d, fFalse)) {
+            error("DeppGetReg: Failed to read typewriter data register.", ppc);
+          }
+          
+          printf("d = 0x%02x, items = %d\n", d, items);
+          
+          buf[i++] = d;
+        } while ((--items) > 0);
+        //printf("Leave inner\n"); fflush(stdout);
+        
+        if (i < 128) {
+          if (!DeppGetReg(ppc->hif, ADDR_STAT_TYP, &d, fFalse)) {
+            error("depp_input_thread: DeppGetReg (2): Failed to read typewriter status register.", ppc);
+          }
+          items = d & 0x1f; // 5-bits, expect values 0-16
+        }
+          
+      } while ((i<128) && (items != 0));
+      
+      printf("Leave outer - add to fifo\n"); fflush(stdout);
       
       pthread_mutex_lock(&ppc->mutex_fifo);
-      for (n=0; n<i; n++)
+      for (n=0; n<i; n++) {
         fifo_add(ppc, buf[n]);
+      }
       pthread_mutex_unlock(&ppc->mutex_fifo);
       
       current_wait = initial_wait;
@@ -254,11 +280,11 @@ bool depp_channel_can_send(struct depp_channel_s *ppc)
   
   pthread_mutex_lock(&ppc->mutex_port);
   
-  if(!DeppGetReg(ppc->hif, ADDR_CTRLSTAT, &d, fFalse))
-    error("depp_channel_can_send: DeppGetReg: Failed to read status register.", ppc);
+  if (!DeppGetReg(ppc->hif, ADDR_STAT_KBD, &d, fFalse)) {
+    error("depp_channel_can_send: DeppGetReg: Failed to read keyboard status register.", ppc);
+  }
   
-  if (d & 2)
-    r = true;
+  r = ((d & 0x1f) != 0);
 
   pthread_mutex_unlock(&ppc->mutex_port);
   
@@ -268,43 +294,68 @@ bool depp_channel_can_send(struct depp_channel_s *ppc)
 void depp_channel_send(struct depp_channel_s *ppc, const char *buf, int n)
 {
   int i;
-  int t = n;
-  const char *p = buf;
   BYTE d;
   long current_wait = initial_wait;
- 
-  while (t>0) {
+  unsigned int space;
+
+  //printf("depp_channel_send()\n");
+  
+  i = 0;
+  while (i<n) {
+    printf("depp_channel_send() i = %d, n = %d\n", i, n);
+
     pthread_mutex_lock(&ppc->mutex_port);
+    
+    if(!DeppGetReg(ppc->hif, ADDR_STAT_KBD, &d, fFalse)) {
+      error("DeppGetReg: Failed to read keyboard status register.", ppc);
+    }
+    
+    space = d & 0x1f; // 5-bit, expect values 0 - 16
+    
+    printf("depp_channel_send() space = %d\n", space);
 
-    if(!DeppGetReg(ppc->hif, ADDR_CTRLSTAT, &d, fFalse))
-      error("DeppGetReg: Failed to read status register.", ppc);
+    if (space > 0) {
 
-    i = 0;
-    if (d & 2) {
-      while ((d & 2) && (i < t)) {
-	
-	d = p[i++];
-	
-	if(!DeppPutReg(ppc->hif, ADDR_ASRKBD, d, fFalse))
-	  error("DeppPutReg: Failed to write ASR keyboard register.", ppc);
-	
-	if(!DeppGetReg(ppc->hif, ADDR_CTRLSTAT, &d, fFalse))
-	  error("DeppGetReg: Failed to read status register.", ppc);
+      while (space > 0) {
+        
+        if ((space + i) > n) {
+          space = n - i;
+        }
+        
+        while (space > 0) {
+          
+          d = buf[i++];
+          
+          if (!DeppPutReg(ppc->hif, ADDR_DATA_KBD, d, fFalse)) {
+            error("DeppPutReg: Failed to write keyboard data register.", ppc);
+          }
+
+          printf("depp_channel_send() send char = 0x%02x\n", ((int) d));
+          
+          space--;
+        }
+        
+        if (i < n) {
+          if (!DeppGetReg(ppc->hif, ADDR_STAT_KBD, &d, fFalse)) {
+            error("DeppGetReg: Failed to read keyboard status register.", ppc);
+          }
+          
+          space = d & 0x1f; // 5-bit, expect values 0 - 16        
+        }
       }
       
       current_wait = initial_wait;
-      p += i;
-      t -= i;
     } else {
-      current_wait=next_wait(current_wait);
+      current_wait = next_wait(current_wait);
     }
 
     pthread_mutex_unlock(&ppc->mutex_port);
 
-    if (t > 0) {
+    if (i<n) {
       nanowait(current_wait, ppc);
     }
   }
+  printf("exit depp_channel_send()\n");
 }
 
 int depp_channel_num_chars(struct depp_channel_s *ppc)
