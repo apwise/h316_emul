@@ -22,20 +22,42 @@ int main(int argc, char **argv)
   bool ok;
   struct depp_channel_s *ppc;
 
+  static const unsigned int BUF_LEN = 128;
+  
+  char buf[BUF_LEN];
+  unsigned int i;
+  bool file_input;
+  
   if (! (ppc = depp_channel_init()))
     exit(1);
   
   stdtty.set_proc(&p, &call_special_chars);
 
+  i = 0;
+  file_input = false;
+  
   /* loop for input */
   while (1) {
 
-    if (depp_channel_can_send(ppc)) {
+    if ((file_input && (i<BUF_LEN)) ||
+        depp_channel_can_send(ppc)) {
       ok = asr.get_asrch(c, true);
       if (ok) {
-        depp_channel_send(ppc, &c, 1);
-        /*printf("Sent 0x%02x ('%03o)\n", ((int)c &255), ((int)c &255));
-          sleep(5);*/
+        buf[i++] = c;
+
+        //bool prev_file_input = file_input;
+        
+        file_input = asr.file_input();
+        if ((i >= BUF_LEN) || (!file_input)) {
+          depp_channel_send(ppc, buf, i);
+          i = 0;
+        }
+
+        /*
+        if (prev_file_input && (!file_input)) {
+          // Can we kick input thread out of wait?
+        }
+        */
       }
     }
 
