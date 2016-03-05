@@ -142,7 +142,7 @@ static void *depp_input_thread(void *p)
 
     unsigned int items;
     
-    current_wait = initial_wait;
+    //current_wait = initial_wait;
     nanowait(current_wait, ppc);
     
     pthread_mutex_lock(&ppc->mutex_port);
@@ -151,9 +151,9 @@ static void *depp_input_thread(void *p)
       error("depp_input_thread: DeppGetReg: Failed to read typewriter status register.", ppc);
     }
 
-    items = d & 0x1f; // 5-bits, expect values 0-16
+    items = d & 0x1f; // 5-bits, expect values 0 - 17
 
-    printf("depp_input_thread: items = %d\n", items);
+    //printf("depp_input_thread: items = %d\n", items);
     fflush(stdout);
     
     if (items == 0) {
@@ -162,6 +162,7 @@ static void *depp_input_thread(void *p)
       current_wait = next_wait(current_wait);
       
       //printf("current_wait=%ld\n", current_wait);
+      fflush(stdout);
 
     } else {
 
@@ -175,28 +176,37 @@ static void *depp_input_thread(void *p)
           items = 128 - i;
         }
 
+        /*
         do {
           d = 0;
           if (!DeppGetReg(ppc->hif, ADDR_DATA_TYP, &d, fFalse)) {
             error("DeppGetReg: Failed to read typewriter data register.", ppc);
           }
           
-          printf("d = 0x%02x, items = %d\n", d, items);
+          //printf("d = 0x%02x, items = %d\n", d, items);
           
           buf[i++] = d;
         } while ((--items) > 0);
         //printf("Leave inner\n"); fflush(stdout);
+        */
+
+        if (DeppGetRegRepeat(ppc->hif, ADDR_DATA_TYP, ((BYTE *) &buf[i]), items, fFalse)) {
+          i += items;
+          items = 0;
+        } else {
+          error("DeppGetRegRepeat: Failed to read typewriter data register.", ppc);
+        }
         
         if (i < 128) {
           if (!DeppGetReg(ppc->hif, ADDR_STAT_TYP, &d, fFalse)) {
             error("depp_input_thread: DeppGetReg (2): Failed to read typewriter status register.", ppc);
           }
-          items = d & 0x1f; // 5-bits, expect values 0-16
+          items = d & 0x1f; // 5-bits, expect values 0 - 17
         }
           
       } while ((i<128) && (items != 0));
       
-      printf("Leave outer - add to fifo\n"); fflush(stdout);
+      //printf("Leave outer - add to fifo\n"); fflush(stdout);
       
       pthread_mutex_lock(&ppc->mutex_fifo);
       for (n=0; n<i; n++) {
@@ -301,8 +311,8 @@ void depp_channel_send(struct depp_channel_s *ppc, const char *buf, int n)
   //printf("depp_channel_send()\n");
   
   i = 0;
-  while (i<n) {
-    printf("depp_channel_send() i = %d, n = %d\n", i, n);
+  while (i < n) {
+    //printf("depp_channel_send() i = %d, n = %d\n", i, n);
 
     pthread_mutex_lock(&ppc->mutex_port);
     
@@ -310,9 +320,9 @@ void depp_channel_send(struct depp_channel_s *ppc, const char *buf, int n)
       error("DeppGetReg: Failed to read keyboard status register.", ppc);
     }
     
-    space = d & 0x1f; // 5-bit, expect values 0 - 16
+    space = d & 0x1f; // 5-bit, expect values 0 - 17
     
-    printf("depp_channel_send() space = %d\n", space);
+    //printf("depp_channel_send() space = %d\n", space);
 
     if (space > 0) {
 
@@ -321,18 +331,12 @@ void depp_channel_send(struct depp_channel_s *ppc, const char *buf, int n)
         if ((space + i) > n) {
           space = n - i;
         }
-        
-        while (space > 0) {
-          
-          d = buf[i++];
-          
-          if (!DeppPutReg(ppc->hif, ADDR_DATA_KBD, d, fFalse)) {
-            error("DeppPutReg: Failed to write keyboard data register.", ppc);
-          }
 
-          printf("depp_channel_send() send char = 0x%02x\n", ((int) d));
-          
-          space--;
+        if (DeppPutRegRepeat(ppc->hif, ADDR_DATA_KBD, ((BYTE *) &buf[i]), space, fFalse)) {
+          i += space;
+          space = 0;
+        } else {
+          error("DeppPutRegRepeat: Failed to write keyboard data register.", ppc);
         }
         
         if (i < n) {
@@ -340,7 +344,7 @@ void depp_channel_send(struct depp_channel_s *ppc, const char *buf, int n)
             error("DeppGetReg: Failed to read keyboard status register.", ppc);
           }
           
-          space = d & 0x1f; // 5-bit, expect values 0 - 16        
+          space = d & 0x1f; // 5-bit, expect values 0 - 17
         }
       }
       
@@ -350,12 +354,13 @@ void depp_channel_send(struct depp_channel_s *ppc, const char *buf, int n)
     }
 
     pthread_mutex_unlock(&ppc->mutex_port);
-
+    
     if (i<n) {
       nanowait(current_wait, ppc);
     }
   }
-  printf("exit depp_channel_send()\n");
+  
+  //printf("exit depp_channel_send()\n");
 }
 
 int depp_channel_num_chars(struct depp_channel_s *ppc)
