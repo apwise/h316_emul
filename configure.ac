@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(h16, 1.5.2, apw@adrianwise.co.uk)
+AC_INIT(h16, 1.5.3, apw@adrianwise.co.uk)
 
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997, 1998, 1999, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Adrian Wise])
+AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016 Adrian Wise])
 AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADER([config.h])
 
@@ -29,6 +29,9 @@ fi
 AC_CHECK_LIB([termcap], [tgoto])
 AC_CHECK_LIB([history], [add_history])
 AC_CHECK_LIB([readline], [readline])
+AC_CHECK_LIB([depp], [DeppEnable])
+
+AM_CONDITIONAL([ENABLE_DEPP], [test x$ac_cv_lib_depp_DeppEnable = xyes])
 
 # Checks for header files.
 AC_HEADER_STDC
