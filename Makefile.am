@@ -1,7 +1,11 @@
 bin_PROGRAMS = h16 \
 		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
 		h16-tabify h16-asr h16-tape h16-ppl h16-plt2ps \
-		h16-lib h16-pp-asr h16-depp-asr h16-disasm
+		h16-lib h16-pp-asr h16-disasm
+
+if ENABLE_DEPP
+  bin_PROGRAMS += h16-depp-asr 
+endif
 
 h16_SOURCES = 	asr_intf.cc \
 		emul.cc \
