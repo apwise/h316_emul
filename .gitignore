@@ -3,9 +3,9 @@ INSTALL
 Makefile.in
 aclocal.m4
 autom4te.cache
-build
 compile
 configure
 depcomp
 install-sh
 missing
+build
