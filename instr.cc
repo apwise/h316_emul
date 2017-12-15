@@ -262,6 +262,12 @@ InstrTable::Instr InstrTable::extended[] =
     Instr()
   };
 
+InstrTable::Instr InstrTable::restricted[] = 
+  {
+    Instr("ERM", IT(GB), 0001401, "Enter Restrict Mode", PD(do_ERM)),
+    Instr()
+  };
+
 InstrTable::Instr InstrTable::mem_parity[] = 
   {
     Instr("RMP", IT(GB), 0000021, "Reset memory parity error", PD(do_RMP)),
@@ -330,6 +336,7 @@ InstrTable::Instr *InstrTable::instructions[] =
   {
     standard,
     extended,
+    restricted,
     mem_parity,
     arithmetic,
 #if ((!defined(GENERIC_GROUP_A)) || defined(TEST_GENERIC_GROUP_A))

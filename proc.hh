@@ -145,6 +145,7 @@ private:
   unsigned short interrupts;
   bool start_button_interrupt;
   bool rtclk;
+  bool melov; // Memory Lockout Violation
   bool break_flag;
   bool break_intr;
   unsigned int break_addr;
@@ -157,6 +158,7 @@ private:
   bool dp;
   bool extend;
   bool disable_extend_pending;
+  bool restrict;
   const bool extend_allowed; // i.e. whether CPU has extended addressing
   const unsigned short addr_mask;
 
@@ -312,6 +314,8 @@ public:
 
   void do_EXA(unsigned short instr);
   void do_DXA(unsigned short instr);
+
+  void do_ERM(unsigned short instr);
 
   void do_RMP(unsigned short instr);
 
