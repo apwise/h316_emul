@@ -51,14 +51,10 @@
  * have been called.
  */
 
-struct TREE_STRUCT;
+#include <map>
+
 class Proc;
 class IODEV;
-
-#define MAXIMUM_EVENTS 10000
-
-
-class Proc;
 
 class Event
 {
@@ -74,11 +70,14 @@ public:
   static bool next_event_time(unsigned long long &half_cycles);
 
 private:
-  Proc *p;
-  IODEV *device; // pointer to the device
-  int reason; // Why the device was called.
+  static const unsigned int MAXIMUM_EVENTS = 10000;
   
-  static TREE_STRUCT *event_queue;
+  typedef std::multimap<unsigned long long, Event> event_queue_t;
+
+  IODEV *device; // pointer to the device
+  int reason;    // Why the device was called.
+  
+  static event_queue_t event_queue;
   
   void call_one_device();
 };
