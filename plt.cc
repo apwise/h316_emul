@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "iodev.hh"
-#include "event.hh"
 #include "stdtty.hh"
 
 #include "proc.hh"
@@ -256,7 +255,7 @@ PLT::STATUS PLT::ocp(unsigned short instr)
     not_busy = false;
     if (mask)
       p->clear_interrupt(SMK_MASK);
-    Event::queue(p, microseconds, this, PLT_REASON_NOT_BUSY );
+    p->queue(microseconds, this, PLT_REASON_NOT_BUSY );
   } else {
     fprintf(stderr, "PLT: OCP '%04o\n", instr & 0x3ff);
     exit(1);

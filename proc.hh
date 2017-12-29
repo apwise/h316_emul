@@ -19,6 +19,7 @@
  */
 
 #include "instr.hh" // To get GENERIC_GROUP_A
+#include "event_queue.hh"
 
 class STDTTY;
 class InstrTable;
@@ -116,6 +117,13 @@ public:
 
   int get_wrt_info(unsigned short addr[2], unsigned short data[2]);
 
+  void queue(unsigned long microseconds, IODEV *device, int reason)
+  {
+    EventQueue::EventTime event_time = (half_cycles +
+                                        (half_cycles_per_microsecond * microseconds));
+    event_queue.queue(event_time, device, reason);
+  }
+             
 private:
   /*
    * the following are the machine registers
@@ -177,8 +185,6 @@ private:
   bool fetched; // flag to say that an instruction has been fetched
   unsigned short fetched_p;
 
-  unsigned long long half_cycles;
-
   /*
    * Instruction decode & dispatch
    */
@@ -188,7 +194,10 @@ private:
    * devices
    */
   IODEV **devices;
-
+  EventQueue event_queue;
+  EventQueue::EventTime half_cycles;
+  static constexpr double cycle_time = 1.60; // Microseconds
+  static constexpr double half_cycles_per_microsecond = (2.0 / cycle_time);
   /*
    * Tracing
    */

@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "iodev.hh"
-#include "event.hh"
 #include "stdtty.hh"
 
 #include "proc.hh"
@@ -187,7 +186,7 @@ void PTR::open_file(void)
 
 void PTR::start_reader(void)
 {
-  Event::queue(p, (1000000 / SPEED), this, PTR_REASON_CHARACTER );
+  p->queue((1000000 / SPEED), this, PTR_REASON_CHARACTER );
   events_queued++;
   tape_running = true;
 }
@@ -320,7 +319,7 @@ void PTR::event(int reason)
               data_buf = c & 0xff;
               ready = true;
               p->set_interrupt(mask);
-              Event::queue(p, (1000000 / SPEED), this, PTR_REASON_CHARACTER );
+              p->queue((1000000 / SPEED), this, PTR_REASON_CHARACTER );
               events_queued++;
             }
         }

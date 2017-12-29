@@ -9,7 +9,7 @@ endif
 
 h16_SOURCES = 	asr_intf.cc \
 		emul.cc \
-		event.cc \
+		event_queue.cc \
 		instr.cc \
 		iodev.cc \
 		lpt.cc \
@@ -22,7 +22,7 @@ h16_SOURCES = 	asr_intf.cc \
 		plt.cc \
 		gpl.c \
 		asr.hh \
-		event.hh \
+		event_queue.hh \
 		iodev.hh \
 		monitor.hh \
 		ptp.hh \

@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "iodev.hh"
-#include "event.hh"
 #include "stdtty.hh"
 
 #include "proc.hh"
@@ -110,7 +109,7 @@ PTP::STATUS PTP::ota(unsigned short instr, signed short data)
           
           ready = false;
           
-          Event::queue(p, (1000000 / SPEED), this, PTP_REASON_CHARACTER );
+          p->queue((1000000 / SPEED), this, PTP_REASON_CHARACTER );
         }
       break;
       
@@ -162,7 +161,7 @@ void PTP::turn_power_on()
   if (!power_on)
     {
       // 5 second turn-on delay
-      Event::queue(p, 5000000, this, PTP_REASON_CHARACTER );
+      p->queue(5000000, this, PTP_REASON_CHARACTER );
       power_on = true;
     }   
 }
