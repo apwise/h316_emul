@@ -1,4 +1,4 @@
-bin_PROGRAMS = h16 \
+bin_PROGRAMS = 	h16 \
 		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
 		h16-tabify h16-asr h16-tape h16-ppl h16-plt2ps \
 		h16-lib h16-pp-asr h16-disasm
@@ -33,12 +33,11 @@ h16_SOURCES = 	asr_intf.cc \
 		lpt.hh \
 		proc.hh \
 		ptr.hh \
-		tree.hh \
 		rtc.cc \
 		rtc.hh \
 		gpl.h
 
-AM_CXXFLAGS = -Wall -Werror -std=c++11
+AM_CXXFLAGS = -Wall -Werror
 AM_CFLAGS = -Wall -Werror
 AUTOMAKE_OPTIONS = subdir-objects
 
