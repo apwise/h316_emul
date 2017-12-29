@@ -17,7 +17,6 @@ h16_SOURCES = 	asr_intf.cc \
 		proc.cc \
 		ptp.cc \
 		ptr.cc \
-		tree.cc \
 		asr.cc \
 		stdtty.cc \
 		plt.cc \
@@ -39,7 +38,7 @@ h16_SOURCES = 	asr_intf.cc \
 		rtc.hh \
 		gpl.h
 
-AM_CXXFLAGS = -Wall -Werror
+AM_CXXFLAGS = -Wall -Werror -std=c++11
 AM_CFLAGS = -Wall -Werror
 AUTOMAKE_OPTIONS = subdir-objects
 

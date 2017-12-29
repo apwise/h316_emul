@@ -17,22 +17,20 @@
  * MA  02111-1307 USA
  *
  */
-#include <stdlib.h>
-#include <stdio.h>
-
+#include <cstdlib>
+#include <iostream>
 
 #include "stdtty.hh"
 #include "proc.hh"
 #include "iodev.hh"
-#include "tree.hh"
 #include "event.hh"
 
-TREE_STRUCT *Event::event_queue = NULL;
+Event::event_queue_t Event::event_queue;
 
 Event::Event(IODEV *device, int reason)
+  : device(device)
+  , reason(reason)
 {
-  this->device = device;
-  this->reason = reason;
 };
 
 Event::~Event()
@@ -47,7 +45,7 @@ void Event::call_one_device()
 
 void Event::initialize()
 {
-  event_queue = NULL;
+  event_queue.clear();
 }
 
 #define cycle_time (1.600)
@@ -55,63 +53,66 @@ void Event::initialize()
 
 void Event::queue(Proc *p, unsigned long microseconds, IODEV *device, int reason)
 {
-  Event *ev;
   unsigned long half_cycles;
   
   half_cycles = (unsigned long) (((double) microseconds) * 
                                  half_cycles_per_microsecond);
   
-  ev = new Event(device, reason);
-  tree_add( &event_queue,
-            half_cycles + p->get_half_cycles(), ev);
+  Event ev(device, reason);
+  
+  event_queue.insert(event_queue_t::value_type(half_cycles + p->get_half_cycles(), ev));
 }
 
 bool Event::call_devices(unsigned long long &half_cycles, bool check_time)
 {
-  Event *ev;
-  unsigned long long ev_time;
-  unsigned long event_count = 0;
-  bool r = 0;
-  
-  while ( (ev = (Event *) tree_remove_left_most(&event_queue,
-                                                ev_time, half_cycles,
-                                                check_time)))
-    {
-      r = 1;
-      if (!check_time) half_cycles = ev_time;
-      
-      ev->call_one_device();
-      delete ev;
-      
-      event_count ++;
-      if (event_count > MAXIMUM_EVENTS)
-        {
-          fprintf(stderr, "More than %d Events at time " PRIuLL ", Infinite loop ?\n",
-                  MAXIMUM_EVENTS, half_cycles);
-          exit(1);
-        }
+  unsigned int event_count = 0;
+  bool r = false;
+
+  event_queue_t::iterator it = event_queue.begin();
+
+  while ((it != event_queue.end()) &&
+         ((!check_time) || (it->first <= half_cycles))) {
+
+    r = true;
+    
+    if ((!check_time) && (half_cycles != it->first)) {
+      event_count = 0;
+      half_cycles = it->first;
     }
+
+    Event &ev(it->second);
+
+    it = event_queue.erase(it);
+    ev.call_one_device();
+    
+    event_count ++;
+    if (event_count > MAXIMUM_EVENTS) {
+      std::cerr << "More than " << MAXIMUM_EVENTS << " events at time " << half_cycles
+                << ", infinite loop?" << std::endl;
+      std::exit(1);
+    }
+  }
+  
   return r;
 }
 
 void Event::flush_events(unsigned long long &half_cycles)
 {
-  while(call_devices(half_cycles, 0));
-}
-
-static void free_event(void *p)
-{
-  Event *ep = (Event *) p;
-  delete ep;
+  call_devices(half_cycles, false);
 }
 
 void Event::discard_events()
 {
-  tree_free( &event_queue, free_event);
+  event_queue.clear();
 }
 
 bool Event::next_event_time(unsigned long long &half_cycles)
 {
-  return tree_left_name(&event_queue, half_cycles);
+  event_queue_t::iterator it = event_queue.begin();
+  if (it != event_queue.end()) {
+    half_cycles = it->first;
+    return true;
+  }
+  return false;
 }
 
