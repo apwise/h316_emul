@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "stdtty.hh"
-#include "event.hh"
 #include "proc.hh"
 #include "instr.hh"
 #include "monitor.hh"
@@ -175,16 +174,6 @@ int main(int argc, char **argv)
     process_args(&argc, &argv);
 #endif
   
-  /*
-   * Initialize event handling.
-   *
-   * Events are used to enable the I/O devices to schedule
-   * call-backs at some future (simulation) time, allowing
-   * then to simulate the timing associated with the
-   * devices
-   */
-  Event::initialize();
-
   /*
    * Handling of the TTY is kind of complicated because
    * it does multiple things (it models the ASR connected to

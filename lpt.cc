@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "iodev.hh"
-#include "event.hh"
 #include "stdtty.hh"
 
 #include "proc.hh"
