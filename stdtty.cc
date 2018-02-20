@@ -138,15 +138,12 @@ void STDTTY::save_input_mode()
   saved_attributes = new termios;
  
   /* Make sure stdin is a terminal. */
-  if (!isatty (STDIN_FILENO))
-    {
-      fprintf (stderr, "Not a terminal.\n");
-      exit (1);
-    }
-
-  /* Save the terminal attributes so we can restore them later. */
-  tcgetattr (STDIN_FILENO, saved_attributes);
-  atexit (STDTTY::reset_input_mode);
+  if (isatty (STDIN_FILENO)) {
+ 
+    /* Save the terminal attributes so we can restore them later. */
+    tcgetattr (STDIN_FILENO, saved_attributes);
+    atexit (STDTTY::reset_input_mode);
+  }
 }
 
 void STDTTY::reset_input_mode (void)
