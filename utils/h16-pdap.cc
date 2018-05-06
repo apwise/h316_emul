@@ -1768,7 +1768,7 @@ void File::render()
 {
   string out_filename = basename(filename)+".m4h";
   string out_filename2;
-  char buf[10];
+  char buf[12];
 
   FILE *fp = fopen(out_filename.c_str(), "w");
   FILE *fp2 = 0;
