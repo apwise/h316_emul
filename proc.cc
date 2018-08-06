@@ -399,7 +399,7 @@ void Proc::dump_coemem(char *filename, int exec_addr)
   }
 
   m = 1024 * 12;
-  if (last_addr>=m);
+  if (last_addr>=m)
     last_addr = m-1;
   
   fprintf(fp, "memory_initialization_radix=16;\n");
@@ -2938,7 +2938,7 @@ void Proc::generic_skip(unsigned short instr)
    * C  - C-bit zero.
    */
  
-  if (instr & 0x001) cond &= ((~c) & 1);
+  if (instr & 0x001) cond &= ((~((int) c)) & 1);
   if (instr & 0x002) cond &= ((~ss[3]) & 1);
   if (instr & 0x004) cond &= ((~ss[2]) & 1);
   if (instr & 0x008) cond &= ((~ss[1]) & 1);
