@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "iodev.hh"
-#include "event.hh"
 #include "stdtty.hh"
 
 #include "proc.hh"
@@ -70,7 +69,7 @@ RTC::STATUS RTC::ocp(unsigned short instr)
     interrupting = false;
     p->clear_interrupt(SMK_MASK);
     if (!running)
-      Event::queue(p, (1000000 / RATE), this, RTC_REASON_TICK );
+      p->queue((1000000 / RATE), this, RTC_REASON_TICK );
     running = true;
     break;
     
@@ -131,7 +130,7 @@ void RTC::event(int reason)
     
   case RTC_REASON_TICK:
     if (running) {
-      Event::queue(p, (1000000 / RATE), this, RTC_REASON_TICK );
+      p->queue((1000000 / RATE), this, RTC_REASON_TICK );
       /* Request a single execution cycle on CPU */
       p->set_rtclk(true);
     }

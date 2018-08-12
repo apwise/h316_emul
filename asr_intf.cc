@@ -23,7 +23,6 @@
 
 #include "proc.hh"
 #include "iodev.hh"
-#include "event.hh"
 #include "asr.hh"
 #include "asr_intf.hh"
 
@@ -101,7 +100,7 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
               activity = ASR_ACTIVITY_INPUT;
               input_pending = true;
                                                         
-              Event::queue(p, ((1000000*11)/ BAUD), this, ASR_REASON_INPUT );
+              p->queue(((1000000*11)/ BAUD), this, ASR_REASON_INPUT );
             }
         }
     }
@@ -128,7 +127,7 @@ ASR_INTF::STATUS ASR_INTF::ocp(unsigned short instr)
       ready = 1;
       p->set_interrupt(mask);
 
-      Event::queue(p, (1000000 / BAUD), this, ASR_REASON_DUMMY_CYCLE );
+      p->queue((1000000 / BAUD), this, ASR_REASON_DUMMY_CYCLE );
                         
       break;
                         
@@ -188,7 +187,7 @@ ASR_INTF::STATUS ASR_INTF::ota(unsigned short instr, signed short data)
       else
         {
           activity = ASR_ACTIVITY_OUTPUT;
-          Event::queue(p, ((1000000*11) / BAUD), this, ASR_REASON_OUTPUT );
+          p->queue(((1000000*11) / BAUD), this, ASR_REASON_OUTPUT );
         }
     }
 
@@ -221,7 +220,7 @@ void ASR_INTF::event(int reason)
           if (output_pending)
             {
               activity = ASR_ACTIVITY_OUTPUT;
-              Event::queue(p, ((1000000*11) / BAUD), this, ASR_REASON_OUTPUT );
+              p->queue(((1000000*11) / BAUD), this, ASR_REASON_OUTPUT );
               output_pending = 0;
             }
           else
