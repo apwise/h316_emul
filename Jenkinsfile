@@ -17,11 +17,10 @@ pipeline {
                 sh 'cd tests/ab16cct4 && ./ab16cct4.sh'
             }
         }
-
-        post {
-            always {
-                junit 'results/*.xml'
-            }
+    }
+    post {
+        always {
+            junit 'results/*.xml'
         }
     }
 }
