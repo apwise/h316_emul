@@ -49,8 +49,6 @@ public:
 private:
   void master_clear(void);
 
-  Proc *p;
-
   unsigned short mask; // just set the one bit for this device
 
   int data_buf;

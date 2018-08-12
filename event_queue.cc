@@ -47,8 +47,11 @@ bool EventQueue::call_devices(EventTime event_time)
     Event &ev(it->second);
 
     it = event_queue.erase(it);
-    
-    ev.first->event(ev.second);
+
+    if (ev.first) {
+      ev.first->event(ev.second);
+    } else {
+    }
     
     if (++event_count > MAXIMUM_EVENTS) {
       std::cerr << "More than " << MAXIMUM_EVENTS << " events at time " << event_time
