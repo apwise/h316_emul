@@ -376,7 +376,7 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
 
 void Proc::dump_coemem(char *filename, int exec_addr)
 {
-  int i, j, m, last_addr;
+  int i, k, n, last_addr;
   unsigned short instr;
   FILE *fp=stdout;
   
@@ -398,14 +398,14 @@ void Proc::dump_coemem(char *filename, int exec_addr)
     }
   }
 
-  m = 1024 * 12;
-  if (last_addr>=m)
-    last_addr = m-1;
+  n = 1024 * 12;
+  if (last_addr >= n)
+    last_addr = n-1;
   
   fprintf(fp, "memory_initialization_radix=16;\n");
   fprintf(fp, "memory_initialization_vector=\n");
    
-  j = 0;
+  k = 0;
   for (i=0; i<=last_addr; i++) {
     instr = core[i];
     
@@ -421,10 +421,10 @@ void Proc::dump_coemem(char *filename, int exec_addr)
 
     fprintf(fp, "%04x%c", ((int) instr), ((i == last_addr)?';':','));
 
-    j++;
-    if ((j >= 8) || (i == last_addr)) {
+    k++;
+    if ((k >= 8) || (i == last_addr)) {
       fprintf(fp, "\n");
-      j = 0;
+      k = 0;
     } else {
       fprintf(fp, " ");
     }
@@ -469,6 +469,7 @@ void Proc::master_clear(void)
   interrupts = 0;
   start_button_interrupt = 0;
   rtclk = false;
+  melov = false;
   break_flag = false;
   break_intr = false;
   break_addr = 0;
@@ -732,6 +733,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
  
     last_jmp_self_minus_one = jmp_self_minus_one;
     jmp_self_minus_one = false;
+    melov = false;
     
     /*
      * Now simply jump to the routine that handles
@@ -781,6 +783,10 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
 
     pi = pi_pending = 0; // disable interrupts
     extend = extend_allowed; // force extended addressing    
+  } if (melov) {
+    break_flag = true;
+    break_intr = true;
+    break_addr = 062;
   } else {
     (void) read(p);   // Leaving the instruction in the m register
   }
@@ -1865,7 +1871,11 @@ void Proc::do_HLT(unsigned short instr UNUSED)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  run = 0;
+  if (restrict) {
+    melov = true;
+  } else {
+    run = false;
+  }
 }
 
 void Proc::do_INH(unsigned short instr UNUSED)
@@ -1873,7 +1883,7 @@ void Proc::do_INH(unsigned short instr UNUSED)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);  
 #endif
-  pi_pending = pi = 0;
+  pi_pending = pi = false;
 }
 
 void Proc::do_IRS(unsigned short instr)
@@ -2468,6 +2478,15 @@ void Proc::do_EXA(unsigned short instr UNUSED)
 #endif
   disable_extend_pending = 0;
   extend = extend_allowed;
+}
+
+void Proc::do_ERM(unsigned short instr UNUSED)
+{
+#if (DEBUG)
+  printf("%s\n", __PRETTY_FUNCTION__);  
+#endif
+  pi_pending = true;
+  restrict = true;
 }
 
 /*

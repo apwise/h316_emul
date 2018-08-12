@@ -120,6 +120,7 @@ private:
 
   static Instr standard[];
   static Instr extended[];
+  static Instr restricted[];
   static Instr mem_parity[];
   static Instr arithmetic[];
 #if ((!defined(GENERIC_GROUP_A)) || defined(TEST_GENERIC_GROUP_A))
