@@ -1,4 +1,4 @@
-bin_PROGRAMS = h16 \
+bin_PROGRAMS = 	h16 \
 		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
 		h16-tabify h16-asr h16-tape h16-ppl h16-plt2ps \
 		h16-lib h16-pp-asr h16-disasm
@@ -9,7 +9,7 @@ endif
 
 h16_SOURCES = 	asr_intf.cc \
 		emul.cc \
-		event.cc \
+		event_queue.cc \
 		instr.cc \
 		iodev.cc \
 		lpt.cc \
@@ -17,13 +17,12 @@ h16_SOURCES = 	asr_intf.cc \
 		proc.cc \
 		ptp.cc \
 		ptr.cc \
-		tree.cc \
 		asr.cc \
 		stdtty.cc \
 		plt.cc \
 		gpl.c \
 		asr.hh \
-		event.hh \
+		event_queue.hh \
 		iodev.hh \
 		monitor.hh \
 		ptp.hh \
@@ -34,7 +33,6 @@ h16_SOURCES = 	asr_intf.cc \
 		lpt.hh \
 		proc.hh \
 		ptr.hh \
-		tree.hh \
 		rtc.cc \
 		rtc.hh \
 		gpl.h

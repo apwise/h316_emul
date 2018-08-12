@@ -38,7 +38,6 @@
 #include "ptr.hh"
 #include "asr_intf.hh"
 #include "stdtty.hh"
-#include "event.hh"
 #endif
 
 #include "instr.hh"
@@ -486,7 +485,7 @@ void Proc::master_clear(void)
   sc = 0x3f;
 #ifndef RTL_SIM
   IODEV::master_clear_devices(devices);
-  Event::discard_events();
+  event_queue.discard_events();
 #endif
 }
 
@@ -810,10 +809,11 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
      * If we just halted then flush all pending
      * events.
      */
-    if (run)
-      (void) Event::call_devices(half_cycles, 1);
-    else
-      Event::flush_events(half_cycles);
+    if (run) {
+      (void) event_queue.call_devices(half_cycles);
+    } else {
+      event_queue.flush_events(half_cycles);
+    }
 #endif
   }
   
@@ -914,16 +914,16 @@ bool Proc::optimize_io_poll(unsigned short instr)
        * for keyboard input).
        */
       
-      unsigned long long next_event_time;
+      EventQueue::EventTime next_event_time;
       
-      if (Event::next_event_time(next_event_time))
+      if (event_queue.next_event_time(next_event_time))
         {
           // jump time forward to the next event
           half_cycles = next_event_time;
     
           // call devices to actually change the state
           // of the devices
-          Event::call_devices(half_cycles, 1);
+          event_queue.call_devices(half_cycles);
     
           // rerun the IO command in the hope that
           // it will now skip the JMP *-1
@@ -1074,7 +1074,7 @@ const char *Proc::dis()
 void Proc::flush_events()
 {
 #ifndef RTL_SIM
-  Event::flush_events(half_cycles);
+  event_queue.flush_events(half_cycles);
 #endif
 }
 
@@ -2957,7 +2957,7 @@ void Proc::generic_skip(unsigned short instr)
    * C  - C-bit zero.
    */
  
-  if (instr & 0x001) cond &= ((!c    ) & 1);
+  if (instr & 0x001) cond &= ((~((int) c)) & 1);
   if (instr & 0x002) cond &= ((~ss[3]) & 1);
   if (instr & 0x004) cond &= ((~ss[2]) & 1);
   if (instr & 0x008) cond &= ((~ss[1]) & 1);
