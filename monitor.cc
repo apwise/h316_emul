@@ -172,8 +172,12 @@ void Monitor::do_commands(bool &run, FILE **fp)
   if (!run)
     p->flush_events();
   
-  if (!(*fp)) // don't print if reading from file
+  if ((*fp))
     {
+      printf("\n");
+    }
+  else
+    { // don't print if reading from file
       if (first_time)
         {
           int i = 0;

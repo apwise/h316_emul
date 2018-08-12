@@ -12,6 +12,12 @@ text mode by passing the -t as the first argument:
 
 h16 -t
 
+To compile the verion of the ASR utility with adept support (to talk
+to FPGA boardss (such as the Digilent cmods6) configure with something
+like this (sepending on install locations):
+
+./configure CFLAGS="-I /usr/include/digilent/adept" LDFLAGS=-L/usr/lib64/digilent/adept
+
 'help' may be typed at the "MON>" prompt:
 
 MON> help
