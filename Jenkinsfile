@@ -4,7 +4,7 @@ pipeline {
 
         stage('build') {
             steps {
-                sh 'aclocal && autoconf && automake'
+                sh 'aclocal && autoconf && automake --add-missing'
                 sh 'mkdir -p build install && workspace=`pwd` && cd build && ../configure --prefix=${workspace}/install && make'
             }
         }
