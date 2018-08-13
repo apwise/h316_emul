@@ -26,11 +26,13 @@ class InstrTable;
 class IODEV;
 struct Btrace;
 struct FP_INTF;
+class MFM;
 
 class Proc{
 
 public:
   Proc(STDTTY *stdtty, bool HasEa);
+  ~Proc();
 
   void mem_access(bool p_not_pp1, bool store);
   void do_instr(bool &run, bool &monitor_flag);
@@ -95,6 +97,7 @@ public:
   
   void start_button();
   void goto_monitor();
+  void set_limit(unsigned long long half_cycles);
   
   const char *dis();
   void flush_events();
@@ -123,8 +126,17 @@ public:
                                         (half_cycles_per_microsecond * microseconds));
     event_queue.queue(event_time, device, reason);
   }
-             
+  
+  void queue_hc(unsigned long long half_cycles, IODEV *device, int reason)
+  {
+    EventQueue::EventTime event_time = this->half_cycles + half_cycles;
+    event_queue.queue(event_time, device, reason);
+  }
+  void event(int reason);
+  
 private:
+  MFM *mfm;
+
   /*
    * the following are the machine registers
    */
