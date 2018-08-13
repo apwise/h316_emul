@@ -1,0 +1,14 @@
+
+MON> ptr ../../tapes/VT/O16-11T1_slst.ptp
+MON> g'1
+
+MON> cl
+MON> limit 300000000
+MON> g'1000
+
+O16-11T1  REV. D  8 MAY 1970
+END OF PASS 000005000
+END OF PASS 000010000
+0305643329: limit reached
+
+MON> q

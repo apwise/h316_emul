@@ -9,12 +9,28 @@ BUILDDIR=${workspace}
 
 ab16cct4_Test()
 {
-  ../../install/bin/h16 -t ab16cct4.txt > logfile.txt
-  if diff logfile.txt expected.txt; then
-      return ${jshuPASS}
+  res=${jshuERROR}
+  ../../install/bin/h16 -t ab16cct4.txt |& tee logfile.txt
+  if diff logfile.txt ab16cct4_expected.txt; then
+      res=${jshuPASS}
   else
-      return ${jshuFAIL}
+      res=${jshuFAIL}
   fi
+  rm -f logfile.txt
+  return ${res}
+}
+
+o16_11t1_Test()
+{
+  res=${jshuERROR}
+  ../../install/bin/h16 -t o16_11t1.txt |& tee logfile.txt
+  if diff logfile.txt o16_11t1_expected.txt; then
+      res=${jshuPASS}
+  else
+      res=${jshuFAIL}
+  fi
+  rm -f logfile.txt
+  return ${res}
 }
 
 ##############################################################

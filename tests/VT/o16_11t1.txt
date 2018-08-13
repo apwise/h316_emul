@@ -1,0 +1,6 @@
+ptr ../../tapes/VT/O16-11T1_slst.ptp
+g'1
+cl
+limit 300000000
+g'1000
+q
