@@ -14,7 +14,7 @@ pipeline {
         
         stage('test') {
             steps {
-                sh 'cd tests/ab16cct4 && ./ab16cct4.sh'
+                sh 'cd tests/VT && ./VT.sh'
             }
         }
     }
