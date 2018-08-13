@@ -1,0 +1,20 @@
+
+MON> ptr ../../tapes/VT/AB16-CMT5_slst.ptp
+MON> g'1
+
+MON> cl
+MON> limit 200000000
+MON> g'1000
+
+
+
+AB16-CMT5   JUN 7, 73   REV E 
+CP IS 316 
+
+
+
+PS0001  001673  077777  
+PS0002  000021  076117  
+0205062896: limit reached
+
+MON> q
