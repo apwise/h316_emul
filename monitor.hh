@@ -46,6 +46,7 @@ private:
   void free_command(char **q);
   void do_command(bool &run, int words, char **cmd);
   long parse_number(char *str, bool &ok);
+  unsigned long long parse_ull(char *str, bool &ok);
   bool parse_bool(char *str, bool &ok);
   char *binary16(unsigned short n);
   bool reg(bool &run, int words, char **cmd, int n);
@@ -54,6 +55,7 @@ private:
   bool cont(bool &run, int words, char **cmd);
   bool stop(bool &run, int words, char **cmd);
   bool go(bool &run, int words, char **cmd);
+  bool limit(bool &run, int words, char **cmd);
   bool ss(bool &run, int words, char **cmd);
   bool ptr(bool &run, int words, char **cmd);
   bool ptp(bool &run, int words, char **cmd);

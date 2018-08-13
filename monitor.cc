@@ -61,6 +61,7 @@ struct CmdTab Monitor::commands[] =
     {"quit",       1, 0, 0, "Quit emulation",                               &Monitor::quit},
     {"continue",   1, 0, 0, "Continue",                                     &Monitor::cont},
     {"stop",       1, 0, 0, "Stop",                                         &Monitor::cont},
+    {"limit",      0, 1, 1, "half_cycles : Set limit on simulated time",    &Monitor::limit},
     {"go",         0, 0, 1, "[addr] Start execution",                       &Monitor::go},
     {"ss",         1, 1, 2, "num [0/1] Get/Set Sense Switch",               &Monitor::ss},
     {"ptr",        1, 1, 1, "filename : Set Papertape Reader filename",     &Monitor::ptr},
@@ -355,6 +356,27 @@ long Monitor::parse_number(char *str, bool &ok)
   return n;
 }
 
+unsigned long long Monitor::parse_ull(char *str, bool &ok)
+{
+  char *ptr;
+  int base=0;
+  unsigned long long n;
+
+  if (str[0] == '\'')
+    {
+      str++;
+      base = 8;
+    }
+
+  ptr = str;
+  n = strtoull(str, &ptr, base);
+
+  if (ptr==str) ok = 0;
+  if ((ptr) && (*ptr)) ok = 0;
+
+  return n;
+}
+
 bool Monitor::parse_bool(char *str, bool &ok)
 {
   bool local_ok = 1;
@@ -401,7 +423,7 @@ bool Monitor::go(bool &run, int words, char **cmd)
   bool ok=1;
 
   unsigned short pc;
-
+  
   if (words > 1)
     {
       pc = parse_number(cmd[1], ok);
@@ -413,6 +435,22 @@ bool Monitor::go(bool &run, int words, char **cmd)
     {
       doing_commands = 0;
       run = 1;
+    }
+
+  return ok;
+}
+
+bool Monitor::limit(bool &run, int words, char **cmd)
+{
+  bool ok=1;
+
+  uint_least64_t half_cycles;
+  
+  if (words > 1)
+    {
+      half_cycles = parse_number(cmd[1], ok);
+      if (ok)
+        p->set_limit(half_cycles);
     }
 
   return ok;

@@ -137,6 +137,26 @@ static unsigned short keyin[] =
 
 // }}}
 
+/*
+ * Dummy IODEV that can be used for non-device time events
+ * (MFM = mainframe)
+ */
+class MFM : public IODEV
+{
+public:
+  MFM(Proc *p)
+    : IODEV(p)
+  {}
+  
+  ~MFM() {}
+  
+  void event(int reason)
+  {
+    p->event(reason);
+  }
+};
+#define MFM_REASON_LIMIT 0
+
 // {{{ Proc::Proc(STDTTY *stdtty)
 
 Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
@@ -213,11 +233,37 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
   wrt_addr[0] = wrt_addr[1] = 0;
   wrt_data[0] = wrt_data[1] = 0;
 
+  mfm = new MFM(this);
 }
 
 // }}}
 
-// {{{ void Proc::dump_trace(const char *filename, int n)
+Proc::~Proc()
+{
+#ifndef RTL_SIM
+  event_queue.discard_events();
+#endif
+  delete mfm;
+}
+
+void Proc::set_limit(unsigned long long half_cycles)
+{
+  event_queue.queue(this->half_cycles + half_cycles, mfm, MFM_REASON_LIMIT);
+}
+
+void Proc::event(int reason)
+{
+  switch (reason) {
+  case MFM_REASON_LIMIT:
+    printf("\n%010lu: limit reached\n", half_cycles);
+    goto_monitor();
+    break;
+
+  default:
+    fprintf(stderr, "Bad event reason <%d>\n", reason);
+    exit(1);
+  }
+}
 
 void Proc::dump_trace(const char *filename, int n)
 {
@@ -298,6 +344,7 @@ void Proc::dump_disassemble(char *filename, int first, int last)
 }
 
 // }}}
+
 // {{{ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
 
 void Proc::dump_vmem(char *filename, int exec_addr, bool octal)

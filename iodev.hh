@@ -36,7 +36,7 @@ public:
 
   enum STATUS
     {
-      STATUS_WAIT,  // Instruction compleye I/O not yet ready
+      STATUS_WAIT,  // Instruction complete I/O not yet ready
       STATUS_READY, // Instruction complete I/O ready (for INA, OTA, SKS)
       STATUS_INCOMPLETE // Instruction incomplete - go to GUI
     };
