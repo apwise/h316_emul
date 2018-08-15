@@ -7,43 +7,38 @@ workspace="$( cd `dirname $0`/../..; pwd )"
 jshu_pkgname=h316_emul
 BUILDDIR=${workspace}
 
-ab16cct4_Test()
+run_vt()
 {
+  name=$1
+  rm -f logfile.txt
   res=${jshuERROR}
-  ${workspace}/install/bin/h16 -t ab16_cct4.txt |& tee logfile.txt
-  if diff logfile.txt ab16_cct4_expected.txt; then
+  ${workspace}/install/bin/h16 -t ${name}.txt |& tee logfile.txt
+  if diff logfile.txt ${name}_expected.txt; then
       res=${jshuPASS}
   else
       res=${jshuFAIL}
   fi
   rm -f logfile.txt
+
   return ${res}
+}
+
+ab16_cct4_Test()
+{
+  run_vt ab16_cct4
+  return $?
 }
 
 o16_11t1_Test()
 {
-  res=${jshuERROR}
-  ${workspace}/install/bin/h16 -t o16_11t1.txt |& tee logfile.txt
-  if diff logfile.txt o16_11t1_expected.txt; then
-      res=${jshuPASS}
-  else
-      res=${jshuFAIL}
-  fi
-  rm -f logfile.txt
-  return ${res}
+  run_vt o16_11t1
+  return $?
 }
 
 ab16_cmt5_Test()
 {
-  res=${jshuERROR}
-  ${workspace}/install/bin/h16 -t ab16_cmt5.txt |& tee logfile.txt
-  if diff logfile.txt ab16_cmt5_expected.txt; then
-      res=${jshuPASS}
-  else
-      res=${jshuFAIL}
-  fi
-  rm -f logfile.txt
-  return ${res}
+  run_vt ab16_cmt5
+  return $?
 }
 
 ##############################################################
