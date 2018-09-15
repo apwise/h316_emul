@@ -734,11 +734,6 @@ void render_token(int token, int next_token, FILE **pfp)
         }
       }
     } else { /* pass 2 */
-      if (procedure_seen && (!forward_seen)) {
-        s=lookup(lex_buf);
-        enter_procedure(lex_buf, s);
-      }
-      
       if ( (s=lookup_full(lex_buf, &global)) ) {
         switch (s->type) {
         case ST_PROCEDURE:
@@ -782,6 +777,11 @@ void render_token(int token, int next_token, FILE **pfp)
         fprintf(fp,"</A>");
       }
       end_code(fp,'I');
+      
+      if (procedure_seen && (!forward_seen)) {
+        s=lookup(lex_buf);
+        enter_procedure(lex_buf, s);
+      }
     }
   }
     break;
