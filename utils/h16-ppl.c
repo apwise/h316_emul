@@ -619,6 +619,22 @@ void render_token(int token, int next_token, FILE **pfp)
           exit_procedure();
         }
       }
+      procedure_seen = false;
+      forward_seen   = false;
+      compconst_seen = false;
+      constant_seen  = false;
+      for_seen       = false;
+      integer_seen   = false;
+      array_seen     = false;
+      set_seen       = false;
+      lsb_seen       = false;
+      lrb_seen       = false;
+      address_seen   = false;
+      percent_seen   = false;
+      label_seen     = false;
+      goto_seen      = false;
+      switch_seen    = false;
+      equals_seen    = false;
     } else if (strcmp(".FOR", lex_buf)==0) {
       for_seen = true;
     } else if (strcmp(".INTEGER", lex_buf)==0) {
