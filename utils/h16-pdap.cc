@@ -1,6 +1,6 @@
-/* Convert Honeywell Series-16 code to HTML
+/* Convert Honeywell Series-16 DAP assembler code to HTML
  *
- * Copyright (C) 2004, 2006  Adrian Wise
+ * Copyright (C) 2004, 2006, 2018  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -716,6 +716,7 @@ void Line::analyze_src()
   Annotation *a;
   string opcode;
   Symbol *multiply_defined = 0;
+  bool is_assembled = false;
   
   /*
    * Is there anything in the error field?
@@ -727,19 +728,32 @@ void Line::analyze_src()
    * Is there an address field?
    */
 
-  (void) find_field(ADDR, ADDR_LEN, Annotation::A_ADDR);
-
+  if (find_field(ADDR, ADDR_LEN, Annotation::A_ADDR)) {
+    is_assembled = true;
+  }
+  
   /*
    * Is there object code?
    */
+  
+  if (find_field(OBJ, OBJ_LEN, Annotation::A_OBJ)) {
+    is_assembled = true;
+  }
 
-  (void) find_field(OBJ, OBJ_LEN, Annotation::A_OBJ);
-
+  /* If there is no address field or opcode field then
+   * one of two things is happening:
+   * 1) It's a pseudo-op like EJCT, etc., or
+   * 2) This is conditional assembly in which case neither
+   *    the label or arguments should be processed.
+   *
+   * is_assembled controls this.
+   */
+  
   /*
    * Is there a label?
    */
 
-  a=find_field(LBL, LBL_LEN, Annotation::A_LABEL);
+  a = (is_assembled) ? find_field(LBL, LBL_LEN, Annotation::A_LABEL) : 0;
 
   if (a)
     {
@@ -816,7 +830,7 @@ void Line::analyze_src()
   string subr_args[2];
   int subr_arg_count = 0;
 
-  j = find_sub_field(i, type, symbol, literal, num, asterix);
+  j = (is_assembled) ? find_sub_field(i, type, symbol, literal, num, asterix) : i;
 
   while (j>i)
     {
