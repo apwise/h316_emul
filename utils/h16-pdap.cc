@@ -86,7 +86,8 @@ using namespace std;
 enum INSTR_TYPE
   {
     GA, GB, MR, IOG, SH, IO, SK,
-    AD
+    AD, // Assembler directive - produces no output
+    PO  // Pseudo operation - produces output
   };
 
 struct Instr
@@ -182,7 +183,7 @@ static Instr instructions[] =
   {"ABS", AD, "Absolute mode"},
   {"LOAD", AD, "Load mode"},
   {"ORG", AD, "Origin"},
-  {"FIN", AD, "Assemble literals"},
+  {"FIN", PO, "Assemble literals"},
   {"MOR", AD, "More (source) required"},
   {"END", AD, "End of source"},
   {"EJCT", AD, "Start at top of page"},
@@ -191,25 +192,25 @@ static Instr instructions[] =
   {"EXD", AD, "Enter extended desectorizing"},
   {"LXD", AD, "Leave extended desectorizing"},
   {"SETB", AD, "Set base sector"},
-  {"EQU", AD, "Give symbol a permanent value"},
-  {"SET", AD, "Give symbol a temporary value"},
-  {"DAC", AD, "Address constant"},
-  {"DEC", AD, "Decimal constant"},
-  {"DBP", AD, "Double precision constant"},
-  {"OCT", AD, "Octal constant"},
-  {"HEC", AD, "Hexadecimal constant"},
-  {"BCI", AD, "Binary coded information"},
-  {"VFD", AD, "Variable field constant"},
-  {"BSS", AD, "Block starting with symbol"},
-  {"BES", AD, "Block ending with symbol"},
-  {"BSZ", AD, "Block storage of zeros"},
+  {"EQU", PO, "Give symbol a permanent value"},
+  {"SET", PO, "Give symbol a temporary value"},
+  {"DAC", PO, "Address constant"},
+  {"DEC", PO, "Decimal constant"},
+  {"DBP", PO, "Double precision constant"},
+  {"OCT", PO, "Octal constant"},
+  {"HEC", PO, "Hexadecimal constant"},
+  {"BCI", PO, "Binary coded information"},
+  {"VFD", PO, "Variable field constant"},
+  {"BSS", PO, "Block starting with symbol"},
+  {"BES", PO, "Block ending with symbol"},
+  {"BSZ", PO, "Block storage of zeros"},
   {"COMN", AD, "Common"},
   {"SETC", AD, "Set common base"},
   {"ENT", AD, "Entry point"},
   {"SUBR", AD, "Entry point"},
   {"EXT", AD, "External name"},
-  {"XAC", AD, "External address constant"},
-  {"CALL", AD, "Call external subroutine"},
+  {"XAC", PO, "External address constant"},
+  {"CALL", PO, "Call external subroutine"},
   {"IFP", AD, "Assemble only if Plus"},
   {"IFM", AD, "Assemble only if Minus"},
   {"IFZ", AD, "Assemble only if Zero"},
@@ -217,8 +218,8 @@ static Instr instructions[] =
   {"ENDC", AD, "End of conditional assembly"},
   {"ELSE", AD, "Else - conditional assembly"},
   {"FAIL", AD, "Statement that should never be assembled"},
-  {"***", AD, "Opcode Zero"},
-  {"PZE", AD, "Opcode Zero"},
+  {"***", PO, "Opcode Zero"},
+  {"PZE", PO, "Opcode Zero"},
 
   {0,GA,0}
 };
@@ -709,14 +710,15 @@ Annotation *Line::find_field(int pos, int len, Annotation::A annot)
 }
 
 // }}}
+
 // {{{ void Line::analyze_src()
 
 void Line::analyze_src()
 {
-  Annotation *a;
+  Annotation *a, *a2;
   string opcode;
   Symbol *multiply_defined = 0;
-  bool is_assembled = false;
+  bool not_assembled = true;
   
   /*
    * Is there anything in the error field?
@@ -729,7 +731,7 @@ void Line::analyze_src()
    */
 
   if (find_field(ADDR, ADDR_LEN, Annotation::A_ADDR)) {
-    is_assembled = true;
+    not_assembled = false;
   }
   
   /*
@@ -737,24 +739,62 @@ void Line::analyze_src()
    */
   
   if (find_field(OBJ, OBJ_LEN, Annotation::A_OBJ)) {
-    is_assembled = true;
+    not_assembled = false;
   }
 
   /* If there is no address field or opcode field then
    * one of two things is happening:
-   * 1) It's a pseudo-op like EJCT, etc., or
+   * 1) It's an assembler directive like EJCT, etc., or
    * 2) This is conditional assembly in which case neither
    *    the label or arguments should be processed.
    *
-   * is_assembled controls this.
+   * not_assembled controls this.
    */
   
   /*
    * Is there a label?
    */
 
-  a = (is_assembled) ? find_field(LBL, LBL_LEN, Annotation::A_LABEL) : 0;
+  a = find_field(LBL, LBL_LEN, Annotation::A_LABEL);
 
+  /*
+   * Is there an opcode?
+   */
+  a2=find_field(OPC, OPC_LEN, Annotation::A_OPC);
+  if (a2) {
+    opcode = src_line.substr(a2->get_first(),
+                             a2->get_len());
+    
+    int i=0;
+    while ((instructions[i].mnemonic) && (!instr)) {
+      if (opcode == instructions[i].mnemonic) {
+        instr = &instructions[i];
+      }
+      i++;
+    }
+    
+    if (instr && (instr->type == AD)) {
+      // Assembler directives don't produce output so treat as
+      // if assembled
+      not_assembled = false;
+    }
+  }
+
+  if (not_assembled) {
+    if (a) {
+      annotations.erase(LBL);
+    }
+    if (a2) {
+      annotations.erase(OPC);
+    }
+    
+    (void) find_field(LBL, src_line.size(), Annotation::A_COMMENT);
+    return;
+  }
+  
+  /*
+   * Deal with label?
+   */
   if (a)
     {
       string name = src_line.substr(a->get_first(),
@@ -780,9 +820,9 @@ void Line::analyze_src()
     }
 
   /*
-   * Is there an opcode?
+   * Deal with opcode
    */
-  a=find_field(OPC, OPC_LEN, Annotation::A_OPC);
+  a=a2;
   if (a)
     {
       opcode = src_line.substr(a->get_first(),
@@ -805,14 +845,6 @@ void Line::analyze_src()
       if (opcode == "END") {
         file->set_end_read();
       }
-
-      int i=0;
-      while ((instructions[i].mnemonic) && (!instr))
-        {
-          if (opcode == instructions[i].mnemonic)
-            instr = &instructions[i];
-          i++;
-        }
     }
 
   if (multiply_defined) {
@@ -830,7 +862,7 @@ void Line::analyze_src()
   string subr_args[2];
   int subr_arg_count = 0;
 
-  j = (is_assembled) ? find_sub_field(i, type, symbol, literal, num, asterix) : i;
+  j = find_sub_field(i, type, symbol, literal, num, asterix);
 
   while (j>i)
     {
@@ -2126,7 +2158,7 @@ void Symbol::md_step()
       md_iterating = true;
     }
   }
-  // If not multuply defined, silently ignore
+  // If not multiply defined, silently ignore
 }
 
 // {{{ int main (int argc, char **argv)
