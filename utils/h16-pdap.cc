@@ -406,7 +406,7 @@ class Symbol
   void set_page(int page){this->page = page;};
   void set_defined(bool defined){this->defined = defined;};
 
-  void redefine(int page);
+  void redefine(int new_page);
   void md_step();
 
  private:
@@ -2089,12 +2089,12 @@ Symbol::Symbol(string name, int page, File *file, bool ext, bool defined)
 
 // }}}
 
-void Symbol::redefine(int page)
+void Symbol::redefine(int new_page)
 {
   md_list.push_back(make_pair(page, serial_number));
   multiply_defined = true;
 
-  this->page = page;
+  page = new_page;
   serial_number = next_serial_number++;
 }
 
