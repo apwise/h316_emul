@@ -272,7 +272,7 @@ class Line
   Line(const string src_line, class File *file, int page);
   void analyze();
   void analyze_src();
-  void render(FILE *fp, bool html_per_page);
+  void render(FILE *fp, bool html_per_page, bool first);
 
   Annotation *find_field(int pos, int len, Annotation::A annot);
 
@@ -337,6 +337,7 @@ class File
   Symbol *lookup_local(string name);
   Symbol *lookup_global(string name);
   Symbol *define(string name);
+  void redefine(Symbol *s);
   Symbol *declare_local(string name, bool ext);
   Symbol *declare_global(string name, Symbol *local);
   Symbol *local_synonym(string name, Symbol *local);
@@ -384,7 +385,6 @@ class File
   void file_start(FILE *fp, bool html_per_page, int page);
   void file_stop(FILE *fp, bool html_per_page, int page);
   void quote_dollars(const string &in_str, string &out_str);
-
 };
 
 // }}}
@@ -396,22 +396,34 @@ class Symbol
   Symbol(string name, int page, File *file, bool ext=false, bool defined=true);
 
   const string *get_name() const {return &name;};
-  int get_page() const {return page;};
+  int get_page();
   File *get_file() const {return file;};
   bool get_ext() const {return ext;};
   bool get_defined() const {return defined;};
-  int get_serial_number() const {return serial_number;};
+  bool get_multiply_defined() const {return multiply_defined;};
+  int get_serial_number();
 
   void set_page(int page){this->page = page;};
   void set_defined(bool defined){this->defined = defined;};
 
+  void redefine(int page);
+  void md_step();
+
  private:
   string name;
-  int page;
-  File *file; /* 0 = local */
-  bool ext; /* Symbol is EXT - lookup on global */
-  bool defined; /* Symbol defined (if false only declared) */
-  int serial_number;
+  int    page;
+  File  *file;             /* 0 = local */
+  bool   ext;              /* Symbol is EXT - lookup on global */
+  bool   defined;          /* Symbol defined (if false only declared) */
+  bool   multiply_defined; /* e.g. by SET */
+
+  int  serial_number;
+
+  typedef std::pair<int , int> md_item_t;
+  typedef std::list<md_item_t> md_list_t;
+  md_list_t md_list;
+  bool md_iterating;
+  md_list_t::iterator md_itrt;
 
   static int next_serial_number;
 };
@@ -742,10 +754,12 @@ void Line::analyze_src()
         }
       else
         {
-          if (s->get_defined())
+          if (s->get_defined()) {
+            file->redefine(s);
             fprintf(stderr, "Warning: Label <%s> already defined\n", name.c_str());
-          else
+          } else {
             file->define_symbol(s);
+          }
         }
       a->set_s(s);
     }
@@ -923,7 +937,7 @@ void Line::render_char(FILE *fp, char c)
 // }}}
 // {{{ void Line::render(FILE *fp, bool html_per_page)
 
-void Line::render(FILE *fp, bool html_per_page)
+void Line::render(FILE *fp, bool html_per_page, bool first)
 {
   int i;
   int len = src_line.size();
@@ -1016,6 +1030,9 @@ void Line::render(FILE *fp, bool html_per_page)
                   break;
 
                 case Annotation::A_LABEL:
+                  if (first) {
+                    a->get_s()->md_step();
+                  }
                   fprintf(fp, "<span class=\"L\" id=\"L%d\">",
                           a->get_s()->get_serial_number());
                   break;
@@ -1050,14 +1067,13 @@ void Line::render(FILE *fp, bool html_per_page)
                   else
                     sym = file->lookup(s);
                   
-                  if ((sym) && (sym->get_defined()))
+                  if ((sym) && (sym->get_defined())) {
                     fprintf(fp, "<span class=\"S\"><a href=\"%s\">", render_link(sym, html_per_page).c_str());
-                  else
-                    {
-                      fprintf(fp, "<span class=\"U\">");
-                      fprintf(stderr, "Warning: Undefined %s symbol <%s>\n",
-                              (a_type == Annotation::A_GSYMBOL) ? "global" : "", s.c_str());
-                    }
+                  } else {
+                    fprintf(fp, "<span class=\"U\">");
+                    fprintf(stderr, "Warning: Undefined %s symbol <%s>\n",
+                            (a_type == Annotation::A_GSYMBOL) ? "global" : "", s.c_str());
+                  }
                   break;
                   
                 default:
@@ -1834,9 +1850,9 @@ void File::render()
               file_start(fp2, true, page);
             }
           
-          (*i)->render(fp, false);
+          (*i)->render(fp, false, true);
           if (fp2)
-            (*i)->render(fp2, true);
+            (*i)->render(fp2, true, false);
           
           i++;
         }
@@ -1935,6 +1951,11 @@ Symbol *File::define(string name)
 }
 
 // }}}
+
+void File::redefine(Symbol *s)
+{
+  s->redefine(pages);
+}
 
 // {{{ void File::define_symbol(Symbol *s)
 
@@ -2036,12 +2057,54 @@ Symbol::Symbol(string name, int page, File *file, bool ext, bool defined)
     page(page),
     file(file),
     ext(ext),
-    defined(defined)
+    defined(defined),
+    multiply_defined(false),
+    md_iterating(false)
 {
   serial_number = next_serial_number++;
 }
 
 // }}}
+
+void Symbol::redefine(int page)
+{
+  md_list.push_back(make_pair(page, serial_number));
+  multiply_defined = true;
+
+  this->page = page;
+  serial_number = next_serial_number++;
+}
+
+int Symbol::get_page()
+{
+  return (multiply_defined && md_iterating) ? md_itrt->first : page;
+}
+
+int Symbol::get_serial_number()
+{
+  return (multiply_defined && md_iterating) ? md_itrt->second : serial_number;
+}
+
+void Symbol::md_step()
+{
+  /* Called *before* a symbol is used as a label for the first time
+   * on a given source line */
+  if (multiply_defined) {
+    if (md_iterating) {
+      if (md_itrt == md_list.end()) {
+        fprintf(stderr, "Multiply defined iterator for <%s> exceeded\n", name.c_str());
+        abort();
+      }
+      ++md_itrt;
+    } else {
+      // Push the last definition onto the list
+      md_list.push_back(make_pair(page, serial_number));
+      md_itrt = md_list.begin();
+      md_iterating = true;
+    }
+  }
+  // If not multuply defined, silently ignore
+}
 
 // {{{ int main (int argc, char **argv)
 
