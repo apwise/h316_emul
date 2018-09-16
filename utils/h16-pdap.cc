@@ -715,7 +715,8 @@ void Line::analyze_src()
 {
   Annotation *a;
   string opcode;
-
+  Symbol *multiply_defined = 0;
+  
   /*
    * Is there anything in the error field?
    */
@@ -756,7 +757,7 @@ void Line::analyze_src()
         {
           if (s->get_defined()) {
             file->redefine(s);
-            fprintf(stderr, "Warning: Label <%s> already defined\n", name.c_str());
+            multiply_defined = s;
           } else {
             file->define_symbol(s);
           }
@@ -783,8 +784,13 @@ void Line::analyze_src()
                                     a->get_len());
         }
 
-      if (opcode == "END")
+      if (opcode == "SET") {
+        multiply_defined = 0; // OK with a SET
+      }
+      
+      if (opcode == "END") {
         file->set_end_read();
+      }
 
       int i=0;
       while ((instructions[i].mnemonic) && (!instr))
@@ -795,6 +801,9 @@ void Line::analyze_src()
         }
     }
 
+  if (multiply_defined) {
+    fprintf(stderr, "Warning: Label <%s> already defined\n", multiply_defined->get_name()->c_str());
+  }
   /*
    * Are there arguments ?
    */
