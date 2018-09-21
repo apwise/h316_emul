@@ -293,11 +293,14 @@ class Line
   enum SF_TYPE
     {
       SF_NORMAL,
-      SF_BCI
+      SF_BCI,
+      SF_OCT,
+      SF_DEC,
+      SF_HEX
     };
   
   int find_sub_field(int first, SF_TYPE type,
-                     bool &symbol, bool &literal, int &num, bool &asterix);
+                     bool &symbol, bool &literal, int &num, bool &asterisk);
   string render_link(Symbol *s, bool html_per_page);
   
  private:
@@ -702,9 +705,13 @@ Annotation *Line::find_field(int pos, int len, Annotation::A annot)
     }
   if (f >= 0)
     {
-      a = new Annotation(annot, f, l+1-f);
-      pair<int, Annotation *>pp(f, a);
-      annotations.insert(pp);
+      if (annotations.count(f) == 0) {
+        a = new Annotation(annot, f, l+1-f);
+        pair<int, Annotation *>pp(f, a);
+        annotations.insert(pp);
+      } else {
+        fprintf(stderr, "Annotation already exists at %d\n", f);
+      }
     }
   return a;
 }
@@ -760,7 +767,7 @@ void Line::analyze_src()
   /*
    * Is there an opcode?
    */
-  a2=find_field(OPC, OPC_LEN, Annotation::A_OPC);
+  a2 = find_field(OPC, OPC_LEN, Annotation::A_OPC);
   if (a2) {
     opcode = src_line.substr(a2->get_first(),
                              a2->get_len());
@@ -782,9 +789,11 @@ void Line::analyze_src()
 
   if (not_assembled) {
     if (a) {
+      delete annotations[LBL];
       annotations.erase(LBL);
     }
     if (a2) {
+      delete annotations[OPC];
       annotations.erase(OPC);
     }
     
@@ -850,25 +859,38 @@ void Line::analyze_src()
   if (multiply_defined) {
     fprintf(stderr, "Warning: Label <%s> already defined\n", multiply_defined->get_name()->c_str());
   }
+
+    
   /*
    * Are there arguments ?
    */
   int i = ARG;
   int j = i+1;
   SF_TYPE type = SF_NORMAL;
-  bool symbol, literal, asterix;
+  bool symbol, literal, asterisk;
   int num;
   bool comma = false;
   string subr_args[2];
   int subr_arg_count = 0;
 
-  j = find_sub_field(i, type, symbol, literal, num, asterix);
+  if (opcode != "EJCT") { // Special case this - often misused in assembler listing
+    // Should perhaps generalize to all directives (and opcodes?) that take no arguments
+
+  if (opcode == "OCT") {
+    type = SF_OCT;
+  } else if ((opcode == "DEC")||(opcode == "DBP")) {
+    type = SF_DEC;
+  } else if (opcode == "HEX") {
+    type = SF_HEX;
+  }
+  
+  j = find_sub_field(i, type, symbol, literal, num, asterisk);
 
   while (j>i)
     {
       string arg = src_line.substr(i,j-i);
-      //printf("found arg <%s> symbol=%d, literal=%d, num=0x%04x asterix=%d\n",
-      //       arg.c_str(), symbol, literal, num, asterix);
+      //printf("found arg <%s> symbol=%d, literal=%d, num=0x%04x asterisk=%d\n",
+      //       arg.c_str(), symbol, literal, num, asterisk);
 
       if (symbol)
         {
@@ -904,13 +926,18 @@ void Line::analyze_src()
             indexed = true;
         }
 
-      if ((opcode == "BCI") && (!symbol))
-        {
-          //printf("BCI!!!!!!!!!!!!!!!!!!!!!!!!\n");
+      type = SF_NORMAL;
+      if (opcode == "BCI") {
+        if (!symbol) {
           type = SF_BCI;
         }
-      else
-        type = SF_NORMAL;
+      } else if (opcode == "OCT") {
+        type = SF_OCT;
+      } else if ((opcode == "DEC") || (opcode == "DBP")) {
+        type = SF_DEC;
+      } else if (opcode == "HEX") {
+        type = SF_HEX;
+      }
 
       if ((j < ((int)src_line.size())) && (src_line[j] != ' '))
         {
@@ -923,7 +950,7 @@ void Line::analyze_src()
             i = j;
           }
           //printf("separator = <%c>\n", src_line[j]);
-          j = find_sub_field(i, type, symbol, literal, num, asterix);
+          j = find_sub_field(i, type, symbol, literal, num, asterisk);
         }
       else
         i = j;
@@ -962,7 +989,8 @@ void Line::analyze_src()
       //if (!local2)
       //  local2 = file->local_synonym(subr_args[0], local);
     }
-
+  }
+  
   if (j < ((int)src_line.size()))
     {
       /*
@@ -1171,7 +1199,7 @@ void Line::render(FILE *fp, bool html_per_page, bool first)
               else
                 a = 0;    
             }
-          
+
         }
     
       if (type == LINE_HEAD)
@@ -1214,8 +1242,14 @@ string Line::render_link(Symbol *s, bool html_per_page)
 
 // {{{ int Line::find_sub_field(int first, SF_TYPE type,
 
+static void assemble_number(bool minus, int integer_part, int fraction_digits,
+                            int fraction_part, int Es_seen, int Bs_seen,
+                            int exponent, int position)
+{
+}
+
 int Line::find_sub_field(int first, SF_TYPE type,
-                         bool &symbol, bool &literal, int &num, bool &asterix)
+                         bool &symbol, bool &literal, int &num, bool &asterisk)
 {
   int len = src_line.size();
   int i;
@@ -1223,11 +1257,20 @@ int Line::find_sub_field(int first, SF_TYPE type,
   bool done = false;
   int count = 0;
   bool minus = false;
-
+  bool sign = false;
+  int digits = 0;
+  int integer_part = 0;
+  int fraction_digits = 0;
+  int fraction_part = 0;
+  int Es_seen = 0;
+  int Bs_seen = 0;
+  int exponent = 0;
+  int position = 0;
+  
   enum STATE
   {
     ST_FIRST,
-    ST_ASTERIX,
+    ST_ASTERISK,
     ST_DOLLAR,
     ST_APOSTROPHE,
     ST_EQUALS,
@@ -1238,11 +1281,25 @@ int Line::find_sub_field(int first, SF_TYPE type,
     ST_ISO,
     ST_DIGIT
   } state = ST_FIRST;
+
+  enum DP
+  {
+    DP_INTEGER,
+    DP_FRACTION,
+    DP_E,
+    DP_EXP,
+    DP_B,
+    DP_POSN
+  } dp = DP_INTEGER;
   
   symbol = false;
   literal = false;
-  asterix = false;
+  asterisk = false;
 
+  if (first >= len) {
+    return len;
+  }
+  
   if (type == SF_BCI)
     {
       i = first + 2*num;
@@ -1256,165 +1313,309 @@ int Line::find_sub_field(int first, SF_TYPE type,
   num = 0;
 
   i = first;
-  while ((i < len) && (!done))
-    {
-      c = src_line[i];
+  c = src_line[i];
 
-      switch (state)
-        {
-        case ST_FIRST:
-          switch (c)
-            {
-            case '*':
-              state = ST_ASTERIX;
-              asterix=true;
-              break;
-            case '$': state = ST_DOLLAR; break;
-            case '\'': state = ST_APOSTROPHE; break;
-            case '-':
-              state = ST_DECIMAL;
-              minus = true;
-              break;
-            case '=':
-              state = ST_EQUALS;
-              literal = true;
-              break;
-            case ' ': done = true; break;
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-              state = ST_DIGIT;
-              num = c-'0';
-              break;
-            default: state = ST_OTHER;
-              symbol = true;
-              break;
-            }
-          break;
-
-        case ST_EQUALS:
-          switch (c)
-            {
-            case '*': state = ST_ASTERIX; break;
-            case '$': state = ST_DOLLAR; break;
-            case '\'': state = ST_APOSTROPHE; break;
-            case 'A':
-              state = ST_ISO;
-              count = 0;
-              break;
-            case '-':
-              state = ST_DECIMAL;
-              minus = true;
-              break;
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-              state = ST_DECIMAL;
-              num = c-'0';
-              break;
-            default: done=true; break;
-            }
-          break;
-
-        case ST_ASTERIX:
-          if (c != '*')
-            done = true;
-          break;
-
-        case ST_DOLLAR:
-          /* Hex numbers */
-          state = ST_HEX;
-          if (c == '-')
-            {
-              minus = true;
-              break;
-            }
-        case ST_HEX:
-          if ((c >= '0') && (c <= '9'))
-            num = (num * 16) + c-'0';
-          else if ((c >= 'a') && (c <= 'f'))
-            num = (num * 16) + 10+c-'a';
-          else if ((c >= 'A') && (c <= 'F'))
-            num = (num * 16) + 10+c-'A';
-          else
-            done = true;
-          break;
-
-        case ST_APOSTROPHE:
-          /* Octal numbers */
+  if ((type == SF_OCT) && (c >= '0') && (c <= '7')) {
+    state = ST_APOSTROPHE;
+  } else if ((type == SF_HEX) &&
+             (((c >= '0') && (c <= '9')) || ((c >= 'A') && (c <= 'F')))) {
+    state = ST_DOLLAR;
+  } else if ((type == SF_DEC) &&
+             (((c >= '0') && (c <= '9')) || (c == '.'))) {
+    state = ST_DECIMAL;
+  }
+  
+  while ((i < len) && (!done)) {
+    c = src_line[i];
+    
+    switch (state) {
+    case ST_FIRST:
+      switch (c) {
+      case '*':
+        state = ST_ASTERISK;
+        asterisk=true;
+        break;
+      case '$': state = ST_DOLLAR; break;
+      case '\'': state = ST_APOSTROPHE; break;
+      case '-':
+        minus = true;
+        /* Fall-through */
+      case '+':
+        sign = true;
+        if (type == SF_OCT) {
           state = ST_OCTAL;
-          if (c == '-')
-            {
-              minus = true;
-              break;
-            }
-        case ST_OCTAL:
-          if ((c >= '0') && (c <= '7'))
-            num = (num * 8) + c-'0';
-          else
-            done = true;
-          break;
-
-        case ST_DECIMAL:
-          if ((c >= '0') && (c <= '9'))
-            num = (num * 10) + c-'0';
-          else
-            done = true;
-          break;
-
-        case ST_DIGIT:
-          /* Don't know if this is a symbol with
-           * a leading digit, or a number (yet)
-           */
-          if ((c >= '0') && (c <= '9'))
-            num = (num * 10) + c-'0';
-          else if ((c=='+') || (c=='-') || (c==',') || (c==' '))
-            done = true;
-          else
-            {
-              state = ST_OTHER;
-              symbol = true;
-            }
-          break;
-
-        case ST_ISO:
-          count ++;
-          if (count > 2)
-            done = true;
-          else
-            num = (num << 8) | (c & 127) | 128;
-          break;
-
-        case ST_OTHER:
-          if ((c=='+') || (c=='-') || (c==',') || (c==' '))
-            done = true;
-          break;
-
-        default:
-          abort();
+        } if (type == SF_HEX) {
+          state = ST_HEX;
+        } else {
+          state = ST_DECIMAL;
         }
+        break;
+      case '=':
+        state = ST_EQUALS;
+        literal = true;
+        break;
+      case ' ': done = true; break;
+      case '0': case '1': case '2': case '3':
+      case '4': case '5': case '6': case '7':
+        if (type == SF_OCT) {
+          state = ST_OCTAL;
+        } else {
+          state = ST_DIGIT;
+        }
+        digits++;
+        num = c-'0';
+        break;
+      case '8': case '9':
+        if (type == SF_DEC) {
+          state = ST_DECIMAL;
+        } else {
+          state = ST_DIGIT;
+        }
+        digits++;
+        num = c-'0';
+        break;
+      case 'A': case 'B': case 'C': case 'D':
+      case 'E': case 'F':
+        if (type == SF_HEX) {
+          state = ST_HEX;
+          num = 10 + c-'A';
+        } else {
+          symbol = true;
+          state = ST_OTHER;
+        }
+        break;
+      default: state = ST_OTHER;
+        symbol = true;
+        break;
+      }
+      break;
+      
+    case ST_EQUALS:
+      switch (c) {
+      case '*': state = ST_ASTERISK; break;
+      case '$': state = ST_DOLLAR; break;
+      case '\'': state = ST_APOSTROPHE; break;
+      case 'A':
+        state = ST_ISO;
+        count = 0;
+        break;
+      case '-':
+        if (!sign) {
+          minus = true;
+        }
+        /* Fall through */
+      case '+':
+        if (sign) {
+          done = true;
+        } else {
+          sign = true;
+        }
+        state = ST_DECIMAL;
+        break;
+      case '0': case '1': case '2': case '3':
+      case '4': case '5': case '6': case '7':
+      case '8': case '9':
+        state = ST_DECIMAL;
+        digits++;
+        num = c-'0';
+        break;
+      default: done=true; break;
+      }
+      break;
+      
+    case ST_ASTERISK:
+      if (c != '*') {
+        done = true;
+      }
+      break;
 
-      if (!done)
-        i++;
+    case ST_DOLLAR:
+      /* Hex numbers */
+      state = ST_HEX;
+      if ((c == '-') && (!sign)) {
+        minus = true;
+      }
+      if ((c == '-') || (c == '+')) {
+        if (sign) {
+          done = true;
+        } else {
+          sign = true;
+        }
+        break;
+      }
+      /* Fall through */
+    case ST_HEX:
+      if ((c >= '0') && (c <= '9'))
+        num = (num * 16) + c-'0';
+      else if ((c >= 'a') && (c <= 'f'))
+        num = (num * 16) + 10+c-'a';
+      else if ((c >= 'A') && (c <= 'F'))
+        num = (num * 16) + 10+c-'A';
+      else
+        done = true;
+      break;
+      
+    case ST_APOSTROPHE:
+      /* Octal numbers */
+      state = ST_OCTAL;
+      if ((c == '-') && (!sign)) {
+        minus = true;
+      }
+      if ((c == '-') || (c == '+')) {
+        if (sign) {
+          done = true;
+        } else {
+          sign = true;
+        }
+        break;
+      }
+      /* Fall through */
+    case ST_OCTAL:
+      if ((c >= '0') && (c <= '7'))
+        num = (num * 8) + c-'0';
+      else
+        done = true;
+      break;
+      
+    case ST_DECIMAL:
+      if ((c == '-') && (!sign)) {
+        minus = true;
+      }
+      if ((c == '-') || (c == '+')) {
+        if (sign) {
+          done = true;
+        } else {
+          sign = true;
+        }
+        break;
+      } else if ((c >= '0') && (c <= '9')) {
+        digits++;
+        num = (num * 10) + c-'0';
+        if (dp == DP_E) dp = DP_EXP;
+        if (dp == DP_B) dp = DP_POSN;
+      } else {
+        switch (dp) {
+        case DP_INTEGER:
+          if (c == '.') {
+            integer_part = num;
+            digits = 0;
+            num = 0;
+            dp = DP_FRACTION;
+          } else if (c == 'E') {
+            Es_seen++;
+            integer_part = num;
+            digits = 0;
+            num = 0;
+            dp = DP_E;
+          } else if (c == 'B') {
+            Bs_seen++;
+            integer_part = num;
+            digits = 0;
+            num = 0;
+            dp = DP_B;
+           } else {
+            done = true;
+          }
+          break;
+        case DP_FRACTION:
+          if (c == 'E') {
+            Es_seen++;
+            fraction_part = num;
+            fraction_digits = digits;
+            digits = 0;
+            num = 0;
+            dp = DP_E;
+          } else if (c == 'B') {
+            Bs_seen++;
+            fraction_part = num;
+            fraction_digits = digits;
+            digits = 0;
+            num = 0;
+            dp = DP_B;
+          } else {
+            done = true;
+          }
+          break;
+        case DP_E:
+          if (c == 'E') {
+            Es_seen++;
+            dp = DP_EXP;
+          } else {
+            done = true;
+          }
+          break;
+        case DP_EXP:
+          if (c == 'B') {
+            Bs_seen++;
+            exponent = num;
+            digits = 0;
+            dp = DP_B;
+          } else {
+            done = true;
+          }
+          break;
+        case DP_B:
+          if (c == 'B') {
+            Bs_seen++;
+            dp = DP_POSN;
+          } else {
+            position = num;
+            done = true;
+          }
+          break;
+        default: /* Including DP_POSN */
+          position = num;
+          done = true;
+        }
+      }
+      if (done) {
+        /* Could assemble the number from its parts here */
+        assemble_number(minus, integer_part, fraction_digits,
+                        fraction_part, Es_seen, Bs_seen,
+                        exponent, position);
+          }
+      break;
+      
+    case ST_DIGIT:
+      /* Don't know if this is a symbol with
+       * a leading digit, or a number (yet)
+       */
+      if ((c >= '0') && (c <= '9'))
+        num = (num * 10) + c-'0';
+      else if ((c=='+') || (c=='-') || (c==',') || (c==' '))
+        done = true;
+      else
+        {
+          state = ST_OTHER;
+          symbol = true;
+        }
+      break;
+      
+    case ST_ISO:
+      count ++;
+      if (count > 2)
+        done = true;
+      else
+        num = (num << 8) | (c & 127) | 128;
+      break;
+      
+    case ST_OTHER:
+      if ((c=='+') || (c=='-') || (c==',') || (c==' '))
+        done = true;
+      break;
+      
+    default:
+      abort();
     }
-
-  if ((!symbol) && (minus))
+    
+    if (!done) {
+      i++;
+    }
+  }
+  
+  if ((!symbol) && (minus)) {
     num = -num;
-
+  }
   return i;
 }
 
