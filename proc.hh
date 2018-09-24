@@ -34,6 +34,11 @@ public:
   Proc(STDTTY *stdtty, bool HasEa);
   ~Proc();
 
+  enum DMC_CYC {
+    DMC_NONE,
+    DMC_1, DMC_2, DMC_3, DMC_4
+  };
+  
   void mem_access(bool p_not_pp1, bool store);
   void do_instr(bool &run, bool &monitor_flag);
   unsigned short ea(unsigned short instr);
@@ -88,6 +93,8 @@ public:
   void set_interrupt(unsigned short bit);
   void clear_interrupt(unsigned short bit);
   void set_rtclk(bool v);
+
+  void set_dmcreq(unsigned short bit);
 
   void dump_memory();
   void dump_trace(const char *filename, int n);
@@ -163,6 +170,12 @@ private:
    */
   bool pi, pi_pending;
   unsigned short interrupts;
+  unsigned short dmc_req;
+  DMC_CYC dmc_cyc;
+  unsigned short dmc_savm, dmc_addr;
+  unsigned int dmc_dev;
+  bool dmc_erl;
+  
   bool start_button_interrupt;
   bool rtclk;
   bool melov; // Memory Lockout Violation
@@ -208,6 +221,7 @@ private:
    * devices
    */
   IODEV **devices;
+  IODEV **dmc_devices;
   EventQueue event_queue;
   EventQueue::EventTime half_cycles;
   static constexpr double cycle_time = 1.60; // Microseconds

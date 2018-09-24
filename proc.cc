@@ -204,8 +204,10 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
    */
 #ifdef RTL_SIM
   devices = 0;
+  dmc_devices = 0;
 #else
   devices = IODEV::dispatch_table(this, stdtty);
+  dmc_devices = IODEV::dmc_dispatch_table(this, stdtty);
 #endif
 
   /*
@@ -514,6 +516,8 @@ void Proc::master_clear(void)
   
   pi = pi_pending = 0;
   interrupts = 0;
+  dmc_req = 0;
+  dmc_cyc = DMC_NONE;
   start_button_interrupt = 0;
   rtclk = false;
   melov = false;
@@ -694,6 +698,11 @@ void Proc::set_rtclk(bool v)
   rtclk = v;
 }
 
+void Proc::set_dmcreq(unsigned short bit)
+{
+  dmc_req |= bit;
+}
+
 /*****************************************************************
  * Front-panel memory access
  *****************************************************************/
@@ -738,8 +747,6 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     }
     
     if (break_flag) {
-      half_cycles -= 2; // Due to the fetch
-
       /*
        * If this was a break then the contents of
        * M are not an instruction, since it was not
@@ -750,6 +757,10 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
                 0120000 :  // JST *
                 0024000) | // IRS
                break_addr);
+
+      if (dmc_cyc != DMC_NONE) {
+        instr = 0; // Nonsense for the trace, but better than random garbage
+      }
 
       fetched_p = 0;
 
@@ -777,16 +788,66 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       increment_p();
       m = instr;
     }
- 
-    last_jmp_self_minus_one = jmp_self_minus_one;
-    jmp_self_minus_one = false;
-    melov = false;
-    
-    /*
-     * Now simply jump to the routine that handles
-     * this instruction.
-     */
-    (this->*instr_table.dispatch(instr))(instr);
+
+    switch (dmc_cyc) {
+
+    case DMC_1:
+      dmc_savm     = m;
+      m            = read(break_addr);
+      dmc_addr     = m;
+      dmc_cyc      = DMC_2;
+      break_addr   = break_addr + 1;
+      half_cycles += 2;
+      break;
+      
+    case DMC_2:
+      m            = read(break_addr);
+      dmc_erl      = ((dmc_addr & 0x7fff) == (read(break_addr) & 0x7fff));
+      dmc_cyc      = DMC_3;
+      break_addr   = dmc_addr & 0x7fff;
+      dmc_addr     = (dmc_addr & 0x8000) | ((dmc_addr + 1) & 0x7fff);
+      half_cycles += 2;
+      break;
+      
+    case DMC_3:
+      if (dmc_addr & 0x8000) {
+        // Do an input
+        m = read(break_addr);
+        dmc_devices[dmc_dev]->dmc(m, dmc_erl);
+      } else {
+        // Do an output
+        dmc_devices[dmc_dev]->dmc(m, dmc_erl);
+        write(break_addr, m);
+      }
+      dmc_cyc      = DMC_4;
+      break_addr   = 000020 + (dmc_dev * 2);
+      half_cycles += 2;
+      break;
+      
+    case DMC_4:
+      write(break_addr, dmc_addr);
+      dmc_cyc      = DMC_NONE;
+      m            = dmc_savm;
+      half_cycles += 2;
+      break;
+      
+    default:
+      last_jmp_self_minus_one = jmp_self_minus_one;
+      jmp_self_minus_one = false;
+      melov = false;
+      
+      /*
+       * Now simply jump to the routine that handles
+       * this instruction.
+       */
+      (this->*instr_table.dispatch(instr))(instr);
+
+      /*
+       * We either interrupted, or interrupts weren't
+       * enabled. Either way clear this flag.
+       */
+      start_button_interrupt = 0;
+    }
     
     // binary trace ...
     
@@ -802,49 +863,60 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     btrace_buf[trace_ptr].instr = instr;
     
     trace_ptr = (trace_ptr + 1) % TRACE_BUF;
-        
-    /*
-     * We either interrupted, or interrupts weren't
-     * enabled. Either way clear this flag.
-     */
-    start_button_interrupt = 0;
-
-    
-  } else
+  } else {
     p = y; /* Front panel updates Y not P
             * So copy Y into P before fetching */
-
-  break_flag = false;
-
-  /*
-   * Figure out what break, if any, to do.
-   */
-  if (rtclk) {
-    break_flag = true;
-    break_intr = false;
-    break_addr = 061;
-  } else if (pi && (interrupts || start_button_interrupt)) {
-    break_flag = true;
-    break_intr = true;
-    break_addr = 063;
-
-    pi = pi_pending = 0; // disable interrupts
-    extend = extend_allowed; // force extended addressing    
-  } if (melov) {
-    break_flag = true;
-    break_intr = true;
-    break_addr = 062;
-  } else {
-    (void) read(p);   // Leaving the instruction in the m register
   }
 
-  half_cycles += 2; // Due to the fetch
+  if (dmc_cyc == DMC_NONE) {
+    break_flag = false;
+    
+    /*
+     * Figure out what break, if any, to do.
+     */
+    if (rtclk) {
+      break_flag = true;
+      break_intr = false;
+      break_addr = 061;
+    } else if (dmc_req) {
+      unsigned int tmp_dmc_req = dmc_req;
+    break_flag = true;
+    break_intr = false;
+    for (int i=0; i<16; i++) {
+      if (tmp_dmc_req & 1) {
+        break_addr = 000020 + (2 * i);
+        dmc_req &= (~(1<<i));
+        dmc_dev = i; 
+        break;
+      }
+      tmp_dmc_req >>= 1;
+    }
+    dmc_cyc = DMC_1;
+    } else if (pi && (interrupts || start_button_interrupt)) {
+      break_flag = true;
+      break_intr = true;
+      break_addr = 063;
+      
+      pi = pi_pending = 0; // disable interrupts
+      extend = extend_allowed; // force extended addressing    
+    } if (melov) {
+      break_flag = true;
+      break_intr = true;
+      break_addr = 062;
+    } else {
+      (void) read(p);   // Leaving the instruction in the m register
 
+      half_cycles += 2; // Due to the fetch
+    }
+  } else {
+    break_flag = true; // Continue DMC
+  }
+  
   if (fetched) {
     /*
      * Enable the interrupts
      */
-    if (pi_pending && (!pi)) {
+    if (pi_pending && (!pi) && (dmc_cyc == DMC_NONE)) {
       pi = true;
       pi_pending = false;
     }

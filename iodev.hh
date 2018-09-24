@@ -49,10 +49,13 @@ public:
   virtual STATUS sks(unsigned short instr);
   virtual STATUS ota(unsigned short instr, signed short data);
   virtual STATUS smk(unsigned short mask);
+
+  virtual void dmc(signed short &data, bool erl);
   
   virtual void event(int reason);
   
   static IODEV **dispatch_table(Proc *p, STDTTY *stdtty);
+  static IODEV **dmc_dispatch_table(Proc *p, STDTTY *stdtty);
   static void master_clear_devices(IODEV **dt);
   static void set_mask(IODEV **dt, unsigned short mask);
 
