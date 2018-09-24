@@ -74,6 +74,10 @@ IODEV::STATUS IODEV::smk(unsigned short mask)
   return STATUS_WAIT;
 }
 
+void IODEV::dmc(signed short &data, bool erl)
+{
+}
+
 void IODEV::event(int reason)
 {
   if (reason != REASON_MASTER_CLEAR)
@@ -100,6 +104,18 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
   dt[RTC_DEVICE] = new RTC(p);
   dt[PLT_DEVICE] = new PLT(p, stdtty);
   
+  return dt;
+}
+
+IODEV **IODEV::dmc_dispatch_table(Proc *p, STDTTY *stdtty)
+{
+  IODEV **dt = (IODEV **) malloc(sizeof(IODEV *) * 16);
+  int i;
+  IODEV *dummy = new IODEV(p);
+  
+  for(i=0; i<16; i++)
+    dt[i] = dummy;
+    
   return dt;
 } 
 
