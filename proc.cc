@@ -747,6 +747,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     }
     
     if (break_flag) {
+      half_cycles -= 2; // Due to the fetch
       /*
        * If this was a break then the contents of
        * M are not an instruction, since it was not
@@ -905,12 +906,12 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       break_addr = 062;
     } else {
       (void) read(p);   // Leaving the instruction in the m register
-
-      half_cycles += 2; // Due to the fetch
     }
   } else {
     break_flag = true; // Continue DMC
   }
+
+  half_cycles += 2; // Due to fetch
   
   if (fetched) {
     /*
