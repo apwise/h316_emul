@@ -26,12 +26,19 @@ class IODEV
 public:
   enum DEVICE
     {
-      PTR_DEVICE = 001,
-      PTP_DEVICE = 002,
-      LPT_DEVICE = 003,
-      ASR_DEVICE = 004,
-      RTC_DEVICE = 020,
-      PLT_DEVICE = 027
+      PTR_DEVICE = 001, // Paper-tape reader
+      PTP_DEVICE = 002, // Paper-tape punch
+      LPT_DEVICE = 003, // Lineprinter
+      ASR_DEVICE = 004, // ASR (teletype)
+      RTC_DEVICE = 020, // Real-time clock
+      PLT_DEVICE = 027, // Incremental plotter
+
+      DUM_DEVICE = 034, // Any unused device (to pick up dummy)
+      
+      // Devices for verification purposes
+      VSM_DEVICE = 035, // Simulation exit code
+      VD1_DEVICE = 036, // DMC verification - channel
+      VD2_DEVICE = 037  // DMC verification - central controller
     };
 
   enum STATUS
@@ -55,7 +62,7 @@ public:
   virtual void event(int reason);
   
   static IODEV **dispatch_table(Proc *p, STDTTY *stdtty);
-  static IODEV **dmc_dispatch_table(Proc *p, STDTTY *stdtty);
+  static IODEV **dmc_dispatch_table(Proc *p, STDTTY *stdtty, IODEV **dt);
   static void master_clear_devices(IODEV **dt);
   static void set_mask(IODEV **dt, unsigned short mask);
 

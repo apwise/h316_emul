@@ -1,7 +1,7 @@
 // {{{ GPL copyright notice
 
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 1999, 2005, 2010, 2011  Adrian Wise
+ * Copyright (C) 1997, 1998, 1999, 2005, 2010, 2011, 2018  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -207,7 +207,7 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
   dmc_devices = 0;
 #else
   devices = IODEV::dispatch_table(this, stdtty);
-  dmc_devices = IODEV::dmc_dispatch_table(this, stdtty);
+  dmc_devices = IODEV::dmc_dispatch_table(this, stdtty, devices);
 #endif
 
   /*
@@ -517,7 +517,7 @@ void Proc::master_clear(void)
   pi = pi_pending = 0;
   interrupts = 0;
   dmc_req = 0;
-  dmc_cyc = DMC_NONE;
+  dmc_cyc = false;
   start_button_interrupt = 0;
   rtclk = false;
   melov = false;
@@ -759,8 +759,8 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
                 0024000) | // IRS
                break_addr);
 
-      if (dmc_cyc != DMC_NONE) {
-        instr = 0; // Nonsense for the trace, but better than random garbage
+      if (dmc_cyc) {
+        instr = dmc_dev; // Mark DMC break
       }
 
       fetched_p = 0;
@@ -790,49 +790,41 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       m = instr;
     }
 
-    switch (dmc_cyc) {
-
-    case DMC_1:
-      dmc_savm     = m;
-      m            = read(break_addr);
-      dmc_addr     = m;
-      dmc_cyc      = DMC_2;
+    if (dmc_cyc) {
+      bool dmc_erl;
+      
+      // DMC cycle 1
+      dmc_addr     = read(break_addr);;
       break_addr   = break_addr + 1;
       half_cycles += 2;
-      break;
-      
-    case DMC_2:
-      m            = read(break_addr);
+
+      // DMC cycle 2
       dmc_erl      = ((dmc_addr & 0x7fff) == (read(break_addr) & 0x7fff));
-      dmc_cyc      = DMC_3;
       break_addr   = dmc_addr & 0x7fff;
       dmc_addr     = (dmc_addr & 0x8000) | ((dmc_addr + 1) & 0x7fff);
       half_cycles += 2;
-      break;
-      
-    case DMC_3:
+
+      // DMC cycle 3
       if (dmc_addr & 0x8000) {
         // Do an input
-        m = read(break_addr);
-        dmc_devices[dmc_dev]->dmc(m, dmc_erl);
+        signed short tmp;
+        dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
+        write(break_addr, tmp);
       } else {
         // Do an output
-        dmc_devices[dmc_dev]->dmc(m, dmc_erl);
-        write(break_addr, m);
+        signed short tmp = read(break_addr);
+        dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
       }
-      dmc_cyc      = DMC_4;
       break_addr   = 000020 + (dmc_dev * 2);
       half_cycles += 2;
-      break;
       
-    case DMC_4:
+      // DMC cycle 4
       write(break_addr, dmc_addr);
-      dmc_cyc      = DMC_NONE;
-      m            = dmc_savm;
+      dmc_cyc      = false;
       half_cycles += 2;
-      break;
+
+    } else {
       
-    default:
       last_jmp_self_minus_one = jmp_self_minus_one;
       jmp_self_minus_one = false;
       melov = false;
@@ -869,18 +861,17 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
             * So copy Y into P before fetching */
   }
 
-  if (dmc_cyc == DMC_NONE) {
-    break_flag = false;
+  break_flag = false;
     
-    /*
-     * Figure out what break, if any, to do.
-     */
-    if (rtclk) {
-      break_flag = true;
-      break_intr = false;
-      break_addr = 061;
-    } else if (dmc_req) {
-      unsigned int tmp_dmc_req = dmc_req;
+  /*
+   * Figure out what break, if any, to do.
+   */
+  if (rtclk) {
+    break_flag = true;
+    break_intr = false;
+    break_addr = 061;
+  } else if (dmc_req) {
+    unsigned int tmp_dmc_req = dmc_req;
     break_flag = true;
     break_intr = false;
     for (int i=0; i<16; i++) {
@@ -892,23 +883,20 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       }
       tmp_dmc_req >>= 1;
     }
-    dmc_cyc = DMC_1;
-    } else if (pi && (interrupts || start_button_interrupt)) {
-      break_flag = true;
-      break_intr = true;
-      break_addr = 063;
+    dmc_cyc = true;
+  } else if (pi && (interrupts || start_button_interrupt)) {
+    break_flag = true;
+    break_intr = true;
+    break_addr = 063;
       
-      pi = pi_pending = 0; // disable interrupts
-      extend = extend_allowed; // force extended addressing    
-    } if (melov) {
-      break_flag = true;
-      break_intr = true;
-      break_addr = 062;
-    } else {
-      (void) read(p);   // Leaving the instruction in the m register
-    }
+    pi = pi_pending = 0; // disable interrupts
+    extend = extend_allowed; // force extended addressing    
+  } if (melov) {
+    break_flag = true;
+    break_intr = true;
+    break_addr = 062;
   } else {
-    break_flag = true; // Continue DMC
+    (void) read(p);   // Leaving the instruction in the m register
   }
 
   half_cycles += 2; // Due to fetch
@@ -917,7 +905,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     /*
      * Enable the interrupts
      */
-    if (pi_pending && (!pi) && (dmc_cyc == DMC_NONE)) {
+    if (pi_pending && (!pi) && (!dmc_cyc)) {
       pi = true;
       pi_pending = false;
     }

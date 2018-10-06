@@ -34,11 +34,6 @@ public:
   Proc(STDTTY *stdtty, bool HasEa);
   ~Proc();
 
-  enum DMC_CYC {
-    DMC_NONE,
-    DMC_1, DMC_2, DMC_3, DMC_4
-  };
-  
   void mem_access(bool p_not_pp1, bool store);
   void do_instr(bool &run, bool &monitor_flag);
   unsigned short ea(unsigned short instr);
@@ -66,36 +61,37 @@ public:
    *
    * Writing to X changes location "zero"
    */
-  void set_py(unsigned short n) {p = y = n;};
-  unsigned short get_p(void) {return p;};
-  void set_a(unsigned short n) {a = n;};
-  unsigned short get_a(void) {return a;};
-  void set_b(unsigned short n) {b = n;};
-  unsigned short get_b(void) {return b;};
+  void set_py(unsigned short n) {p = y = n;}
+  unsigned short get_p(void) {return p;}
+  void set_a(unsigned short n) {a = n;}
+  unsigned short get_a(void) {return a;}
+  void set_b(unsigned short n) {b = n;}
+  unsigned short get_b(void) {return b;}
   void set_x(unsigned short n);
   void set_just_x(unsigned short n);
-  unsigned short get_x(void) {return x;};
+  unsigned short get_x(void) {return x;}
   
-  bool get_c() {return c;};
-  bool get_ex() {return extend;};
-  bool get_dp() {return dp;};
+  bool get_c() {return c;}
+  bool get_ex() {return extend;}
+  bool get_dp() {return dp;}
 
-  unsigned short get_sc() {return sc & 0x3f;};
+  unsigned short get_sc() {return sc & 0x3f;}
 
   /* 
    * Get and set sense switches
    */
-  bool get_ss(int sw) {return ss[sw];};
-  void set_ss(int sw, bool v) {ss[sw] = v;};
+  bool get_ss(int sw) {return ss[sw];}
+  void set_ss(int sw, bool v) {ss[sw] = v;}
   
-  unsigned long long get_half_cycles(void){return half_cycles;};
+  unsigned long long get_half_cycles(void){return half_cycles;}
 
   void set_interrupt(unsigned short bit);
   void clear_interrupt(unsigned short bit);
   void set_rtclk(bool v);
 
   void set_dmcreq(unsigned short bit);
-
+  unsigned int get_dmc_dev(){return dmc_dev;}
+  
   void dump_memory();
   void dump_trace(const char *filename, int n);
   void dump_disassemble(char *filename, int first, int last);
@@ -123,7 +119,7 @@ public:
   void abort();
 
   void sampled_io(bool x_drlin, unsigned short x_inb){
-    drlin=x_drlin; inb=x_inb;};
+    drlin=x_drlin; inb=x_inb;}
 
   int get_wrt_info(unsigned short addr[2], unsigned short data[2]);
 
@@ -171,10 +167,9 @@ private:
   bool pi, pi_pending;
   unsigned short interrupts;
   unsigned short dmc_req;
-  DMC_CYC dmc_cyc;
-  unsigned short dmc_savm, dmc_addr;
+  bool dmc_cyc;
+  unsigned short dmc_addr;
   unsigned int dmc_dev;
-  bool dmc_erl;
   
   bool start_button_interrupt;
   bool rtclk;

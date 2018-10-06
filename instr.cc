@@ -66,42 +66,45 @@ const char *InstrTable::Instr::disassemble(unsigned short addr,
                                            bool y_valid)
 {
   static char str[64];
-  static char *p;
+  char *p = str;
 
-  if (brk)
-    sprintf(str, "break: ");
-  else
-    sprintf(str, "%06o ", addr);
-  p = str+7;
-  
-  switch(type)
-    {
-    case UNDEFINED:
-      sprintf(p, " %06o    ???", instr);
-      break;
-    case MR:
-      sprintf(p, "%c%1o %02o %04o %s%c %s",
-              ((instr & 0x8000)?'-':' '),
-              ((instr>>14) & 1), ((instr >> 10) & 0xf),
-              (instr & 0x3ff), mnemonic,
-              ((instr & 0x8000)?'*':' '),
-              str_ea(addr, instr, y, y_valid));
-      break;
-    case SH:
-      sprintf(p, " %04o %02o   %s  '%02o",
-              ((instr>>6) & 0x3ff), (instr & 0x3f),
-              mnemonic,
-              static_cast<int>(-ex_sc(instr)));
-      break;
-    case IO:
-      sprintf(p, " %02o %04o   %s  '%04o",
-              ((instr>>10) & 0x3f), (instr & 0x3ff),
-              mnemonic, (instr & 0x3ff));
-      break;
-    default:
-      sprintf(p, " %06o    %s", instr, mnemonic);
-      break;
+  if (brk) {
+    p += sprintf(str, "break: ");
+    if (instr < 16) {
+      p += sprintf(p, "DMC channel %2d", (instr & 017) + 1);
+      return str;
     }
+  } else {
+    p += sprintf(str, "%06o ", addr);
+  }
+  
+  switch(type) {
+  case UNDEFINED:
+    sprintf(p, " %06o    ???", instr);
+    break;
+  case MR:
+    sprintf(p, "%c%1o %02o %04o %s%c %s",
+            ((instr & 0x8000)?'-':' '),
+            ((instr>>14) & 1), ((instr >> 10) & 0xf),
+            (instr & 0x3ff), mnemonic,
+            ((instr & 0x8000)?'*':' '),
+            str_ea(addr, instr, y, y_valid));
+    break;
+  case SH:
+    sprintf(p, " %04o %02o   %s  '%02o",
+            ((instr>>6) & 0x3ff), (instr & 0x3f),
+            mnemonic,
+            static_cast<int>(-ex_sc(instr)));
+    break;
+  case IO:
+    sprintf(p, " %02o %04o   %s  '%04o",
+            ((instr>>10) & 0x3f), (instr & 0x3ff),
+            mnemonic, (instr & 0x3ff));
+    break;
+  default:
+    sprintf(p, " %06o    %s", instr, mnemonic);
+    break;
+  }
   
   return str;
 }
