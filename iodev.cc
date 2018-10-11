@@ -30,6 +30,7 @@
 #include "rtc.hh"
 #include "plt.hh"
 #include "vdmc.hh"
+#include "vsim.hh"
 
 #include "proc.hh"
 
@@ -107,6 +108,7 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
   dt[RTC_DEVICE] = new RTC(p);
   dt[PLT_DEVICE] = new PLT(p, stdtty);
 
+  dt[VSM_DEVICE] = new VSIM(p);
   vdmc = new VDMC(p, VD2_DEVICE);
   dt[VD1_DEVICE] = vdmc;
   dt[VD2_DEVICE] = vdmc;

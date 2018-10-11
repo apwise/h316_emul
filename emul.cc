@@ -82,9 +82,13 @@ static void fp_run(struct FP_INTF *intf)
        * called for
        */
       while ((count--) && (run || (intf->mode == FPM_SI))
-             && (!monitor_flag))
+             && (!monitor_flag)) {
         p->do_instr(run, monitor_flag);
+      }
 
+      int exit_code;
+      intf->exit_called = p->get_exit_called(exit_code);
+      
       if (intf->mode != FPM_SI)
         intf->running = run;
     }
@@ -129,6 +133,8 @@ static bool call_special_chars(Proc *p, int k)
  */
 int main(int argc, char **argv)
 {
+  int exit_code = 0;
+  bool exit_called = false;
   STDTTY *stdtty;
   Proc *p;
 #ifdef ENABLE_GUI
@@ -199,10 +205,12 @@ int main(int argc, char **argv)
        * simulating...
        */
       struct FP_INTF *intf = p->fp_intf();
+      intf->exit_called = 0;
       intf->run = fp_run;
       intf->master_clear = fp_master_clear;
 
       setup_fp(intf);
+      exit_called = p->get_exit_called(exit_code);
     }
   else
 #endif
@@ -244,14 +252,16 @@ int main(int argc, char **argv)
        * monitor_flag) call the monitor again
        */
 
-      while (run)
-        {
-          while (run && (!monitor_flag))
-            p->do_instr(run, monitor_flag);
-          
+      while (run) {
+        while (run && (!monitor_flag)) {
+          p->do_instr(run, monitor_flag);
+        }
+        exit_called = p->get_exit_called(exit_code);
+        if (!exit_called) {
           monitor_flag = 0;
           m->do_commands(run, &fp);
         }
+      }
     }
-  exit(0);
+  exit(exit_code);
 }

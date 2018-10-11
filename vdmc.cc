@@ -50,8 +50,8 @@ void VDMC::master_clear()
 
   for (i=0; i<NUM_CHANNELS; i++) {
     trfr_size[i] = 0;
-    data_prng[i] = 0;
-    time_prng[i] = 0;
+    data_prng[i] = ~0;
+    time_prng[i] = ~0;
     time_ctrl[i] = 0;
     checksum[i] = 0;
     trfr_cntr[i] = 0;
@@ -77,13 +77,13 @@ void VDMC::reload_time_cntr(unsigned int chan)
   p->queue_hc(time_cntr, this, (VDMC_REASON_TIMER + chan));
 }
 
-bool VDMC::no_chan_error(unsigned int chan)
+bool VDMC::chan_error(unsigned int chan)
 {
-  bool r = true;
+  bool r = false;
   if (unexpected_trfr[chan] ||
       error_bits[chan].any() ||
       (checksum[chan] != 0)) {
-    r = false;
+    r = true;
   }
   return r;
 }
@@ -107,17 +107,17 @@ bool VDMC::interrupts(signed short *chan)
     }
   }
 
-  r &= intr_mask;
-  
   return r;
 }
 
 void VDMC::evaluate_interrupts()
 {
-  if (interrupts()) {
+  if (interrupts() && intr_mask) {
     p->set_interrupt(SMK_MASK);
+    cout << "Interrupt requested" << endl;
   } else {
     p->clear_interrupt(SMK_MASK);
+    cout << "Interrupt cleared" << endl;
   }
 }
 
@@ -128,7 +128,9 @@ IODEV::STATUS VDMC::ina(unsigned short instr, signed short &data)
   if (is_central(instr)) {
     switch(function_code(instr)) {
     case INA_CHAN_SLCT: data = channel; break;
-    case INA_INTR_CHAN: (void) interrupts(&data); break;
+    case INA_INTR_CHAN: (void) interrupts(&data);
+      cout << "INA_INTR_CHAN: " << dec << data << endl;
+      break;
     case INA_ERR_CHAN:
       data = ~0;
       for (unsigned int i = 0; i < NUM_CHANNELS; i++) {
@@ -170,7 +172,9 @@ IODEV::STATUS VDMC::ota(unsigned short instr, signed short data)
     }
   } else {
     switch(function_code(instr)) {
-    case OTA_TRFR_SIZE: trfr_size[channel] = data; break;
+    case OTA_TRFR_SIZE: trfr_size[channel] = data;
+      //cout << "trfr_size[" << channel << "] = " << hex << data << endl;
+      break;
     case OTA_DATA_PRNG: data_prng[channel] = data; break;
     case OTA_TIME_PRNG: time_prng[channel] = data; break;
     case OTA_TIME_CTRL: time_ctrl[channel] = data; break;
@@ -186,17 +190,17 @@ VDMC::STATUS VDMC::sks(unsigned short instr)
 
   if (is_central(instr)) {
     switch(function_code(instr)) {
-    case SKS_NOT_BUSY:  if (busy.any())             status = STATUS_WAIT; break;
-    case SKS_NOT_INTR:  if (interrupts())           status = STATUS_WAIT; break;
-    case SKS_NTRFR_ERR: if (unexpected_trfr.any())  status = STATUS_WAIT; break;
-    default:                                        status = STATUS_WAIT;
+    case SKS_NOT_BUSY:  if (busy.any())            status = STATUS_WAIT; break;
+    case SKS_NOT_INTR:  if (interrupts())          status = STATUS_WAIT; break;
+    case SKS_NTRFR_ERR: if (unexpected_trfr.any()) status = STATUS_WAIT; break;
+    default:                                       status = STATUS_WAIT;
     }
   } else {
     switch(function_code(instr)) {
-    case SKS_NOT_BUSY: if (busy[channel])           status = STATUS_WAIT; break;
-    case SKS_NO_ERROR: if (no_chan_error(channel))  status = STATUS_WAIT; break;
-    case SKS_NOT_INTR: if (!chn_interrupt[channel]) status = STATUS_WAIT; break;
-    default:                                        status = STATUS_WAIT;
+    case SKS_NOT_BUSY: if (busy[channel])          status = STATUS_WAIT; break;
+    case SKS_NO_ERROR: if (chan_error(channel))    status = STATUS_WAIT; break;
+    case SKS_NOT_INTR: if (chn_interrupt[channel]) status = STATUS_WAIT; break;
+    default:                                       status = STATUS_WAIT;
     }
   }
   return status;
@@ -220,7 +224,7 @@ VDMC::STATUS VDMC::ocp(unsigned short instr)
     }
 
     if (start) {
-      // cout << "Start channel " << channel << endl;
+      //cout << "Start channel " << channel << endl;
       trfr_cntr[channel] = trfr_size[channel] - 1;
       pending_transfers[channel] = 0;
       last_pending[channel] = false;
@@ -230,6 +234,7 @@ VDMC::STATUS VDMC::ocp(unsigned short instr)
       error_bits[channel].reset();
       reload_time_cntr(channel);
       busy[channel] = true;
+      //cout << "Busy = " << busy << endl;
     }
   }
   return STATUS_READY;
@@ -249,11 +254,17 @@ void VDMC::event(int reason)
   if ((reason >= VDMC_REASON_TIMER                        ) &&
       (reason < (VDMC_REASON_TIMER + ((int) NUM_CHANNELS)))) {
     unsigned int chan = reason - VDMC_REASON_TIMER;
+    if (pending_transfers[chan] == 0) {
+      p->set_dmcreq(1 << chan);
+    }
     pending_transfers[chan]++;
-    p->set_dmcreq(1 << chan);
     if (trfr_cntr[chan] == 0) {
+      //cout << "Request LAST chan " << chan << endl;
       last_pending[chan] = true;
     } else {
+      //cout << "Request chan " << chan
+      //     << " trfr_cntr = " << trfr_cntr[chan]
+      //     << endl;
       trfr_cntr[chan]--;
       reload_time_cntr(chan);
     }
@@ -275,18 +286,28 @@ void VDMC::dmc(signed short &data, bool erl)
 {
   const unsigned int chan = p->get_dmc_dev();
   
+ 
   if (pending_transfers[chan] == 0) {
     unexpected_trfr[chan] = true;
   } else {
     const bool last_transfer = ((pending_transfers[chan] == 1) &&
                                 last_pending[chan]);
     
+    //cout << "Service chan " << chan
+    //     << " pending_transfers = " <<  pending_transfers[chan]
+    //     << " erl = " << erl << endl;
+
     pending_transfers[chan]--;
+    
+    if ((pending_transfers[chan] != 0) && (!erl)) {
+      // Keep requesting
+      p->set_dmcreq(1 << chan);
+    }
     
     if (erl && (!last_transfer)) {
       error_bits[chan][UNEXPECTED_EOR] = true;
     } else if (last_transfer && (!erl)) {
-      //cout << "Missing EOR" << endl;
+      cout << "Missing EOR" << endl;
       error_bits[chan][MISSING_EOR] = true;
     }
     
@@ -308,8 +329,8 @@ void VDMC::dmc(signed short &data, bool erl)
                       data);
 
     //cout << "DMC " << ((input_mode[chan]) ? "input  " : "output ")
-    //     << "data = " << hex << ((unsigned) data) << " "
-    //     << "data_prng = " << hex << data_prng[chan]
+    //     << "data = " << oct << (((unsigned) data) & 0xffff) << " "
+    //     << "data_prng = " << oct << (data_prng[chan] & 0xffff)
     //     << endl;
 
     if (last_transfer) {

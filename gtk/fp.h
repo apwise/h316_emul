@@ -19,91 +19,92 @@
  */
 
 enum RB
-{
-	RB_X,
-	RB_A,
-	RB_B,
-	RB_OP,
-	RB_PY,
-	RB_M,
-	RB_NUM
-};
+  {
+    RB_X,
+    RB_A,
+    RB_B,
+    RB_OP,
+    RB_PY,
+    RB_M,
+    RB_NUM
+  };
 
 enum CPU
-{
-	CPU_H316,
-	CPU_DDP516,
-	CPU_NUM
-};
+  {
+    CPU_H316,
+    CPU_DDP516,
+    CPU_NUM
+  };
 
 enum FP_MODE
-{
-	FPM_MA,
-	FPM_SI,
-	FPM_RUN,
-	FPM_NUM
-};
+  {
+    FPM_MA,
+    FPM_SI,
+    FPM_RUN,
+    FPM_NUM
+  };
 
 struct FP_INTF
 {
-	/*
-	 * Pointers to the registers
-	 *
-	 * The spare one (*reg_values[RB_NUM]) is used
-	 * internally by the front_panel to point at a
-	 * dummy value if none of the register select
-	 * buttons is depressed
-	 */
-	short *reg_value[RB_NUM+1];
+  /*
+   * Pointers to the registers
+   *
+   * The spare one (*reg_values[RB_NUM]) is used
+   * internally by the front_panel to point at a
+   * dummy value if none of the register select
+   * buttons is depressed
+   */
+  short *reg_value[RB_NUM+1];
 
-	/*
-	 * (Boolean) sense switch values
-	 */
-	int *ssw[4];
+  /*
+   * (Boolean) sense switch values
+   */
+  int *ssw[4];
 
-	/*
-	 * (Boolean) Power fail action
-	 */
-	int pfh_not_pfi;
+  /*
+   * (Boolean) Power fail action
+   */
+  int pfh_not_pfi;
 
-	/*
-	 * Front-panel MA-SI-RUN switch;
-	 */
-	enum FP_MODE mode;
-	
-	/*
-	 * Front-panel store/fetch and p/p+1 switches
-	 */
-	int store;
-	int p_not_pp1;
+  /*
+   * Front-panel MA-SI-RUN switch;
+   */
+  enum FP_MODE mode;
+        
+  /*
+   * Front-panel store/fetch and p/p+1 switches
+   */
+  int store;
+  int p_not_pp1;
 
-	/*
-	 * Is the machine running?
-	 */
-	int running;
+  /*
+   * Is the machine running?
+   */
+  int running;
+  int exit_called;
 
-	int start_button_interrupt_pending;
-	int power_fail_interrupt_pending;
-	int power_fail_interrupt_acknowledge;
+  int start_button_interrupt_pending;
+  int power_fail_interrupt_pending;
+  int power_fail_interrupt_acknowledge;
 
-	/*
-	 * Call-back routines from the front-panel
-	 */
-	
-	void (*run)(struct FP_INTF *intf);
-	void (*master_clear)(struct FP_INTF *intf);
+  /*
+   * Call-back routines from the front-panel
+   */
+        
+  void (*run)(struct FP_INTF *intf);
+  void (*master_clear)(struct FP_INTF *intf);
 
-	/*
-	 * CPU options
-	 */
+  /*
+   * CPU options
+   */
 
-	enum CPU cpu;
+  enum CPU cpu;
 
-	/*
-	 * Carry a pointer (intended as a pointer to the Proc
-	 * to which this front-panel is connected).
-	 */
-	void *data;
+  /*
+   * Carry a pointer (intended as a pointer to the Proc
+   * to which this front-panel is connected).
+   */
+  void *data;
 };
 
 /*
@@ -117,8 +118,8 @@ extern "C" {
 #define _EXTERN_ extern
 #endif
 
-_EXTERN_ void process_args(int *argc, char ***argv);
-_EXTERN_ void setup_fp(struct FP_INTF *intf);
+  _EXTERN_ void process_args(int *argc, char ***argv);
+  _EXTERN_ void setup_fp(struct FP_INTF *intf);
 
 #ifdef __cplusplus
 }
