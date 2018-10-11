@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <cassert>
+#include <iostream>
 
 #ifdef RTL_SIM
 #define NO_GTK (1)
@@ -46,6 +47,8 @@
 #ifndef NO_GTK
 #include "gtk/fp.h"
 #endif
+
+using namespace std;
 
 #define DEBUG 0
 #define CORE_SIZE 32768
@@ -160,9 +163,11 @@ public:
 // {{{ Proc::Proc(STDTTY *stdtty)
 
 Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
-  : extend_allowed(HasEa),
-    addr_mask((HasEa) ? 0x7fff : 0x3fff),
-    instr_table()
+  : extend_allowed(HasEa)
+  , addr_mask((HasEa) ? 0x7fff : 0x3fff)
+  , exit_code(0)
+  , exit_called(false)
+  , instr_table()
 {
   long i;
 
@@ -246,6 +251,13 @@ Proc::~Proc()
   event_queue.discard_events();
 #endif
   delete mfm;
+}
+
+void Proc::exit(int code)
+{
+  exit_code   = code;
+  exit_called = true;
+  run = false;
 }
 
 void Proc::set_limit(unsigned long long half_cycles)
@@ -532,7 +544,8 @@ void Proc::master_clear(void)
   dp = 0;
   extend = 0;
   disable_extend_pending = 0;
-
+  restrict = false;
+  
   sc = 0x3f;
 #ifndef RTL_SIM
   IODEV::master_clear_devices(devices);
@@ -809,6 +822,8 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
         // Do an input
         signed short tmp;
         dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
+        //cout << "DMC " << dec << dmc_dev << " write " << oct << tmp << " to "
+        //     << oct << break_addr << endl;
         write(break_addr, tmp);
       } else {
         // Do an output
@@ -870,18 +885,17 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     break_flag = true;
     break_intr = false;
     break_addr = 061;
-  } else if (dmc_req) {
-    unsigned int tmp_dmc_req = dmc_req;
+  } else if (dmc_req != 0) {
     break_flag = true;
     break_intr = false;
     for (int i=0; i<16; i++) {
-      if (tmp_dmc_req & 1) {
+      const unsigned int mask = (1 << i);
+      if ((dmc_req & mask) != 0) {
         break_addr = 000020 + (2 * i);
-        dmc_req &= (~(1<<i));
+        dmc_req &= (~mask);
         dmc_dev = i; 
         break;
       }
-      tmp_dmc_req >>= 1;
     }
     dmc_cyc = true;
   } else if (pi && (interrupts || start_button_interrupt)) {

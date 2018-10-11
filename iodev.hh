@@ -17,6 +17,8 @@
  * MA  02111-1307 USA
  *
  */
+#ifndef _IODEV_HH_
+#define _IODEV_HH_
 
 class Proc;
 class STDTTY;
@@ -73,3 +75,4 @@ protected:
 };
 
 #define REASON_MASTER_CLEAR -1
+#endif //_IODEV_HH_

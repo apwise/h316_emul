@@ -34,6 +34,9 @@ public:
   Proc(STDTTY *stdtty, bool HasEa);
   ~Proc();
 
+  void exit(int code);
+  bool get_exit_called(int &code){code = exit_code; return exit_called;}
+
   void mem_access(bool p_not_pp1, bool store);
   void do_instr(bool &run, bool &monitor_flag);
   unsigned short ea(unsigned short instr);
@@ -207,6 +210,9 @@ private:
   bool fetched; // flag to say that an instruction has been fetched
   unsigned short fetched_p;
 
+  int exit_code;
+  bool exit_called;
+  
   /*
    * Instruction decode & dispatch
    */

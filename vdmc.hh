@@ -53,7 +53,7 @@ private:
     return (device_addr(instr) == cc_addr);
   }
   void reload_time_cntr(unsigned int chan);
-  bool no_chan_error(unsigned int chan);
+  bool chan_error(unsigned int chan);
   bool interrupts(signed short *chan = 0);
   void evaluate_interrupts();
 

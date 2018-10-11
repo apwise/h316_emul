@@ -37,6 +37,8 @@ h16_SOURCES = 	asr_intf.cc \
 		rtc.hh \
 		vdmc.cc \
 		vdmc.hh \
+		vsim.cc \
+		vsim.hh \
 		gpl.h
 
 AM_CXXFLAGS = -Wall -Werror
