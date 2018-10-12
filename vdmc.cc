@@ -114,10 +114,10 @@ void VDMC::evaluate_interrupts()
 {
   if (interrupts() && intr_mask) {
     p->set_interrupt(SMK_MASK);
-    cout << "Interrupt requested" << endl;
+    //cout << "Interrupt requested" << endl;
   } else {
     p->clear_interrupt(SMK_MASK);
-    cout << "Interrupt cleared" << endl;
+    //cout << "Interrupt cleared" << endl;
   }
 }
 
@@ -129,7 +129,7 @@ IODEV::STATUS VDMC::ina(unsigned short instr, signed short &data)
     switch(function_code(instr)) {
     case INA_CHAN_SLCT: data = channel; break;
     case INA_INTR_CHAN: (void) interrupts(&data);
-      cout << "INA_INTR_CHAN: " << dec << data << endl;
+      //cout << "INA_INTR_CHAN: " << dec << data << endl;
       break;
     case INA_ERR_CHAN:
       data = ~0;
@@ -307,7 +307,7 @@ void VDMC::dmc(signed short &data, bool erl)
     if (erl && (!last_transfer)) {
       error_bits[chan][UNEXPECTED_EOR] = true;
     } else if (last_transfer && (!erl)) {
-      cout << "Missing EOR" << endl;
+      //cout << "Missing EOR" << endl;
       error_bits[chan][MISSING_EOR] = true;
     }
     
