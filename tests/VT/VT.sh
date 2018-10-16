@@ -16,6 +16,7 @@ run_vt()
   if diff logfile.txt ${name}_expected.txt; then
       res=${jshuPASS}
   else
+      mv logfile.txt ${name}_actual.txt
       res=${jshuFAIL}
   fi
   rm -f logfile.txt

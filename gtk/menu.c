@@ -127,7 +127,7 @@ void copyright()
 
   gtk_text_thaw (GTK_TEXT (text));
   
-  cs = g_malloc(sizeof(struct COPYRIGHT_STRUCT *));
+  cs = g_malloc(sizeof(struct COPYRIGHT_STRUCT));
 
   cs->timeout_tag = gtk_timeout_add( COPYRIGHT_TIMEOUT,
                                      copyright_timeout,

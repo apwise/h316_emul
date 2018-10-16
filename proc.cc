@@ -1,7 +1,7 @@
 // {{{ GPL copyright notice
 
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 1999, 2005, 2010, 2011  Adrian Wise
+ * Copyright (C) 1997, 1998, 1999, 2005, 2010, 2011, 2018  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <cassert>
+#include <iostream>
 
 #ifdef RTL_SIM
 #define NO_GTK (1)
@@ -46,6 +47,8 @@
 #ifndef NO_GTK
 #include "gtk/fp.h"
 #endif
+
+using namespace std;
 
 #define DEBUG 0
 #define CORE_SIZE 32768
@@ -160,9 +163,11 @@ public:
 // {{{ Proc::Proc(STDTTY *stdtty)
 
 Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
-  : extend_allowed(HasEa),
-    addr_mask((HasEa) ? 0x7fff : 0x3fff),
-    instr_table()
+  : extend_allowed(HasEa)
+  , addr_mask((HasEa) ? 0x7fff : 0x3fff)
+  , exit_code(0)
+  , exit_called(false)
+  , instr_table()
 {
   long i;
 
@@ -204,8 +209,10 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
    */
 #ifdef RTL_SIM
   devices = 0;
+  dmc_devices = 0;
 #else
   devices = IODEV::dispatch_table(this, stdtty);
+  dmc_devices = IODEV::dmc_dispatch_table(this, stdtty, devices);
 #endif
 
   /*
@@ -244,6 +251,13 @@ Proc::~Proc()
   event_queue.discard_events();
 #endif
   delete mfm;
+}
+
+void Proc::exit(int code)
+{
+  exit_code   = code;
+  exit_called = true;
+  run = false;
 }
 
 void Proc::set_limit(unsigned long long half_cycles)
@@ -514,6 +528,8 @@ void Proc::master_clear(void)
   
   pi = pi_pending = 0;
   interrupts = 0;
+  dmc_req = 0;
+  dmc_cyc = false;
   start_button_interrupt = 0;
   rtclk = false;
   melov = false;
@@ -528,7 +544,8 @@ void Proc::master_clear(void)
   dp = 0;
   extend = 0;
   disable_extend_pending = 0;
-
+  restrict = false;
+  
   sc = 0x3f;
 #ifndef RTL_SIM
   IODEV::master_clear_devices(devices);
@@ -694,6 +711,11 @@ void Proc::set_rtclk(bool v)
   rtclk = v;
 }
 
+void Proc::set_dmcreq(unsigned short bit)
+{
+  dmc_req |= bit;
+}
+
 /*****************************************************************
  * Front-panel memory access
  *****************************************************************/
@@ -739,7 +761,6 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     
     if (break_flag) {
       half_cycles -= 2; // Due to the fetch
-
       /*
        * If this was a break then the contents of
        * M are not an instruction, since it was not
@@ -750,6 +771,10 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
                 0120000 :  // JST *
                 0024000) | // IRS
                break_addr);
+
+      if (dmc_cyc) {
+        instr = dmc_dev; // Mark DMC break
+      }
 
       fetched_p = 0;
 
@@ -777,16 +802,60 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       increment_p();
       m = instr;
     }
- 
-    last_jmp_self_minus_one = jmp_self_minus_one;
-    jmp_self_minus_one = false;
-    melov = false;
-    
-    /*
-     * Now simply jump to the routine that handles
-     * this instruction.
-     */
-    (this->*instr_table.dispatch(instr))(instr);
+
+    if (dmc_cyc) {
+      bool dmc_erl;
+      
+      // DMC cycle 1
+      dmc_addr     = read(break_addr);;
+      break_addr   = break_addr + 1;
+      half_cycles += 2;
+
+      // DMC cycle 2
+      dmc_erl      = ((dmc_addr & 0x7fff) == (read(break_addr) & 0x7fff));
+      break_addr   = dmc_addr & 0x7fff;
+      dmc_addr     = (dmc_addr & 0x8000) | ((dmc_addr + 1) & 0x7fff);
+      half_cycles += 2;
+
+      // DMC cycle 3
+      if (dmc_addr & 0x8000) {
+        // Do an input
+        signed short tmp;
+        dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
+        //cout << "DMC " << dec << dmc_dev << " write " << oct << tmp << " to "
+        //     << oct << break_addr << endl;
+        write(break_addr, tmp);
+      } else {
+        // Do an output
+        signed short tmp = read(break_addr);
+        dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
+      }
+      break_addr   = 000020 + (dmc_dev * 2);
+      half_cycles += 2;
+      
+      // DMC cycle 4
+      write(break_addr, dmc_addr);
+      dmc_cyc      = false;
+      half_cycles += 2;
+
+    } else {
+      
+      last_jmp_self_minus_one = jmp_self_minus_one;
+      jmp_self_minus_one = false;
+      melov = false;
+      
+      /*
+       * Now simply jump to the routine that handles
+       * this instruction.
+       */
+      (this->*instr_table.dispatch(instr))(instr);
+
+      /*
+       * We either interrupted, or interrupts weren't
+       * enabled. Either way clear this flag.
+       */
+      start_button_interrupt = 0;
+    }
     
     // binary trace ...
     
@@ -802,20 +871,13 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     btrace_buf[trace_ptr].instr = instr;
     
     trace_ptr = (trace_ptr + 1) % TRACE_BUF;
-        
-    /*
-     * We either interrupted, or interrupts weren't
-     * enabled. Either way clear this flag.
-     */
-    start_button_interrupt = 0;
-
-    
-  } else
+  } else {
     p = y; /* Front panel updates Y not P
             * So copy Y into P before fetching */
+  }
 
   break_flag = false;
-
+    
   /*
    * Figure out what break, if any, to do.
    */
@@ -823,11 +885,24 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     break_flag = true;
     break_intr = false;
     break_addr = 061;
+  } else if (dmc_req != 0) {
+    break_flag = true;
+    break_intr = false;
+    for (int i=0; i<16; i++) {
+      const unsigned int mask = (1 << i);
+      if ((dmc_req & mask) != 0) {
+        break_addr = 000020 + (2 * i);
+        dmc_req &= (~mask);
+        dmc_dev = i; 
+        break;
+      }
+    }
+    dmc_cyc = true;
   } else if (pi && (interrupts || start_button_interrupt)) {
     break_flag = true;
     break_intr = true;
     break_addr = 063;
-
+      
     pi = pi_pending = 0; // disable interrupts
     extend = extend_allowed; // force extended addressing    
   } if (melov) {
@@ -838,13 +913,13 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     (void) read(p);   // Leaving the instruction in the m register
   }
 
-  half_cycles += 2; // Due to the fetch
-
+  half_cycles += 2; // Due to fetch
+  
   if (fetched) {
     /*
      * Enable the interrupts
      */
-    if (pi_pending && (!pi)) {
+    if (pi_pending && (!pi) && (!dmc_cyc)) {
       pi = true;
       pi_pending = false;
     }

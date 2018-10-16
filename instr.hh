@@ -56,11 +56,11 @@ public:
     
     typedef void (Proc::*ExecFunc_pt)(unsigned short instr);
 
-    Instr(const char *mnemonic=NULL,
+    Instr(const char *mnemonic=0,
           INSTR_TYPE type=UNDEFINED,
           unsigned short opcode=0,
-          const char *description=NULL,
-          ExecFunc_pt exec=NULL,
+          const char *description=0,
+          ExecFunc_pt exec=0,
           bool alloc=false);
     ~Instr();
     

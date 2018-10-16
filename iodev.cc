@@ -29,6 +29,9 @@
 #include "lpt.hh"
 #include "rtc.hh"
 #include "plt.hh"
+#include "vdmc.hh"
+#include "vsim.hh"
+
 #include "proc.hh"
 
 IODEV::IODEV(Proc *p)
@@ -74,6 +77,10 @@ IODEV::STATUS IODEV::smk(unsigned short mask)
   return STATUS_WAIT;
 }
 
+void IODEV::dmc(signed short &data, bool erl)
+{
+}
+
 void IODEV::event(int reason)
 {
   if (reason != REASON_MASTER_CLEAR)
@@ -86,9 +93,10 @@ void IODEV::event(int reason)
 
 IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
 {
-  IODEV **dt = (IODEV **) malloc(sizeof(IODEV *) * 64);
-  int i;
+  IODEV **dt = new IODEV *[64];
   IODEV *dummy = new IODEV(p);
+  VDMC *vdmc = 0;
+  int i;
   
   for(i=0; i<64; i++)
     dt[i] = dummy;
@@ -99,8 +107,25 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
   dt[LPT_DEVICE] = new LPT(p, stdtty);
   dt[RTC_DEVICE] = new RTC(p);
   dt[PLT_DEVICE] = new PLT(p, stdtty);
-  
+
+  dt[VSM_DEVICE] = new VSIM(p);
+  vdmc = new VDMC(p, VD2_DEVICE);
+  dt[VD1_DEVICE] = vdmc;
+  dt[VD2_DEVICE] = vdmc;
+
   return dt;
+}
+
+IODEV **IODEV::dmc_dispatch_table(Proc *p, STDTTY *stdtty, IODEV **dt)
+{
+  IODEV **dmct = new IODEV *[16];
+  //IODEV *dummy = dt[DUM_DEVICE];
+  int i;
+  
+  for(i=0; i<16; i++)
+    dmct[i] = dt[VD1_DEVICE];
+    
+  return dmct;
 } 
 
 void IODEV::master_clear_devices(IODEV **dt)
