@@ -257,7 +257,10 @@ int main(int argc, char **argv)
           p->do_instr(run, monitor_flag);
         }
         exit_called = p->get_exit_called(exit_code);
-        if (!exit_called) {
+        if (exit_called) {
+          fprintf(((exit_code==0) ? stdout : stderr),
+                  "%10llu: vsim exit code = %d\n", p->get_half_cycles(), exit_code);
+        } else {
           monitor_flag = 0;
           m->do_commands(run, &fp);
         }
