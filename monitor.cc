@@ -135,7 +135,8 @@ void Monitor::get_line(char *prompt, FILE **fp, char *buffer, int buf_size)
       p = fgets(buffer, buf_size, *fp);
 
       // Nibble off trailing newline and space
-      i = strlen(buffer)-1;
+      i = strlen(buffer);
+      if (i > 0) i--;
       while (i && ((buffer[i]=='\n') || isspace(buffer[i])))
         buffer[i--] = '\0';
 

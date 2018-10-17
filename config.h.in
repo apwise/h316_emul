@@ -3,6 +3,12 @@
 /* Define to 1 to compile with the GUI */
 #undef ENABLE_GUI
 
+/* Define to 1 to compile with SPI */
+#undef ENABLE_SPI
+
+/* Define to 1 to compile with verification devices */
+#undef ENABLE_VERIF
+
 /* define if the compiler supports basic C++11 syntax */
 #undef HAVE_CXX11
 

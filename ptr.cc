@@ -162,7 +162,7 @@ void PTR::open_file(void)
     }
     
     if (pending_filename)
-      delete filename;
+      free(filename);
     
     pending_filename = 0;
   }

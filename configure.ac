@@ -25,6 +25,22 @@ if test x$enable_gui = xyes; then
   PKG_CHECK_MODULES(GTK, gtk+-3.0)
 fi
 
+AC_ARG_ENABLE([verif],
+              AS_HELP_STRING([--enable-verif],[Compile with support for verification devices]),
+              [], [enable_verif=no])
+AM_CONDITIONAL([ENABLE_VERIF], [test x$enable_verif = xyes])
+if test x$enable_verif = xyes; then
+  AC_DEFINE_UNQUOTED([ENABLE_VERIF], [1], [Define to 1 to compile with verification devices])
+fi
+
+AC_ARG_ENABLE([spi],
+              AS_HELP_STRING([--enable-spi],[Compile with support for experimental SPI devices]),
+              [], [enable_spi=no])
+AM_CONDITIONAL([ENABLE_SPI], [test x$enable_spi = xyes])
+if test x$enable_spi = xyes; then
+  AC_DEFINE_UNQUOTED([ENABLE_SPI], [1], [Define to 1 to compile with SPI])
+fi
+
 # Checks for libraries.
 AC_CHECK_LIB([termcap], [tgoto])
 AC_CHECK_LIB([history], [add_history])
