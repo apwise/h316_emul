@@ -18,6 +18,9 @@
  *
  */
 
+#ifndef _VDMC_HH_
+#define _VDMC_HH_
+
 #include <bitset>
 
 class Proc;
@@ -36,18 +39,9 @@ public:
   void event(int reason);
   void dmc(signed short &data, bool erl);
 
-  void central_controller_addr(unsigned int addr);
-
 private:
   void master_clear(void);
-  static unsigned short device_addr(unsigned short instr)
-  {
-    return instr & 077;
-  }
-  static unsigned short function_code(unsigned short instr)
-  {
-    return (instr >> 6) & 017;
-  }
+
   bool is_central(unsigned short instr)
   {
     return (device_addr(instr) == cc_addr);
@@ -134,3 +128,5 @@ private:
   unsigned short pending_transfers[NUM_CHANNELS];
   bool last_pending[NUM_CHANNELS];
 };
+
+#endif // _VDMC_HH_
