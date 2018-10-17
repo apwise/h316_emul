@@ -31,6 +31,7 @@
 #include "plt.hh"
 #include "vdmc.hh"
 #include "vsim.hh"
+#include "spi.hh"
 
 #include "proc.hh"
 

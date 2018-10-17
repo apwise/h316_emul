@@ -72,7 +72,17 @@ public:
 
 protected:
   Proc *p;
+  static const int REASON_MASTER_CLEAR = -1;
+
+  static unsigned short device_addr(unsigned short instr)
+  {
+    return instr & 077;
+  }
+  static unsigned short function_code(unsigned short instr)
+  {
+    return (instr >> 6) & 017;
+  }
+  
 };
 
-#define REASON_MASTER_CLEAR -1
 #endif //_IODEV_HH_
