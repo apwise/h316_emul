@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2018  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,8 @@
 #include "spi.hh"
 
 #include "proc.hh"
+
+//#define WITH_VDMC (1)
 
 IODEV::IODEV(Proc *p)
   : p(p)
@@ -106,6 +108,7 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
   dt[PTR_DEVICE] = new PTR(p, stdtty);
   dt[PTP_DEVICE] = new PTP(p, stdtty);
   dt[LPT_DEVICE] = new LPT(p, stdtty);
+  dt[SPI_DEVICE] = new SPI(p);  
   dt[RTC_DEVICE] = new RTC(p);
   dt[PLT_DEVICE] = new PLT(p, stdtty);
 
@@ -120,11 +123,17 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
 IODEV **IODEV::dmc_dispatch_table(Proc *p, STDTTY *stdtty, IODEV **dt)
 {
   IODEV **dmct = new IODEV *[16];
-  //IODEV *dummy = dt[DUM_DEVICE];
   int i;
-  
-  for(i=0; i<16; i++)
+#if (WITH_VDMC)
+  for(i=0; i<16; i++) {
     dmct[i] = dt[VD1_DEVICE];
+  }
+#else
+  dmct[0] = dt[SPI_DEVICE];
+  for(i=1; i<16; i++) {
+    dmct[i] = dt[DUM_DEVICE];
+  }
+#endif
     
   return dmct;
 } 
