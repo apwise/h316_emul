@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2018  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ public:
       PTP_DEVICE = 002, // Paper-tape punch
       LPT_DEVICE = 003, // Lineprinter
       ASR_DEVICE = 004, // ASR (teletype)
+      SPI_DEVICE = 007, // SPI flash controller
       RTC_DEVICE = 020, // Real-time clock
       PLT_DEVICE = 027, // Incremental plotter
 

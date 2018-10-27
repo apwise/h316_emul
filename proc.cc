@@ -1151,9 +1151,11 @@ bool Proc::optimize_io_poll(unsigned short instr)
       //
       // If there is an interrupt now pending then
       // don't re-run the instruction, let the interrupt
-      // be taken instead
+      // be taken instead, similarly for a DMC break or
+      // memory locout violation
       //
-      if (pi && (interrupts || start_button_interrupt))
+      if ((pi && (interrupts || start_button_interrupt)) ||
+          dmc_req || melov)
         r = 0;
     }
 
@@ -2991,9 +2993,10 @@ static long multiply(short &ra, short &rb, const short &rm, short &sc)
   int a = ra;
   int b = rb;
   int lsc = -8;
-  bool b17, madff;
+  bool b17, madff=false;
   int g, h;
-  int d, e;
+  int d = 0;
+  int e = 0;
   long p, q;
 
   if (m & 0x8000) m |= ((~0) << 16);
