@@ -21,7 +21,11 @@
 #ifndef _SPI_HH_
 #define _SPI_HH_
 
+#include <cstdint>
+#include <queue>
+
 #include "iodev.hh"
+#include "flash.hh"
 
 class Proc;
 
@@ -56,13 +60,48 @@ public:
   void dmc(signed short &data, bool erl);
 
 private:
-  void master_clear(void);
+  class Inner
+  {
+  public:
+    enum SM {
+      SM_NONE,
+      SM_ONE,
+      SM_TWO,
+      SM_FOUR
+    };
+    
+    enum CMND {
+      CMND_READ  = 0x0,
+      CMND_IDLE  = 0x1,
+      CMND_DUMMY = 0x2, // data[7:5] = -ve cycle count
+      CMND_SMODE = 0x3, // data[7:6] = shift mode
+      CMND_WPROT = 0x4, // data[7]   = write-protect
+      CMND_HALF  = 0xf,
+
+      CMND_SPEC = 0x100
+    };
+    
+    Inner();
+    ~Inner();
+    unsigned int write(unsigned int data);
+    bool rd_valid();
+    bool read(std::uint8_t &data);
+    bool accept();
+    bool resp_idle();
+    
+  private:
+    Flash flash;
+    SM sm;
+    bool wprot;
+    bool idle;
+    std::queue<std::uint8_t> read_data;
+  };
   
   typedef const unsigned int cui_t; // Shorthand for the following declarations
   
   // Function codes
   static cui_t OCP_BOOT   = 000; // Start a boot operation
-  // Ignore               001 e.g. Stop paper tape reader
+  // Ignore                 001 e.g. Stop paper tape reader
   static cui_t OCP_OUTP   = 002; // Enable output mode (to SPI Flash)
   static cui_t OCP_INP    = 003; // Enable input mode
   static cui_t OCP_MD16   = 004; // Enable 16-bit mode
@@ -100,9 +139,28 @@ private:
 
 
   enum SPI_REASON {
-    SPI_REASON_TIMER = 0,
-    
+    SPI_REASON_STATE = 0,
     SPI_REASON_NUM
+  };
+
+  enum SPI_STATE {
+    STATE_POWR,
+    STATE_IDLE,
+    STATE_LOWL,
+    STATE_WPRT,
+    STATE_CMND,
+    STATE_SHF1,
+    STATE_ADR1,
+    STATE_ADR2,
+    STATE_ADR3,
+    STATE_ADR4,
+    STATE_SHF2,
+    STATE_MODE,
+    STATE_DUMM,
+    STATE_DATA,
+    STATE_WLST,
+    STATE_DONE,
+    STATE_DISC
   };
 
   // Constructor configuration constants
@@ -113,7 +171,41 @@ private:
   cui_t boot_ctrl;
   cui_t boot_addr;
 
+  Inner inner;
+
   bool intr_mask;
+  bool intr_dmc;
+  bool bt_trig;
+  bool mode_out;
+  bool mode_16;
+  bool mode_dmc;
+  bool wprot;
+  bool laddrbt;
+  bool last;
+  unsigned long long reset_time;
+  
+  SPI_STATE state;
+  bool wprot_ll;
+  bool boot;
+  uint16_t data_reg;
+  uint16_t ctrl;
+  uint32_t addr;
+  bool data_l;
+  bool data_h;
+  uint16_t cmnd;
+  bool data_last;
+  bool read_paused;
+  bool do_abort;
+  
+  void master_clear(void);
+  bool spi_pilXX();
+  bool ready();
+  bool readyc();
+  bool check_power();
+  void start_command();
+  void state_machine(bool start = false);
+
+  friend std::ostream &operator<<(std::ostream &os, const SPI::SPI_STATE &state);
 };
 
 #endif // _SPI_HH_
