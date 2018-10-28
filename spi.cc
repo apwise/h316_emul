@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 
 #include "iodev.hh"
 #include "stdtty.hh"
@@ -273,26 +274,28 @@ void SPI::dmc(signed short &data, bool erl)
   //cout << __PRETTY_FUNCTION__ << endl;
   
   if (mode_out) {
+    data_reg = data;
+    data_h = true;
+    data_l = true;
+    addr += 2;
+    //state_machine();
     if (erl) {
       last = true;
-      // set interrupt
-    } else {
-      data_reg = data;
-      data_h = true;
-      data_l = true;
-      //state_machine();
     }
   } else {
+    //cout << "data_reg = " << hex << setw(4) << setfill('0') << data_reg << endl;
+    data = data_reg;
+    data_h = false;
+    data_l = false;
+    addr += 2;
     if (erl) {
+      //cout << "dmc() set last" << endl;
       last = true;
-      // set interrupt
-    } else {
-      data = data_reg;
-      data_h = false;
-      data_l = false;
-      if (read_paused) {
-        state_machine();
-      }
+    }
+    if (read_paused) {
+      //cout << "dmc read_paused" << endl;
+      read_paused = false;
+      state_machine();
     }
   }
 }
@@ -316,10 +319,10 @@ void SPI::event(int reason)
   }
 }
 
-  bool SPI::spi_pilXX()
-  {
-    return false;
-  }
+bool SPI::spi_pilXX()
+{
+  return false;
+}
 
 bool SPI::ready()
 {
@@ -331,6 +334,28 @@ bool SPI::ready()
 bool SPI::readyc()
 {
   return ((state == STATE_IDLE) && (wprot == wprot_ll) && (!boot));
+}
+
+void SPI::service_read_data()
+{
+  bool rd_accept = ((!data_l) || ((!data_h) && mode_16) || data_last);
+  uint8_t read_data;
+  bool rd_valid;
+  
+  if (rd_accept && (rd_valid = inner.read(read_data))) {
+    if (mode_16 && (!data_h)) {
+      data_reg = (static_cast<uint16_t>(read_data) << 8) | (data_reg & 0x00ff);
+      data_h   = true;
+    } else if (!data_l) {
+      data_reg = (data_reg & 0xff00) | read_data;
+      data_l   = true;
+    }
+    
+    if (mode_dmc && data_l && ((!mode_16) || data_h)) {
+      //cout << "Request DMC chan=" << dmc_chn << endl;
+      p->set_dmcreq(1 << dmc_chn);
+    }
+  }
 }
 
 void SPI::state_machine(bool start)
@@ -491,37 +516,23 @@ void SPI::state_machine(bool start)
         if ((mode_dmc && last) || data_last) {
           write_data |= Inner::CMND_IDLE;
           state      = STATE_DONE;
+          //cout << "Go to done" << endl;
           last       = false;
           data_h     = false;
           data_l     = false;
         } else {
-          write_data |= Inner::CMND_READ;
-
-          if (inner.accept()) {
-            uint8_t read_data;
-            bool rd_valid = inner.read(read_data);
-            bool rd_accept = ((!data_l) || ((!data_h) && mode_16) || data_last);
           
-            if (rd_valid && rd_accept) {
-              if (mode_16 && (!data_h)) {
-                data_reg = (static_cast<uint16_t>(read_data) << 8) | (data_reg & 0x00ff);
-                data_h   = true;
-              } else if (!data_l) {
-                data_reg = (data_reg * 0xff00) | read_data;
-                data_l   = true;
-              }
-
-              if (mode_dmc && data_l && ((!mode_16) || data_h)) {
-                //cout << "Request DMC chan=" << dmc_chn << endl;
-                p->set_dmcreq(1 << dmc_chn);
-              }
-            }
-          } else {
+          write_data |= Inner::CMND_READ;
+          
+          if (!inner.accept()) {
             write = false;
             read_paused = true;
+            cout << "read_paused" << endl;
           }
         }
         data_last = false;
+
+        service_read_data();
       } else {
         // Write
         if (mode_16 && data_h) {
@@ -536,6 +547,7 @@ void SPI::state_machine(bool start)
           }
         }
       }
+      
       if (write) {
         cycles = inner.write(write_data);
       }
@@ -550,6 +562,7 @@ void SPI::state_machine(bool start)
     case STATE_DONE:
       // If the IDLE command has been accepted move on
       state = STATE_DISC;
+      cycles = 1;
       break;
     
     case STATE_DISC: {
@@ -557,12 +570,14 @@ void SPI::state_machine(bool start)
       data_h    = false;
       data_l    = false;
 
-      uint8_t read_data;
-      bool rd_valid = inner.read(read_data);
-
-      if (rd_valid && inner.resp_idle()) {
+      //cout << "STATE_DISC" << endl;
+      if (inner.rd_empty() && inner.resp_idle()) {
+        //cout << "Go to IDLE" << endl;
         state = STATE_IDLE;
+      } else {
+        inner.rd_discard();
       }
+      cycles = 1;
     } break;
     
     default:
@@ -610,7 +625,7 @@ unsigned int SPI::Inner::write(unsigned int data)
       read_data.push(flash.read());
       break;
     case CMND_IDLE: /* IDLE */
-      flash.abort();
+      flash.deselect();
       cycles = 2;
       idle = true;
       break;
@@ -649,6 +664,18 @@ bool SPI::Inner::rd_valid()
   return (read_data.size() >= 2);
 }
 
+bool SPI::Inner::rd_empty()
+{
+  return read_data.empty();
+}
+
+void SPI::Inner::rd_discard()
+{
+  if (!read_data.empty()) {
+    read_data.pop();
+  }
+}
+
 bool SPI::Inner::read(std::uint8_t &data)
 {
   bool r = false;
@@ -656,6 +683,7 @@ bool SPI::Inner::read(std::uint8_t &data)
     data = read_data.front();
     read_data.pop();
     r = true;
+    //cout << "Inner::read data = " << static_cast<uint32_t>(data) << endl;
   }
   return r;
 }

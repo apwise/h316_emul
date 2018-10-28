@@ -85,6 +85,8 @@ private:
     ~Inner();
     unsigned int write(unsigned int data);
     bool rd_valid();
+    bool rd_empty();
+    void rd_discard();
     bool read(std::uint8_t &data);
     bool accept();
     bool resp_idle();
@@ -203,6 +205,7 @@ private:
   bool readyc();
   bool check_power();
   void start_command();
+  void service_read_data();
   void state_machine(bool start = false);
 
   friend std::ostream &operator<<(std::ostream &os, const SPI::SPI_STATE &state);
