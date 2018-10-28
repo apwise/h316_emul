@@ -22,6 +22,8 @@
 #define _FLASH_HH_
 
 #include <cstdint>
+#include <fstream>
+#include <string>
 
 class Flash
 {
@@ -32,11 +34,32 @@ public:
   ~Flash();
   void write(uint8_t data, DSIZE size = BYTE); 
   uint8_t read();
-  void abort();
+  void deselect();
   void dummy(unsigned int cycles);
 
 private:
   friend std::ostream &operator<<(std::ostream &os, const Flash::DSIZE &size);
+
+  enum FLASH_STATE {
+    STATE_CMND,
+    STATE_ADR1,
+    STATE_ADR2,
+    STATE_ADR3,
+    STATE_ADR4,
+    STATE_DATA
+  };
+  
+  FLASH_STATE state;
+  std::uint8_t cmnd;
+  std::uint32_t addr;
+  
+  std::fstream fs;
+  std::string filename;
+  std::streampos filesize;
+  
+  void file_open();
+
+  static constexpr const char *DEFAULT_FILENAME = "flash.img";
 };
 
 #endif // _FLASH_HH_
