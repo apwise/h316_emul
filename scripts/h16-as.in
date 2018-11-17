@@ -10,7 +10,7 @@ if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
   pkgdatadir=..
 fi
 #
-# Directories based upon pkgdata
+# Directories based upon pkgdatadir
 #
 m4_dir=$pkgdatadir/scripts
 tape_dir=$pkgdatadir/tapes
@@ -127,7 +127,7 @@ else
 fi
 
 tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
-tmpobjnam=`$mktempprog -t h16-dap-obj.XXXXXX` || tmpnam=/tmp/h16-dap-obj.$$
+tmpobjnam=`$mktempprog -t h16-dap-obj.XXXXXX` || tmpobjnam=/tmp/h16-dap-obj.$$
 
 if [ "${run_mac}" != false ]; then
 
