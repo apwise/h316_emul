@@ -120,8 +120,10 @@ EXTRA_DIST = 	data/m4h_defines.m4 \
 		scripts/h16-as.in \
 		scripts/h16-as.m4 \
 		scripts/h16-mac.m4 \
+		scripts/h16-ld.in \
 		tapes/dap-16_mod2_slst.ptp \
 		tapes/mac_slst.ptp \
+		tapes/ldrapm-76-palap-77.slst \
 		scripts/h16-f4.in \
 		scripts/h16-f4.m4 \
 		tapes/fortran_slst.ptp
