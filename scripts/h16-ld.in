@@ -1,0 +1,357 @@
+#! /bin/sh
+
+pkgdatadir=@pkgdatadir@
+
+#
+# For development - if the substitution hasn't happened
+# and there are still '@' characters in the value above
+#
+if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
+    pkgdatadir=..
+fi
+#
+# Directories based upon pkgdatadir
+#
+tape_dir=${pkgdatadir}/tapes
+ldrpal=${tape_dir}/ldrapm-76-palap-77.slst
+
+#
+# Some programs this script uses...
+#
+cpprog="${CPPROG-cp}"
+awkprog="${AWKPROG-awk}"
+rmprog="${RMPROG-rm}"
+mktempprog="${MKTEMPPROG-mktemp}"
+
+h16prog="${H16PROG-h16}"
+
+EXIT_OK=0
+EXIT_ARGS=1
+EXIT_FILE=2
+EXIT_H16A=3
+EXIT_H16B=4
+EXIT_MR=5
+#
+# help and usage information
+#
+usage="Usage: $0 [--help] [Options] [-o <slst-basename>] ([-f] <object-file>)*" 
+help="Options:
+--help     display this help and exit.
+--go       Make the SLST a load-and-go tape.
+--vmem     Produce, in addition, a Verilog memory initialisation file.
+--coe      Produce, in addition, a Xilinx initialisation file.
+--map|-m   Produce, in addition, a map file.
+--exa|-x   Load in extended desectorizing mode.
+--addr|-a  Specify the octal address at which to start loading.
+--base|-b  Specify the octal address to place the desectorizing table.
+--force|-f Force loading of the next object file.
+--pla      Specify the octal address to be used by the PAL-AP loader.
+--low      Specify the octal address for PAL-AP to start dumping.
+--high     Specify the octal address for PAL-AP to finish dumping.
+-o         Specify the basename for the output files.
+           (default: first object-file with extension removed)"
+
+#
+# flags and values from argument parsing
+#
+usage_flag=false
+load_and_go=false
+vmem_file=false
+coe_file=false
+map_file=false
+extended=false
+addr_set=false
+addr=000000
+base_set=false
+base=000000
+low_set=false
+low_arg=000000
+high_set=false
+high=000000
+palap_load_addr=0
+have_slst_nam=false
+force=false
+
+start_script=true
+
+tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
+
+while [ -n "$1" ]; do
+    case $1 in
+        --help) echo "$usage"; echo "$help"; ${rmprog} -f ${tmpnam}; exit ${EXIT_OK};;
+        
+        --go) load_and_go=true;;
+        
+        --vmem) vmem_file=true;;
+        
+        --coe) coe_file=true;;
+        
+        --map|-m) map_file=true;;
+
+        --exa|-x) extended=true;;
+
+        --force|-f) force=true;;
+        
+        --addr|-a) shift
+                   if [ "$#" -gt 1 ]; then
+                       addr_set=true
+                       addr=$1
+                   else
+                       usage_flag=true
+                   fi;;
+        
+        --base|-b) shift
+                   if [ "$#" -gt 1 ]; then
+                       base_set=true
+                       base=$1
+                   else
+                       usage_flag=true
+                   fi;;
+        
+        --low) shift
+               if [ "$#" -gt 1 ]; then
+                   low_set=true
+                   low=$1
+               else
+                   usage_flag=true
+               fi;;
+        
+        --high) shift
+                if [ "$#" -gt 1 ]; then
+                    high_set=true
+                    high=$1
+                else
+                    usage_flag=true
+                fi;;
+
+        --pla) shift
+               if [ "$#" -gt 1 ]; then
+                   palap_load_addr="$1"
+                   shift
+               else
+                   usage_flag=true
+               fi;;
+        
+        -o) shift
+            if [ "$#" -gt 1 ]; then
+                have_slst_nam=true
+                slst_nam="$1"
+                shift
+            else
+                echo "$usage"; ${rmprog} -f ${tmpnam}; exit ${EXIT_ARGS}
+            fi
+            continue;;
+        
+        *)  if [ ${have_slst_nam} = false ]; then
+                have_slst_nam=true
+                slst_nam=`expr //$1 : '.*/\([^.]*\)'`.slst
+            fi
+            if [ ! -r $1 ]; then
+                (>&2 echo "Cannot open <$1> for reading")
+                ${rmprog} -f ${tmpnam}; exit ${EXIT_FILE}
+            fi
+            if [ ${start_script} = true ]; then
+                start_script=false
+                # Load LDR-APM and PAL-AP then clear out the bootstrap
+                cat > ${tmpnam} <<EOF
+ptr ${ldrpal}
+g'1
+clear
+m'73044,'000013
+m'73045,'050060
+m'73046,'024000
+m'73047,'003775
+m'00000,'177737
+g'73044
+clear
+EOF
+                if [ ${addr_set} = true ]; then
+                    echo "a'${addr}" >> ${tmpnam}
+                fi
+                
+                if [ ${base_set} = true ]; then
+                    echo "b'${base}" >> ${tmpnam}
+                fi
+                
+                if [ ${extended} = true ]; then
+                    echo "g'76006" >> ${tmpnam}
+                else
+                    echo "g'76000" >> ${tmpnam}
+                fi
+            fi
+            
+            echo ptr $1 >> ${tmpnam}
+            if [ ${force} = true ]; then
+                echo "g'76004" >> ${tmpnam}
+                force=false
+            else        
+                echo "g" >> ${tmpnam}
+            fi;;
+    esac
+
+    if [ ${usage_flag} != false ]; then
+        echo "$usage"
+        ${rmprog} -f ${tmpnam}
+        exit ${EXIT_ARGS}
+    fi
+    shift
+
+done
+
+if [ ${start_script} = true ]; then
+    echo "$usage"; ${rmprog} -f ${tmpnam}; exit ${EXIT_ARGS}
+fi
+
+base_nam=`expr //${slst_nam} : '.*/\([^.]*\)'`
+full_nam=`dirname ${slst_nam}`/${base_nam}
+vmem_nam=${full_nam}.vmem
+coem_nam=${full_nam}.coe
+
+if [ ${map_file} = true ]; then
+    map_nam=${full_nam}.map
+else
+    map_nam=`$mktempprog -t map.XXXXXX` || map_nam=/tmp/map.$$
+fi
+
+tmpnam2=`$mktempprog -t h16-commands-map.XXXXXX` || tmpnam=/tmp/h16-commands-map.$$
+
+${cpprog} ${tmpnam} ${tmpnam2}
+cat >> ${tmpnam2} <<EOF
+clear
+asr_ptp_on &${map_nam}
+g'76002
+q
+EOF
+
+if ${h16prog} -t ${tmpnam2} > /dev/null; then
+    if [ ${low_set} = false ]; then
+        low=`awk '/LOW/ { print $2}' ${map_nam}`
+    fi
+    base=`awk '/BASE/ { print $2}' ${map_nam}`
+    if [ ${high_set} = false ]; then
+        high=`awk '/HIGH/ { print $2}' ${map_nam}`
+    fi
+    start=`awk '/START/ { print $2}' ${map_nam}`
+    names=`awk '/NAMES/ { print $2}' ${map_nam}`
+    mr=`awk '/^MR$/ { print 1}' ${map_nam}`0
+    
+    if [ ${mr} -ne 0 ]; then
+        # More (object files) Required
+        cat ${map_nam}
+        if [ ${map_file} = false ]; then
+            ${rmprog} -f ${map_nam}
+        fi
+        ${rmprog} -f ${tmpnam} ${tmpnam2}
+        exit ${EXIT_MR}
+    fi
+    if [ ${low_set} = false ]; then
+        if [ ${base} -lt ${low} ]; then
+            low=$base
+        fi
+        # The PAL-AP loader uses locations '20 to '25 as variables
+        # so low cannot be lower than '26 (but if it is set by the
+        # arguments assume the user knows what they're doing).
+        if [ `expr ${low} "<" 26` -ne 0 ]; then
+            low=26
+        fi
+    fi
+else
+    ${rmprog} -f ${tmpnam} ${tmpnam2}
+    exit ${EXIT_H16A}
+fi
+
+# We're done with the h16 script file that produced the map
+${rmprog} -f ${tmpnam2}
+# and maybe the mapfile itself
+if [ ${map_file} = false ]; then
+    ${rmprog} -f ${map_nam}
+fi
+
+if [ "${palap_load_addr}" -eq 0 ]; then
+
+    # Choose the lowest reasonable address, assuming normal memory sizes,
+    # that doesn't overlap the loaded program for the PAL-AP loader 
+
+    palap_load_addr=01600 # 1K RAM
+    # Comparison works even though interpreted as decimal (not octal)
+    while [ `expr ${high} ">=" ${palap_load_addr}` -ne 0 ]; do
+        case ${palap_load_addr} in
+            01600) palap_load_addr=03600;; #  2K RAM
+            03600) palap_load_addr=07600;; #  4K RAM
+            07600) palap_load_addr=17600;; #  8K RAM
+            17600) palap_load_addr=27600;; # 12K RAM
+            27600) palap_load_addr=37600;; # 16K RAM
+            37600) palap_load_addr=57600;; # 24K RAM
+            57600) palap_load_addr=0;; #     32K RAM
+        esac
+    done
+fi
+
+if [ "${palap_load_addr}" -ne 0 ]; then
+    cat >> ${tmpnam} <<EOF
+m'77575 '${palap_load_addr}
+clear
+EOF
+fi
+
+if [ "${load_and_go}" = true ]; then
+    cat >> ${tmpnam} <<EOF
+m'77613 '103632
+m'77616 '103632
+m'77632 '${start}
+EOF
+fi
+
+cat >> ${tmpnam} <<EOF
+clear
+g'77000
+a'${low}
+g
+a'${high}
+ptp ${slst_nam}
+g
+EOF
+
+if [ ${vmem_file} = true -o ${coe_file} = true ]; then
+    # Clear upper memory containing LDR-APM and PAL-AP
+    # and LDR-APM's name table
+    cat >> ${tmpnam} <<EOF
+clear
+m'77774,'000013
+m'77775,'051777
+m'77776,'024000
+m'77777,'003775
+m'00000,'${names}
+d'77774,'77777
+g'77774
+clear
+m'77776,'000000
+m'77777,'000000
+EOF
+fi
+
+if [ ${vmem_file} = true ]; then
+    cat >> ${tmpnam} <<EOF
+vmem ${vmem_nam},'${start}
+EOF
+fi
+
+if [ ${coe_file} = true ]; then
+    cat >> ${tmpnam} <<EOF
+coemem ${coem_nam},'${start}
+EOF
+fi
+
+cat >> ${tmpnam} <<EOF
+q
+EOF
+
+if ${h16prog} -t ${tmpnam} > /dev/null; then
+    exit_code=${EXIT_OK}
+else
+    exit_code=${EXIT_H16B}
+fi
+
+${rmprog} -f ${tmpnam}
+exit ${exit_code}
+
