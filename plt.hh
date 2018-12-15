@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2008  Adrian Wise
+ * Copyright (C) 2008, 2022  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  * MA  02111-1307 USA
  *
  */
+#ifndef _PLT_HH_
+#define _PLT_HH_
 
 class Proc;
 class STDTTY;
@@ -102,3 +104,4 @@ class PLT : public IODEV
   PLT_DIRN current_direction;
   int current_count;
 };
+#endif // _PLT_HH_
