@@ -527,7 +527,7 @@ void SPI::state_machine(bool start)
           if (!inner.accept()) {
             write = false;
             read_paused = true;
-            cout << "read_paused" << endl;
+            //cout << "read_paused" << endl;
           }
         }
         data_last = false;
