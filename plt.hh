@@ -17,6 +17,8 @@
  * MA  02111-1307 USA
  *
  */
+#ifndef _PLT_HH_
+#define _PLT_HH_
 
 class Proc;
 class STDTTY;
@@ -102,3 +104,4 @@ class PLT : public IODEV
   PLT_DIRN current_direction;
   int current_count;
 };
+#endif
