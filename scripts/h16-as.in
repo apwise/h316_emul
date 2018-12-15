@@ -170,13 +170,12 @@ status=$errors
 if [ "${errors}" -eq 0 ]; then
   $cpprog $tmpobjnam $objnam
 else
-  $rmprog -f $tmpobjnam;
   echo $errors WARNING OR ERROR FLAGS >&2
   $grepprog "^[[:alpha:]]" $lstnam >&2
 fi
 
 
-$rmprog -f $tmpnam
+$rmprog -f $tmpobjnam $tmpnam
 
 if [ "${run_mac}" != false ]; then
   "${rmprog}" -f "${prenam}";
