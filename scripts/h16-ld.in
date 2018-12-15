@@ -7,7 +7,7 @@ pkgdatadir=@pkgdatadir@
 # and there are still '@' characters in the value above
 #
 if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
-    pkgdatadir=..
+    pkgdatadir=`dirname $0`/..
 fi
 #
 # Directories based upon pkgdatadir
@@ -225,9 +225,8 @@ EOF
 
 if ${h16prog} -t ${tmpnam2} > /dev/null; then
     if [ ${low_set} = false ]; then
-        low=`awk '/LOW/ { print $2}' ${map_nam}`
+        low=100
     fi
-    base=`awk '/BASE/ { print $2}' ${map_nam}`
     if [ ${high_set} = false ]; then
         high=`awk '/HIGH/ { print $2}' ${map_nam}`
     fi
@@ -243,17 +242,6 @@ if ${h16prog} -t ${tmpnam2} > /dev/null; then
         fi
         ${rmprog} -f ${tmpnam} ${tmpnam2}
         exit ${EXIT_MR}
-    fi
-    if [ ${low_set} = false ]; then
-        if [ ${base} -lt ${low} ]; then
-            low=$base
-        fi
-        # The PAL-AP loader uses locations '20 to '25 as variables
-        # so low cannot be lower than '26 (but if it is set by the
-        # arguments assume the user knows what they're doing).
-        if [ `expr ${low} "<" 26` -ne 0 ]; then
-            low=26
-        fi
     fi
 else
     ${rmprog} -f ${tmpnam} ${tmpnam2}
@@ -318,7 +306,7 @@ if [ ${vmem_file} = true -o ${coe_file} = true ]; then
     cat >> ${tmpnam} <<EOF
 clear
 m'77774,'000013
-m'77775,'051777
+m'77775,'050000
 m'77776,'024000
 m'77777,'003775
 m'00000,'${names}
