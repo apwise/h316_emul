@@ -288,41 +288,59 @@ void Proc::dump_trace(const char *filename, int n)
   /*
    * If a filename is passed then open it.
    */
-  if (filename)
-    {
-      fp = fopen(filename, "w");
-      if (!fp)
-        {
-          fprintf(stderr, "Could not open <%s>\n", filename);
-          return;
-        }
+  if (filename) {
+    fp = fopen(filename, "w");
+    if (!fp) {
+      fprintf(stderr, "Could not open <%s>\n", filename);
+      return;
     }
+  }
   
   i = (trace_ptr + TRACE_BUF - n) % TRACE_BUF;
 
-  do
-    {
-      if (btrace_buf[i].v)
-        {
-          fprintf(fp, "%010lu: A:%06o B:%06o X:%06o C:%d %s\n",
-                  btrace_buf[i].half_cycles,
-                  (btrace_buf[i].a & 0xffff),
-                  (btrace_buf[i].b & 0xffff),
-                  (btrace_buf[i].x & 0xffff),
-                  (btrace_buf[i].c & 1),
-                  instr_table.disassemble(btrace_buf[i].p,
-                                          btrace_buf[i].instr,
-                                          btrace_buf[i].brk,
-                                          btrace_buf[i].y,
-                                          true/*y_valid*/));
-        }
-      i = (i+1) % TRACE_BUF;
-    } while (trace_ptr != i);
-  
-  if (fp != stdout)
-    fclose(fp);
-}
+  do {
+    if (btrace_buf[i].v) {
+      if (btrace_buf[i].brk && (btrace_buf[i].instr < 16)) {
+        unsigned short dmc_addr, dmc_data;
+        bool dmc_erl, dmc_wrt;
+        dmc_data = btrace_buf[i].p & 0xffff;
+        dmc_addr = btrace_buf[i].y & 0xffff;
+        dmc_erl  = btrace_buf[i].c;
 
+        dmc_wrt = ((dmc_addr & 0x8000) != 0);
+        dmc_addr &= 0x7fff;
+
+        fprintf(fp, "%010lu: %s %06o %s %05o %s %s\n",
+                btrace_buf[i].half_cycles,
+                ((dmc_wrt) ? "Write" : "Read"), dmc_data,
+                ((dmc_wrt) ? "to " : "from"), dmc_addr,
+                ((dmc_erl) ? "ERL" : "   "),
+                instr_table.disassemble(btrace_buf[i].p,
+                                        btrace_buf[i].instr,
+                                        btrace_buf[i].brk,
+                                        btrace_buf[i].y,
+                                        true/*y_valid*/));
+      } else {
+        fprintf(fp, "%010lu: A:%06o B:%06o X:%06o C:%d %s\n",
+                btrace_buf[i].half_cycles,
+                (btrace_buf[i].a & 0xffff),
+                (btrace_buf[i].b & 0xffff),
+                (btrace_buf[i].x & 0xffff),
+                (btrace_buf[i].c & 1),
+                instr_table.disassemble(btrace_buf[i].p,
+                                        btrace_buf[i].instr,
+                                        btrace_buf[i].brk,
+                                        btrace_buf[i].y,
+                                        true/*y_valid*/));
+      }
+    }
+    i = (i+1) % TRACE_BUF;
+  } while (trace_ptr != i);
+  
+  if (fp != stdout) {
+    fclose(fp);
+  }
+}
 // }}}
 // {{{ void Proc::dump_disassemble(char *filename, int first, int last)
 
@@ -752,6 +770,9 @@ void Proc::mem_access(bool p_not_pp1, bool store)
 void Proc::do_instr(bool &x_run, bool &monitor_flag)
 {
   unsigned short instr;
+  unsigned short dmc_addr=0;
+  signed short dmc_data=0;
+  bool dmc_erl=false;
 
   run = true; // else we wouldn't have gotten here!
 
@@ -816,10 +837,11 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     }
 
     if (dmc_cyc) {
-      bool dmc_erl;
+      unsigned short tmp_addr;
       
       // DMC cycle 1
-      dmc_addr     = read(break_addr);;
+      dmc_addr     = read(break_addr);
+      tmp_addr     = dmc_addr;
       break_addr   = break_addr + 1;
       half_cycles += 2;
 
@@ -832,15 +854,14 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       // DMC cycle 3
       if (dmc_addr & 0x8000) {
         // Do an input
-        signed short tmp;
-        dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
-        //cout << "DMC " << dec << dmc_dev << " write " << oct << tmp << " to "
+        dmc_devices[dmc_dev]->dmc(dmc_data, dmc_erl);
+        //cout << "DMC " << dec << dmc_dev << " write " << oct << dmc_data << " to "
         //     << oct << break_addr << endl;
-        write(break_addr, tmp);
+        write(break_addr, dmc_data);
       } else {
         // Do an output
-        signed short tmp = read(break_addr);
-        dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
+        dmc_data = read(break_addr);
+        dmc_devices[dmc_dev]->dmc(dmc_data, dmc_erl);
       }
       break_addr   = 000020 + (dmc_dev * 2);
       half_cycles += 2;
@@ -850,6 +871,8 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       dmc_cyc      = false;
       half_cycles += 2;
 
+      // Restore original dmc_addr for tracing, below
+      dmc_addr = tmp_addr;
     } else {
       
       last_jmp_self_minus_one = jmp_self_minus_one;
@@ -881,6 +904,13 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     btrace_buf[trace_ptr].p = (break_flag) ? 0xffff : fetched_p;
     btrace_buf[trace_ptr].y = y;  // EA of MR instructions
     btrace_buf[trace_ptr].instr = instr;
+
+    if (instr < 16) {
+      // DMC break
+      btrace_buf[trace_ptr].y = dmc_addr;
+      btrace_buf[trace_ptr].p = dmc_data;
+      btrace_buf[trace_ptr].c = dmc_erl;
+    }
     
     trace_ptr = (trace_ptr + 1) % TRACE_BUF;
   } else {
