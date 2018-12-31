@@ -88,7 +88,7 @@ void Flash::write(uint8_t data, DSIZE size)
     addr = (addr & 0xffffff00) | static_cast<uint32_t>(data);
     state = STATE_DATA;
 
-    //cout << "addr = " << addr << endl;
+    cout << "FLASH: addr = " << hex << addr << endl;
     
     if (addr < filesize) {
       fs.seekg(addr, fs.beg);
