@@ -951,6 +951,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     break_flag = true;
     break_intr = true;
     break_addr = 062;
+    restrict = false;
   } else {
     (void) read(p);   // Leaving the instruction in the m register
   }
@@ -1131,7 +1132,7 @@ bool Proc::optimize_io_poll(unsigned short instr)
       // If there is an interrupt now pending then
       // don't re-run the instruction, let the interrupt
       // be taken instead, similarly for a DMC break or
-      // memory locout violation
+      // memory lockout violation
       //
       if ((pi && (interrupts || start_button_interrupt)) ||
           dmc_req || melov)
