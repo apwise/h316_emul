@@ -1,11 +1,6 @@
-#CXXFLAGS := -I/usr/local/lib/wx/include/gtk-2.4 -D__WXGTK__ -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -O4 -Wall
-#DFLAGS := -L/usr/local/lib -pthread -lwx_gtk-2.4
-#CXXFLAGS := -I/usr/local/lib/wx/include/gtkd-2.4 -D__WXDEBUG__ -D__WXGTK__ -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -O0 -g -Wall
-#LDFLAGS := -L/usr/local/lib -pthread -lwx_gtkd-2.4
-
-WXGTK_CXXFLAGS := $(shell wx-config --cxxflags)
-WXGTK_LIBS := $(shell wx-config --libs html,adv,core,base)
-#LD := $(shell wx-config --ld)
+TOOLKIT=gtk2
+WXGTK_CXXFLAGS := $(shell wx-config --toolkit=$(TOOLKIT) --cxxflags)
+WXGTK_LIBS := $(shell wx-config --toolkit=$(TOOLKIT) --libs html,adv,core,base)
 LD := g++ -o
 
 CXXFLAGS := $(WXGTK_CXXFLAGS) -g -O0 -Wall
@@ -23,8 +18,8 @@ CXXOBJECTS2 := $(CXXSOURCE2:%.cpp=%.o)
 CXXOBJECTS3 := $(CXXSOURCE3:%.cpp=%.o)
 OBJECTS2 := $(CXXOBJECTS2) $(CXXOBJECTS3)
 
-#all:	gui draw
-all:	hello
+#all:	gui draw hello
+all:	draw gui
 
 hello:	hello.o
 	$(LD) $@ $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS)

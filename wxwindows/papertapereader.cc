@@ -27,16 +27,16 @@ PaperTapeReader::PaperTapeReader(wxWindow* parent)
   wxBoxSizer *button_sizer = new wxBoxSizer( wxHORIZONTAL );
 
   button_sizer->Add(
-		    new wxButton( this, PTR_ID_LOAD, wxT("Load") ),
+                    new wxButton( this, PTR_ID_LOAD, wxT("Load") ),
      0,           // make horizontally unstretchable
      wxALL,       // make border all around (implicit top alignment)
      10 );        // set border width to 10
 
   button_sizer->Add(
-		    new wxButton( this, PTR_ID_REWIND, wxT("Rewind") ),
-		    0,           // make horizontally unstretchable
-		    wxALL,       // make border all around (implicit top alignment)
-		    10 );        // set border width to 10
+                    new wxButton( this, PTR_ID_REWIND, wxT("Rewind") ),
+                    0,           // make horizontally unstretchable
+                    wxALL,       // make border all around (implicit top alignment)
+                    10 );        // set border width to 10
 
   v_sizer->Add(
      button_sizer,
@@ -44,10 +44,10 @@ PaperTapeReader::PaperTapeReader(wxWindow* parent)
      wxALIGN_LEFT ); // no border and align to the left
 
 //   v_sizer->Add(
-// 	       new wxStaticLine(this, -1,
-// 				wxDefaultPosition, wxSize(-1,100), wxLI_HORIZONTAL),
-// 	       0,
-// 	       wxALIGN_LEFT );
+//             new wxStaticLine(this, -1,
+//                              wxDefaultPosition, wxSize(-1,100), wxLI_HORIZONTAL),
+//             0,
+//             wxALIGN_LEFT );
 
 //     wxStaticLine( wxWindow *parent, wxWindowID id,
 //             const wxPoint &pos = wxDefaultPosition, const wxSize &size = wxDefaultSize, 
@@ -79,7 +79,7 @@ void PaperTapeReader::OnLoad(wxCommandEvent& WXUNUSED(event))
 {
   wxFileDialog fd(this, wxT("Select papertape file"), wxT(""), wxT(""),
                   wxT("Papertape files (*.ptp)|*.ptp|Text Files (*.txt)|*.txt"),
-                  wxOPEN | wxCHANGE_DIR);
+                  wxFD_OPEN | wxFD_CHANGE_DIR);
 
   if (fd.ShowModal() == wxID_OK)
     {
