@@ -1191,7 +1191,7 @@ bool Proc::optimize_io_poll(unsigned short instr)
       // If there is an interrupt now pending then
       // don't re-run the instruction, let the interrupt
       // be taken instead, similarly for a DMC break or
-      // memory locout violation
+      // memory lockout violation
       //
       if ((pi && (interrupts || start_button_interrupt)) ||
           dmc_req || melov)
