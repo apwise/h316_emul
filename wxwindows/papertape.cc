@@ -1,8 +1,6 @@
-#include <wx/wx.h> 
 #include <wx/tglbtn.h>
 #include <wx/stattext.h>
 #include <wx/dcclient.h>
-#include <wx/timer.h>
 
 #include <cmath>
 #include <iostream>
@@ -13,11 +11,10 @@
 
 #define TIMER_PERIOD 100 // update every tenth of a second
 
-BEGIN_EVENT_TABLE(wxPaperTape, wxScrolledWindow)
+BEGIN_EVENT_TABLE(wxPaperTape, wxScrolledCanvas)
     EVT_PAINT  (wxPaperTape::OnPaint)
     EVT_TIMER(-1, wxPaperTape::OnTimer)
 END_EVENT_TABLE()
-
 
 int wxPaperTape::num_type[wxPT_num_types] =
 {
@@ -98,7 +95,7 @@ wxPaperTape::wxPaperTape( wxWindow *parent,
                           enum wxPT_direction direction,
                           bool mirror,
                           const wxString &name )
-  : wxScrolledWindow(parent, id, pos, size,
+  : wxScrolledCanvas(parent, id, pos, size,
                      (orient == wxVERTICAL) ? wxVSCROLL : wxHSCROLL,
                      name),
     parent(parent),
@@ -701,7 +698,7 @@ void wxPaperTape::OnPaint(wxPaintEvent &WXUNUSED(event))
   GetClientSize(&width, &height);
   GetViewStart(&view_start_x, &view_start_y);
 
-  //std::cout << "wxPaperTape::OnPaint width = " << width << "height = " << height << std::endl;
+  //std::cout << "wxPaperTape::OnPaint width = " << width << " height = " << height << std::endl;
   //std::cout << "wxPaperTape::OnPaint ViewStart (" << view_start_x << "," << view_start_y << ")" << std::endl;
 
   //int xcb, ycb, wcb, hcb;

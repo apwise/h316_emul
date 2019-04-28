@@ -1,5 +1,10 @@
+#ifndef __PAPERTAPE_HH__
+#define __PAPERTAPE_HH__
 
-class wxPaperTape: public wxScrolledWindow
+#include <wx/wx.h> 
+#include <wx/timer.h>
+
+class wxPaperTape: public wxScrolledCanvas
 {
 public:
 
@@ -96,3 +101,5 @@ private:
 
   DECLARE_EVENT_TABLE()
 };
+
+#endif // __PAPERTAPE_HH__
