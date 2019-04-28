@@ -17,6 +17,7 @@
 
 #include "papertape.hh"
 #include "papertapereader.hh"
+#include "teleprinter.hh"
 
 
 
@@ -39,6 +40,7 @@ public:
 private:
   wxTimer *timer;
   PaperTapeReader *reader;
+  wxTeleprinter *printer;
 
   DECLARE_EVENT_TABLE()
 };
@@ -89,8 +91,9 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 
     /* Adrian */
 
-    reader = new PaperTapeReader(this);
-
+    //reader = new PaperTapeReader(this);
+    printer = new wxTeleprinter(this);
+    
     Refresh();
 }
 
@@ -102,7 +105,7 @@ void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
   wxMessageBox(wxT("This is a wxWindows Hello world sample"),
-	       wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
+               wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
 }
 
 void MyFrame::OnRead(wxCommandEvent& WXUNUSED(event))
