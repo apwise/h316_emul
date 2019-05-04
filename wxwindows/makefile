@@ -7,7 +7,7 @@ CXXFLAGS := $(WXGTK_CXXFLAGS) -g -O0 -Wall
 LDFLAGS := $(WXGTK_LIBS)
 
 
-CXXSOURCE := draw.cc papertape.cc papertapereader.cc teleprinter.cc
+CXXSOURCE := draw.cc papertape.cc papertapereader.cc printedpaper.cc
 CXXSOURCE2 := fp.cpp gui.cpp
 CXXSOURCE3 := message.cpp h16cmd.cpp
 
