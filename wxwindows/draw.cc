@@ -40,7 +40,7 @@ public:
 private:
   wxTimer *timer;
   PaperTapeReader *reader;
-  wxTeleprinter *printer;
+  Teleprinter *printer;
 
   DECLARE_EVENT_TABLE()
 };
@@ -92,7 +92,14 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
     /* Adrian */
 
     //reader = new PaperTapeReader(this);
-    printer = new wxTeleprinter(this);
+    printer = new Teleprinter(this);
+
+    printer->Print("HELLO \016CRUEL\017 WORLD\r\n");
+    printer->Print("0123456789_\n");
+    printer->Print("01234567890123456789012345678901234567890123456789012345678901234567890123456789\r\n");
+    printer->Print("+/\rX\\\n");
+    printer->Print("ABC\n\n");
+    printer->Print("DEF");
     
     Refresh();
 }
