@@ -1,21 +1,21 @@
-#ifndef __TELEPRINTER_HH__
-#define __TELEPRINTER_HH__
+#ifndef __PRINTEDPAPER_HH__
+#define __PRINTEDPAPER_HH__
 
 #include <wx/wx.h> 
 #include <vector> 
 #include <map> 
 #include <string> 
 
-class Teleprinter: public wxScrolledCanvas
+class PrintedPaper: public wxScrolledCanvas
 {
 public:
 
-  Teleprinter( wxWindow *parent,
-               wxWindowID id = -1,
-               const wxPoint& pos = wxDefaultPosition,
-               const wxSize& size = wxDefaultSize,
-               const wxString& name = wxT("teleprinter") );
-  ~Teleprinter( );
+  PrintedPaper( wxWindow *parent,
+                wxWindowID id = -1,
+                const wxPoint& pos = wxDefaultPosition,
+                const wxSize& size = wxDefaultSize,
+                const wxString& name = wxT("teleprinter") );
+  ~PrintedPaper( );
   void Print(unsigned char ch){InternalPrint(ch);}
   void Print(std::string str);
 private:
@@ -80,4 +80,4 @@ private:
   DECLARE_EVENT_TABLE()
 };
 
-#endif // __TELEPRINTER_HH__
+#endif // __PRINTEDPAPER_HH__

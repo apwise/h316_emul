@@ -7,52 +7,7 @@
 
 #include <list>
 
-#include "teleprinter.hh"
-
-enum CtrlChars {
-  NUL = 0x00, // null character
-  SOH,        // start of heading
-  STX,        // start of text
-  ETX,        // end of text
-  EOT,        // end of transmission
-  ENQ,        // enquiry
-  ACK,        // acknowledge
-  BEL,        // bell
-  BS,         // backspace
-  HT,         // horizontal tab
-  LF,         // new line
-  VT,         // vertical tab
-  FF,         // form feed
-  CR,         // carriage ret
-  SO,         // shift out
-  SI,         // shift in
-  DLE,        // data link escape
-  DC1,        // device control 1
-  DC2,        // device control 2
-  DC3,        // device control 3
-  DC4,        // device control 4
-  NAK,        // negative ack.
-  SYN,        // synchronous idle
-  ETB,        // end of trans. blk
-  CAN,        // cancel
-  EM,         // end of medium
-  SUB,        // substitute
-  ESC,        // escape
-  FS,         // file separator
-  GS,         // group separator
-  RS,         // record separator
-  US,         // unit separator
-  SPC,        // space
-  DEL = 0x7f, // delet
-
-  // ASR-specific aliases
-  WRU  = ENQ, // Who are you (answer-back drum)
-  XON  = DC1, // Start paper-tape reader
-  TAPE = DC2, // ASR-35 Start paper-tape punch
-  XOFF = DC3, // (When read from papertape) stop the reader
-  //             ASR-35 Stop the paper-tape punch
-  RUBOUT = DEL
-};
+#include "printedpaper.hh"
 
 /*
  * ASR-33
@@ -68,11 +23,11 @@ enum CtrlChars {
  * the middle of the window with a border each side.
  */
 
-Teleprinter::Teleprinter( wxWindow *parent,
-                          wxWindowID id,
-                          const wxPoint &pos,
-                          const wxSize &size,
-                          const wxString &name )
+PrintedPaper::PrintedPaper( wxWindow *parent,
+                            wxWindowID id,
+                            const wxPoint &pos,
+                            const wxSize &size,
+                            const wxString &name )
   : wxScrolledCanvas(parent, id, pos, size, 0, name)
   , parent(parent)
   , paper_width(85)
@@ -90,11 +45,11 @@ Teleprinter::Teleprinter( wxWindow *parent,
   DecideScrollbars(true);
 }
 
-Teleprinter::~Teleprinter()
+PrintedPaper::~PrintedPaper()
 {
 }
 
-void Teleprinter::DrawPaper(int width, int height)
+void PrintedPaper::DrawPaper(int width, int height)
 {
   int x, y;
   unsigned int cwidth, left_offset;
@@ -152,7 +107,7 @@ void Teleprinter::DrawPaper(int width, int height)
   
 }
   
-void Teleprinter::DecideScrollbars(bool init)
+void PrintedPaper::DecideScrollbars(bool init)
 {
   wxClientDC dc(this);
   PrepareDC(dc);
@@ -198,12 +153,12 @@ void Teleprinter::DecideScrollbars(bool init)
   DrawPaper(((cwidth < (paper_width+1)) ? (paper_width+1) : cwidth) * font_width, font_height);
 }
 
-void Teleprinter::OnSize(wxSizeEvent &WXUNUSED(event))
+void PrintedPaper::OnSize(wxSizeEvent &WXUNUSED(event))
 {
   DecideScrollbars();
 }
 
-void Teleprinter::ConvertSingleLine(unsigned int line, unsigned int z, Printable &pr)
+void PrintedPaper::ConvertSingleLine(unsigned int line, unsigned int z, Printable &pr)
 {
   unsigned int j;
   bool AltColour = text[line].AltColour;
@@ -240,7 +195,7 @@ void Teleprinter::ConvertSingleLine(unsigned int line, unsigned int z, Printable
   }
 }
 
-unsigned int Teleprinter::StartingColumn(unsigned int line)
+unsigned int PrintedPaper::StartingColumn(unsigned int line)
 {
   unsigned int Column;
   
@@ -278,7 +233,7 @@ unsigned int Teleprinter::StartingColumn(unsigned int line)
   return Column;
 }
 
-unsigned int Teleprinter::CurrentColumn()
+unsigned int PrintedPaper::CurrentColumn()
 {
   unsigned int Column;
 
@@ -299,7 +254,7 @@ unsigned int Teleprinter::CurrentColumn()
   return Column;
 } 
  
-const Teleprinter::CacheLine_t *Teleprinter::Cached(unsigned int line)
+const PrintedPaper::CacheLine_t *PrintedPaper::Cached(unsigned int line)
 {
   Cache_t::iterator it;
   
@@ -348,7 +303,7 @@ const Teleprinter::CacheLine_t *Teleprinter::Cached(unsigned int line)
   return 0;
 }
 
-void Teleprinter::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y)
+void PrintedPaper::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y)
 {
   const CacheLine_t *cl = Cached(l);
   char cs[MAX_CARRIAGE_WIDTH+1];
@@ -421,7 +376,7 @@ void Teleprinter::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y)
   }
 }
 
-void Teleprinter::OnPaint(wxPaintEvent &WXUNUSED(event))
+void PrintedPaper::OnPaint(wxPaintEvent &WXUNUSED(event))
 {
   int view_start_x, view_start_y;
   unsigned int left_margin = (paper_width - carriage_width) / 2;
@@ -464,12 +419,12 @@ void Teleprinter::OnPaint(wxPaintEvent &WXUNUSED(event))
     vH -= vY;
 
     /*
-    std::cout << "GetX = " << upd.GetX()
-              << " GetW = " << upd.GetW() << std::endl;
-    std::cout << "vX = " << vX
-              << " vY = " << vY
-              << " vW = " << vW
-              << " vH = " << vH << std::endl;
+      std::cout << "GetX = " << upd.GetX()
+      << " GetW = " << upd.GetW() << std::endl;
+      std::cout << "vX = " << vX
+      << " vY = " << vY
+      << " vW = " << vW
+      << " vH = " << vH << std::endl;
     */
     
     wxPaintDC dc(this);
@@ -512,7 +467,7 @@ void Teleprinter::OnPaint(wxPaintEvent &WXUNUSED(event))
   
 }
 
-void Teleprinter::InvalidateCacheLine(unsigned int line)
+void PrintedPaper::InvalidateCacheLine(unsigned int line)
 {
   Cache_t::iterator it = cache.find(line);
 
@@ -521,7 +476,7 @@ void Teleprinter::InvalidateCacheLine(unsigned int line)
   }
 }
 
-void Teleprinter::DisplayLast()
+void PrintedPaper::DisplayLast()
 {
   unsigned int current_line = (text.empty()) ? 0 : text.size() - 1;
   /*
@@ -570,7 +525,7 @@ void Teleprinter::DisplayLast()
   Refresh();
 }
 
-void Teleprinter::InternalPrint(unsigned char ch, bool update)
+void PrintedPaper::InternalPrint(unsigned char ch, bool update)
 {
   unsigned int StartLines = text.size();
   bool store = false;
@@ -624,7 +579,7 @@ void Teleprinter::InternalPrint(unsigned char ch, bool update)
   }
 }
 
-void Teleprinter::Print(std::string str)
+void PrintedPaper::Print(std::string str)
 {
   unsigned int i;
   for (i=0; i<str.size(); i++) {
@@ -635,7 +590,7 @@ void Teleprinter::Print(std::string str)
   DecideScrollbars();
 }
 
-BEGIN_EVENT_TABLE(Teleprinter, wxScrolledCanvas)
-EVT_PAINT (Teleprinter::OnPaint)
-EVT_SIZE  (Teleprinter::OnSize)
+BEGIN_EVENT_TABLE(PrintedPaper, wxScrolledCanvas)
+EVT_PAINT (PrintedPaper::OnPaint)
+EVT_SIZE  (PrintedPaper::OnSize)
 END_EVENT_TABLE()
