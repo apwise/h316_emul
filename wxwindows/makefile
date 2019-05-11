@@ -6,20 +6,21 @@ LD := g++ -o
 CXXFLAGS := $(WXGTK_CXXFLAGS) -g -O0 -Wall
 LDFLAGS := $(WXGTK_LIBS)
 
-
 CXXSOURCE := draw.cc papertape.cc papertapereader.cc printedpaper.cc
 CXXSOURCE2 := fp.cpp gui.cpp
 CXXSOURCE3 := message.cpp h16cmd.cpp
+CXXSOURCE4 := printedpaper.cc teletype.cc
 
 CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
 OBJECTS := $(CXXOBJECTS)
 
 CXXOBJECTS2 := $(CXXSOURCE2:%.cpp=%.o)
 CXXOBJECTS3 := $(CXXSOURCE3:%.cpp=%.o)
+CXXOBJECTS4 := $(CXXSOURCE4:%.cc=%.o)
 OBJECTS2 := $(CXXOBJECTS2) $(CXXOBJECTS3)
 
 #all:	gui draw hello
-all:	draw gui
+all:	draw gui teletype
 
 hello:	hello.o
 	$(LD) $@ $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS)
@@ -29,11 +30,16 @@ hello.o: hello.cc
 draw:	$(OBJECTS)
 	$(LD) $@ $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS)
 
+teletype: $(CXXOBJECTS4)
+	$(LD) $@ $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS)
+
 draw.o: draw.cc papertapereader.hh
 
 papertape.o: papertape.cc papertape.hh
 
-teleprinter.o: teleprinter.cc teleprinter.hh
+printedpaper.o: printedpaper.cc printedpaper.hh
+
+teletype.o: teletype.cc printedpaper.hh
 
 papertapereader.o: papertapereader.cc papertapereader.hh papertape.hh
 
