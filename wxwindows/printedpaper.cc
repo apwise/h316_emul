@@ -29,20 +29,34 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
                             const wxSize &size,
                             const wxString &name )
   : wxScrolledCanvas(parent, id, pos, size, 0, name)
-  , parent(parent)
+  , timer(this, CHARACTER_TIMER_ID)
   , paper_width(85)
   , carriage_width(72)
+  , left_margin((paper_width - carriage_width) / 2)
   , font(wxFontInfo(12).FaceName("TeleType"))
   , font_width(GetCharWidth())
   , font_height(GetCharHeight())
+  , fc_width(0)
+  , fc_height(0)
+  , pc_width(0)
+  , pc_height(0)
+  , top_offset(0)
+  , left_offset(0)
   , FirstLineColumn(0)
   , paper(0)
   , paper_bitmap(0)
   , newline_pending(true)
   , return_pending(true)
   , current_colour(false)
+  , TickCounter(CHARACTERS_PER_SECOND-1)
+  , inverted_cursor(false)
+  , have_focus(false)
 {  
-  DecideScrollbars(true);
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
+  FontMetrics();
+  DecideScrollbars();
+
+  timer.Start(100, wxTIMER_CONTINUOUS);
 }
 
 PrintedPaper::~PrintedPaper()
@@ -51,8 +65,8 @@ PrintedPaper::~PrintedPaper()
 
 void PrintedPaper::DrawPaper(int width, int height)
 {
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   int x, y;
-  unsigned int cwidth, left_offset;
   
   wxBitmap bitmap(width, height);
 
@@ -67,13 +81,6 @@ void PrintedPaper::DrawPaper(int width, int height)
   paper_bitmap = new wxBitmap(width, height);
   paper = new wxMemoryDC(bitmap);
 
-  cwidth  = (width + font_width - 1)  / font_width;
-
-  left_offset = 0;
-  if (cwidth > paper_width) {
-    left_offset = ((cwidth-paper_width)/2);
-  }
-
   wxColour EdgeColour(0xe6, 0xc7, 0x9b);
   wxColour CentreColour(0xf7, 0xe7, 0xcd);
   
@@ -82,21 +89,20 @@ void PrintedPaper::DrawPaper(int width, int height)
     const unsigned int c = x / font_width;
     wxColour colour;
     
-    if (c < left_offset) {
+    if ((c < left_offset) || (c >= (left_offset + paper_width))) {
       colour.Set(0,0,0);
-    } else if (c < (left_offset + paper_width)) {
+    } else {
 
       int p = x-(left_offset * font_width);
       double theta = static_cast<double>(p) * 2.0 * M_PI / static_cast<double>((paper_width * font_width)-1);
       double scale = 0.5 + 0.5*cos(theta);
+      double iscale = 1.0-scale;
 
-      colour.Set(((EdgeColour.Red()   * scale) + (CentreColour.Red()   * (1.0-scale))),
-                 ((EdgeColour.Green() * scale) + (CentreColour.Green() * (1.0-scale))),
-                 ((EdgeColour.Blue()  * scale) + (CentreColour.Blue()  * (1.0-scale))));
-    } else {
-      colour.Set(0,0,0);
+      colour.Set(((EdgeColour.Red()   * scale) + (CentreColour.Red()   * iscale)),
+                 ((EdgeColour.Green() * scale) + (CentreColour.Green() * iscale)),
+                 ((EdgeColour.Blue()  * scale) + (CentreColour.Blue()  * iscale)));
     }
-
+    
     wxPen pen(colour);
     paper->SetPen(pen);
     
@@ -107,54 +113,62 @@ void PrintedPaper::DrawPaper(int width, int height)
   
 }
   
-void PrintedPaper::DecideScrollbars(bool init)
+void PrintedPaper::FontMetrics()
 {
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   wxClientDC dc(this);
   PrepareDC(dc);
   dc.SetFont(font);
 
   font_width  = dc.GetCharWidth();
   font_height = dc.GetCharHeight();
+}
 
-  //std::cout << "font_width = " << font_width << std::endl;
-  //std::cout << "font_height = " << font_height << std::endl;
+void PrintedPaper::DecideScrollbars()
+{
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   
+  wxClientDC dc(this);
+  PrepareDC(dc);
+  dc.SetFont(font);
+
   int width, height;
-  unsigned int cwidth, cheight; // Size in characters
 
   GetClientSize(&width, &height);
-  //std::cout << "width = " << width << std::endl;
-  //std::cout << "height = " << height << std::endl;
 
-  cwidth  = (width + font_width - 1)  / font_width;
-  cheight = (height + font_height - 1) / font_height;
+  fc_width  =  width                     / font_width;
+  fc_height =  height                    / font_height;
+  pc_width  = (width  + font_width  - 1) / font_width;
+  pc_height = (height + font_height - 1) / font_height;
 
-  left_offset = 0;
-  if (cwidth > paper_width) {
-    left_offset = ((cwidth-paper_width)/2);
-  }
+  left_offset = (fc_width >= paper_width) ? ((fc_width-paper_width)/2) : 0;
 
-  unsigned int left_margin = (paper_width - carriage_width) / 2;
   unsigned int lines = text.size();
-  unsigned int line_width = CurrentColumn() + 1 + left_margin;
-  
-  unsigned int fcwidth, fcheight;
-  fcwidth  = width  / font_width;
-  fcheight = height / font_height;
+  //unsigned int cols  = CursorColumn();
 
-  //std::cout << "line_width = " << line_width << " fcwidth = " << fcwidth << std::endl;
+  // If less text than window height, put it in the lower lines
+  top_offset  = (lines < fc_height) ? fc_height - lines : 0;
+
+  SetScrollRate(font_width, font_height);
+  SetVirtualSize(paper_width * font_width,
+                 lines       * font_height);
+  /*
+  set parameters except the actual position...
+    
+  SetScrollbars(font_width, font_height, paper_width, lines,
+                ((cols  < fc_width)  ? 0 : (cols  - fc_width)),
+                ((lines < fc_height) ? 0 : (lines - fc_height)));
   
-  SetScrollbars(font_width, font_height, paper_width-1, lines,
-                ((line_width <fcwidth) ? 0 : (line_width-fcwidth)),
-                ((text.size()<fcheight) ? 0 : (text.size()-fcheight)));
-  ShowScrollbars(((cwidth  < paper_width) ? wxSHOW_SB_ALWAYS : wxSHOW_SB_NEVER),
-                 ((cheight < lines      ) ? wxSHOW_SB_ALWAYS : wxSHOW_SB_NEVER));
- 
-  DrawPaper(((cwidth < (paper_width+1)) ? (paper_width+1) : cwidth) * font_width, font_height);
+  ShowScrollbars(((fc_width  < paper_width) ? wxSHOW_SB_ALWAYS : wxSHOW_SB_NEVER),
+                 ((fc_height < lines      ) ? wxSHOW_SB_ALWAYS : wxSHOW_SB_NEVER));
+  */
+  
+  DrawPaper(((pc_width < paper_width) ? paper_width : pc_width) * font_width, font_height);
 }
 
 void PrintedPaper::OnSize(wxSizeEvent &WXUNUSED(event))
 {
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   DecideScrollbars();
 }
 
@@ -233,7 +247,7 @@ unsigned int PrintedPaper::StartingColumn(unsigned int line)
   return Column;
 }
 
-unsigned int PrintedPaper::CurrentColumn()
+unsigned int PrintedPaper::CursorColumn()
 {
   unsigned int Column;
 
@@ -247,13 +261,13 @@ unsigned int PrintedPaper::CurrentColumn()
     } else {
       Column = (*cl)[cl->size() - 1].Characters.size();
     }
-    if (Column > 0) {
-      Column--;
+    if (Column >= carriage_width) {
+      Column = carriage_width - 1;
     }
   }
   return Column;
-} 
- 
+}
+
 const PrintedPaper::CacheLine_t *PrintedPaper::Cached(unsigned int line)
 {
   Cache_t::iterator it;
@@ -303,7 +317,8 @@ const PrintedPaper::CacheLine_t *PrintedPaper::Cached(unsigned int line)
   return 0;
 }
 
-void PrintedPaper::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y)
+void PrintedPaper::DrawTextLine(wxPaintDC &dc, unsigned int l, unsigned int c,
+                                unsigned int w, unsigned int x, unsigned int y)
 {
   const CacheLine_t *cl = Cached(l);
   char cs[MAX_CARRIAGE_WIDTH+1];
@@ -311,15 +326,14 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y
   unsigned int overstrikes = cl->size();
   unsigned int z;
   
-  if ((static_cast<unsigned int>(c) >= carriage_width) || (w < 1)) {
+  if ((c >= carriage_width) || (w == 0)) {
     return; // Nothing to do...
   }
   
-  if (static_cast<unsigned int>(c+w) > carriage_width) {
+  if ((c+w) > carriage_width) {
     w = carriage_width - c;
   }
   
-  const unsigned int uw(w);
   
   //std::cout << "DrawTextLine(.., " << l << ", " << c << ", " << w
   //          << ", " << x << ", " << y << ")" << std::endl;
@@ -330,9 +344,9 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y
     int cx = x;
     unsigned int j = 0;
     unsigned int len = p.Characters.size();
-    bool AltColour = p.AltColour[c];
+    bool AltColour = (p.AltColour.empty()) ? false : p.AltColour[c];
     
-    while ((j<uw) && ((j+c) < len)) {
+    while ((j<w) && ((j+c) < len)) {
       unsigned int k = 0;
       /* Extract a substring.
        *
@@ -340,7 +354,7 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y
        * that, when the wxString is built from it, the current
        * locale is not used to interpret the string.
        */
-      while ((j<uw) && ((j+c) < len)) {
+      while ((j<w) && ((j+c) < len)) {
         if (p.AltColour[j+c] != AltColour) {
           break; // Colour changed
         }
@@ -358,7 +372,7 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y
       AltColour = p.AltColour[c+j];
     }
     
-    if ((c+uw) >= carriage_width) {
+    if ((c+w) >= carriage_width) {
       /* The last character printable on the carriage has just been
        * printed. If more characters remain then these overprint
        * the last one.
@@ -378,33 +392,22 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, int l, int c, int w, int x, int y
 
 void PrintedPaper::OnPaint(wxPaintEvent &WXUNUSED(event))
 {
-  int view_start_x, view_start_y;
-  unsigned int left_margin = (paper_width - carriage_width) / 2;
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
 
+  int view_start_x, view_start_y;
   GetViewStart(&view_start_x, &view_start_y);
 
-  int width, height;
-  int cheight; // Size in characters
-  int lines = text.size();
-  int top_offset;
-  
-  GetClientSize(&width, &height);
-  // Here want the number of full lines that can be drawn
-  cheight = height / font_height;
-
-  top_offset = 0;
-  if (lines < cheight) {
-    top_offset = cheight - lines;
-  }
-  //std::cout << "top_offset = " << top_offset << std::endl;
+  unsigned int lines = text.size();
   
   /*
     std::cout << "view_start_x = " << view_start_x
     << " view_start_y = " << view_start_y << std::endl
     << "left_offset = " << left_offset
     << " left_margin = " << left_margin << std::endl;
-  */     
-  int vX,vY,vW,vH; // Dimensions of client area in characters
+  */
+  //std::cout << "font_width = " << font_width << std::endl;
+
+  unsigned int vX,vY,vW,vH; // Dimensions of client area in characters
   wxRegionIterator upd(GetUpdateRegion()); // get the update rect list
   while (upd) {
     vX = (view_start_x * font_width) + upd.GetX();
@@ -419,19 +422,19 @@ void PrintedPaper::OnPaint(wxPaintEvent &WXUNUSED(event))
     vH -= vY;
 
     /*
-      std::cout << "GetX = " << upd.GetX()
-      << " GetW = " << upd.GetW() << std::endl;
-      std::cout << "vX = " << vX
-      << " vY = " << vY
-      << " vW = " << vW
-      << " vH = " << vH << std::endl;
+    std::cout << "GetX = " << upd.GetX()
+              << " GetW = " << upd.GetW() << std::endl;
+    std::cout << "vX = " << vX
+              << " vY = " << vY
+              << " vW = " << vW
+              << " vH = " << vH << std::endl;
     */
     
     wxPaintDC dc(this);
     PrepareDC(dc);
     dc.SetFont(font);
 
-    int l;
+    unsigned int l;
     for (l = vY; l < (vY + vH); l++) {
       
       /*
@@ -442,11 +445,21 @@ void PrintedPaper::OnPaint(wxPaintEvent &WXUNUSED(event))
               paper, vX * font_width, 0);
       
       if ((l >= top_offset) && ((l-top_offset) < lines)) {
-        //std::cout << "l = " << l << std::endl;
+        /*
+        std::cout << "l = " << l
+                  << "vX = " << vX
+                  << " vY = " << vY
+                  << " vW = " << vW
+                  << " vH = " << vH << std::endl;
         
+        std::cout << "left_margin = " << left_margin
+                  << " left_offset = " << left_offset << std::endl;
+        */
         int text_start = vX - left_margin - left_offset;
         int text_width = vW;
         
+        //std::cout << "text_start = " << text_start
+        //          << " text_width = " << text_width << std::endl;
         if (text_start < 0) {
           text_width += text_start;
           text_start = 0;
@@ -476,52 +489,63 @@ void PrintedPaper::InvalidateCacheLine(unsigned int line)
   }
 }
 
+void PrintedPaper::UnsignedViewStart(unsigned int &vsx, unsigned int &vsy)
+{
+  int view_start_x, view_start_y;
+    
+  GetViewStart(&view_start_x, &view_start_y);
+
+  vsx = (view_start_x < 0) ? 0 : view_start_x;
+  vsy = (view_start_y < 0) ? 0 : view_start_y;
+}
+
 void PrintedPaper::DisplayLast()
 {
-  unsigned int current_line = (text.empty()) ? 0 : text.size() - 1;
   /*
-   * An incremetal update of the last cache line is probably
+   * An incremental update of the last cache line is probably
    * possible, but for now just brute-force this by discarding
    * the last line.
    */
+  unsigned int current_line = (text.empty()) ? 0 : text.size() - 1;
   InvalidateCacheLine(current_line);
-  const CacheLine_t *cl = Cached(current_line);
-  if (cl) {
-    const CacheLine_t &c(*cl);
-    unsigned int z = (c.empty()) ? 0 : (c.size() - 1);
-    unsigned int current_column = (c[z].Characters.empty()) ? 0 : c[z].Characters.size() - 1;
 
-    int view_start_x, view_start_y;
-    int width, height, cwidth, cheight;
-    bool changed = false;
-    unsigned int left_margin = (paper_width - carriage_width) / 2;
-    
-    GetViewStart(&view_start_x, &view_start_y);
-    GetClientSize(&width, &height);
-    cwidth  = width  / font_width;
-    cheight = height / font_height;
+  unsigned int cursor_column = CursorColumn();
+  unsigned int current_column = cursor_column;
 
-    if (view_start_y > static_cast<int>(current_line)) {
-      view_start_y = current_line;
-      changed = true;
-    } else if ((view_start_y + cheight) <= static_cast<int>(current_line)) {
-      view_start_y = current_line - cheight + 1;
-      changed = true;
-    }
-
-    current_column += left_margin;
-    if (view_start_x > static_cast<int>(current_column)) {
-      view_start_x = current_column;
-      changed = true;
-    } else if ((view_start_x + cwidth) <= static_cast<int>(current_column)) {
-      view_start_x = current_column - cwidth + 1;
-      changed = true;
-    }
-
-    if (changed) {
-      Scroll(view_start_x, view_start_y);
-    }
+  //std::cout << "cursor_column = " << cursor_column
+  //          << " current_column = " << current_column << std::endl;
+  
+  if (current_column > 0) {
+    current_column--;
   }
+  cursor_column  += left_offset + left_margin + 1; // RH edge of cursor
+  current_column += left_offset + left_margin;
+
+  unsigned int view_start_x, view_start_y;
+  bool changed = false;
+  
+  UnsignedViewStart(view_start_x, view_start_y);
+  
+  if (view_start_y > current_line) {
+    view_start_y = current_line;
+    changed = true;
+  } else if ((view_start_y + fc_height) <= current_line) {
+    view_start_y = current_line - fc_height + 1;
+    changed = true;
+  }
+  
+  if (view_start_x > current_column) {
+    view_start_x = current_column;
+    changed = true;
+  } else if ((view_start_x + fc_width) <= cursor_column) {
+      view_start_x = cursor_column - fc_width;
+      changed = true;
+    }
+  
+  if (changed) {
+    Scroll(view_start_x, view_start_y);
+  }
+
   Refresh();
 }
 
@@ -569,12 +593,12 @@ void PrintedPaper::InternalPrint(unsigned char ch, bool update)
     }
 
     if (update) {
-      if (StartLines == text.size()) {
-        DisplayLast();
-      } else {
+      if (StartLines != text.size()) {
         // May need to turn on the vertical scrollbar...
         DecideScrollbars();
       }
+      DisplayLast();
+      inverted_cursor = false;
     }
   }
 }
@@ -590,7 +614,112 @@ void PrintedPaper::Print(std::string str)
   DecideScrollbars();
 }
 
+void PrintedPaper::OnChar(wxKeyEvent& event)
+{
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
+  wxChar ch = event.GetUnicodeKey();
+
+  if (ch == WXK_NONE) {
+    ch = event.GetKeyCode();
+  } else {
+    if (ch < 127) {
+      Print(ch);
+    }
+  }
+}
+
+void PrintedPaper::InvertCursor()
+{
+  wxClientDC dc(this);
+  unsigned int left_margin = (paper_width - carriage_width) / 2;
+  unsigned int left_offset, top_offset;
+
+  unsigned int lines = text.size();
+  int width, height;
+  unsigned int cwidth, cheight;
+  GetClientSize(&width, &height);
+
+  cwidth  = (width + font_width - 1)  / font_width;
+
+  left_offset = 0;
+  if (cwidth > paper_width) {
+    left_offset = ((cwidth-paper_width)/2);
+  }
+  
+  cheight = height / font_height;
+
+  top_offset = 0;
+  if (lines < cheight) {
+    top_offset = cheight - lines;
+  }
+
+  unsigned int current_line = (text.empty()) ? 0 : text.size() - 1;
+  unsigned int current_column = 0;
+  const CacheLine_t *cl = Cached(current_line);
+  if (cl) {
+    const CacheLine_t &c(*cl);
+    unsigned int z = (c.empty()) ? 0 : (c.size() - 1);
+    current_column = (c[z].Characters.empty()) ? 0 : c[z].Characters.size();
+    if (current_column >= carriage_width) {
+      current_column = carriage_width-1;
+    }
+  }
+
+  int view_start_x, view_start_y;
+  GetViewStart(&view_start_x, &view_start_y);
+  
+  current_line += top_offset - view_start_y;
+  current_column += left_offset + left_margin - view_start_x;
+
+  dc.Blit(current_column * font_width,
+          current_line * font_height,
+          font_width,
+          font_height,
+          &dc, // No Source, but have to pass something...
+          0,
+          0,
+          wxINVERT);
+  
+  inverted_cursor = !inverted_cursor;
+}
+
+void PrintedPaper::OnTimer(wxTimerEvent& WXUNUSED(event))
+{
+  if (have_focus &&
+      ((TickCounter == 0) ||
+       (TickCounter == (CHARACTERS_PER_SECOND/2)))) {
+    InvertCursor();
+  }
+
+  if (TickCounter == 0) {
+    TickCounter = CHARACTERS_PER_SECOND - 1;
+  } else {
+    TickCounter--;
+  }
+}
+
+void PrintedPaper::OnSetFocus(wxFocusEvent &event)
+{
+  //std::cout<<__PRETTY_FUNCTION__<<std::endl;
+  have_focus = true;
+}
+
+void PrintedPaper::OnKillFocus(wxFocusEvent &event)
+{
+  //std::cout<<__PRETTY_FUNCTION__<<std::endl;
+  if (have_focus) {
+    if (inverted_cursor) {
+      InvertCursor();
+    }
+    have_focus = false;
+  }
+}
+
 BEGIN_EVENT_TABLE(PrintedPaper, wxScrolledCanvas)
 EVT_PAINT (PrintedPaper::OnPaint)
 EVT_SIZE  (PrintedPaper::OnSize)
+EVT_CHAR(PrintedPaper::OnChar)
+EVT_TIMER(PrintedPaper::CHARACTER_TIMER_ID, PrintedPaper::OnTimer)
+EVT_SET_FOCUS(PrintedPaper::OnSetFocus)
+EVT_KILL_FOCUS(PrintedPaper::OnKillFocus)
 END_EVENT_TABLE()
