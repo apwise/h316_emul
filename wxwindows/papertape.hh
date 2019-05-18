@@ -1,60 +1,56 @@
 #ifndef __PAPERTAPE_HH__
 #define __PAPERTAPE_HH__
 
+#include <list>
 #include <wx/wx.h> 
-#include <wx/timer.h>
 
-class wxPaperTape: public wxScrolledCanvas
+class PaperTape: public wxScrolledCanvas
 {
 public:
-
-  enum wxPT_direction
-    {
-      wxPT_TopToBottom = 0,
-      wxPT_LeftToRight = 0,
-      wxPT_BottomToTop = 1,
-      wxPT_RightToLeft = 1
-    };
-
-  wxPaperTape( wxWindow *parent,
-               wxWindowID id = -1,
-               const wxPoint& pos = wxDefaultPosition,
-               const wxSize& size = wxDefaultSize,
-               bool reader = true,
-               int orient = wxVERTICAL,
-               enum wxPT_direction direction = wxPT_TopToBottom,
-               bool mirror = false,
-               const wxString& name = wxT("paperTape") );
-  ~wxPaperTape( );
-
+  
+  enum PT_direction {
+    PT_TopToBottom = 0,
+    PT_LeftToRight = 0,
+    PT_BottomToTop = 1,
+    PT_RightToLeft = 1
+  };
+  
+  PaperTape( wxWindow *parent,
+             wxWindowID id = -1,
+             const wxPoint& pos = wxDefaultPosition,
+             const wxSize& size = wxDefaultSize,
+             bool reader = true,
+             int orient = wxVERTICAL,
+             enum PT_direction direction = PT_TopToBottom,
+             bool mirror = false,
+             const wxString& name = wxT("paperTape") );
+  ~PaperTape( );
+  
   void Load(const char *buffer, long size);
   void Rewind();
   int Read();
-
-  void OnPaint(wxPaintEvent &event);
-  void OnTimer(wxTimerEvent& event);
-
+  
 private:
   wxWindow *parent;
   bool reader;
   int orient;
-  enum wxPT_direction direction;
+  enum PT_direction direction;
   bool mirror;
-
+  
   int current_tape_width;
   int row_spacing;
-
+  
   wxBitmap **bitmaps;
 
   int black_start;
   int black_end;
-
+  
   void DrawCircle(wxDC &dc,
                   double xc, double yc, double r,
                   wxColour &background, wxColour &foreground);
   int InsideCircle(double xc, double yc, double r,
                    double x, double y, double d);
-
+  
   void FillLine(wxDC &dc,
                 double m, double c, bool right,
                 long xc[2], long yc[2],
@@ -64,40 +60,42 @@ private:
   int PointLeftOfLine(double m, double c,
                       double x, double y);
   
-  enum wxPT_type
-    {
-      wxPT_holes,
-      wxPT_light,
-      wxPT_leader,
-      wxPT_no_feed,
-      wxPT_no_tape,
-      wxPT_lead_triangle,
-      wxPT_tail_triangle,
-
-      wxPT_num_types
-    };
+  enum PT_type {
+    PT_holes,
+    PT_light,
+    PT_leader,
+    PT_no_feed,
+    PT_no_tape,
+    PT_lead_triangle,
+    PT_tail_triangle,
+    
+    PT_num_types
+  };
   
-  int start_type[wxPT_num_types + 1];
-  static int num_type[wxPT_num_types];
+  int start_type[PT_num_types + 1];
+  static const int num_type[PT_num_types];
 
   wxTimer *timer;
   bool pending_refresh;
-
+  
   void set_pending_refresh();
-
+  
   void DestroyBitmaps();
   void AllocateBitmaps();
-  wxBitmap *GetBitmap(int i, wxPT_type c);
-
+  wxBitmap *GetBitmap(int i, PT_type c);
+  
   class TapeChunk;
-
+  
   std::list<TapeChunk> chunks;
   long total_size();
-  int get_element(int index, wxPT_type &type);
-
+  int get_element(int index, PT_type &type);
+  
   long position, initial_position;
   void SetScrollBars();
   void SetScrollBarPosition();
+
+  void OnPaint(wxPaintEvent &event);
+  void OnTimer(wxTimerEvent& event);
 
   DECLARE_EVENT_TABLE()
 };

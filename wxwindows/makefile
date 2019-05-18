@@ -9,7 +9,7 @@ LDFLAGS := $(WXGTK_LIBS)
 CXXSOURCE := draw.cc papertape.cc papertapereader.cc printedpaper.cc
 CXXSOURCE2 := fp.cpp gui.cpp
 CXXSOURCE3 := message.cpp h16cmd.cpp
-CXXSOURCE4 := printedpaper.cc teletype.cc
+CXXSOURCE4 := printedpaper.cc teletype.cc asr_ptp.cc asr_ptr.cc papertape.cc
 
 CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
 OBJECTS := $(CXXOBJECTS)
@@ -39,7 +39,7 @@ papertape.o: papertape.cc papertape.hh
 
 printedpaper.o: printedpaper.cc printedpaper.hh
 
-teletype.o: teletype.cc printedpaper.hh
+teletype.o: teletype.cc printedpaper.hh asr_ptp.hh
 
 papertapereader.o: papertapereader.cc papertapereader.hh papertape.hh
 
@@ -55,5 +55,6 @@ h16cmd.o: h16cmd.cpp h16cmd.hpp
 clean:	FORCE
 	rm -f hello draw $(OBJECTS)
 	rm -f gui $(OBJECTS2)
+	rm -f teletype $(CXXOBJECTS4)
 
 FORCE:

@@ -1,11 +1,10 @@
-#include <wx/tglbtn.h>
-#include <wx/stattext.h>
-#include <wx/dcclient.h>
+//#include <wx/tglbtn.h>
+//#include <wx/stattext.h>
+//#include <wx/dcclient.h>
 
 #include <cmath>
 #include <iostream>
-
-#include <list>
+#include <chrono>
 
 #include "printedpaper.hh"
 
@@ -32,6 +31,7 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
   , timer(this, CHARACTER_TIMER_ID)
   , paper_width(85)
   , carriage_width(72)
+  , bell_position(62)
   , left_margin((paper_width - carriage_width) / 2)
   , font(wxFontInfo(12).FaceName("TeleType"))
   , font_width(GetCharWidth())
@@ -43,20 +43,30 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
   , top_offset(0)
   , left_offset(0)
   , FirstLineColumn(0)
+  , CurrentAltColour(false)
   , paper(0)
   , paper_bitmap(0)
-  , newline_pending(true)
-  , return_pending(true)
-  , current_colour(false)
   , TickCounter(CHARACTERS_PER_SECOND-1)
   , inverted_cursor(false)
   , have_focus(false)
+  , chime(false)
+  , break_phase(BREAK_NONE)
+  , AnswerBackCounter(-1)
 {  
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
   FontMetrics();
   DecideScrollbars();
 
   timer.Start(100, wxTIMER_CONTINUOUS);
+
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  generator.seed(seed);
+
+  int i;
+  for (i=1; i<=20; i++) {
+    unsigned char ch = i;
+    AnswerBackDrum.push_back(ch);
+  }
 }
 
 PrintedPaper::~PrintedPaper()
@@ -164,6 +174,7 @@ void PrintedPaper::DecideScrollbars()
   */
   
   DrawPaper(((pc_width < paper_width) ? paper_width : pc_width) * font_width, font_height);
+  Refresh();
 }
 
 void PrintedPaper::OnSize(wxSizeEvent &WXUNUSED(event))
@@ -552,6 +563,7 @@ void PrintedPaper::DisplayLast()
 void PrintedPaper::InternalPrint(unsigned char ch, bool update)
 {
   unsigned int StartLines = text.size();
+  unsigned int StartColumn = CursorColumn();
   bool store = false;
   ch &= 0x7f; // Lose any parity bits
 
@@ -560,36 +572,71 @@ void PrintedPaper::InternalPrint(unsigned char ch, bool update)
   } else {
     switch (ch) {
     case '\t': store = true; break; // Assume some can do tabs
-    case '\n': store = newline_pending; newline_pending = true; break;
-    case '\r': return_pending = true;  break;
-    case 0x0e: current_colour = true;  store = !newline_pending; break;
-    case 0x0f: current_colour = false; store = !newline_pending; break;
+    case '\n': store = true; break;
+    case '\r': store = true; break;
+    case 0x0e: CurrentAltColour = true;  store = true; break;
+    case 0x0f: CurrentAltColour = false; store = true; break;
     default: /* do nothing */ break;
     }
   }
-  
+
   if (store) {
-    unsigned int current_line = (text.empty()) ? 0 : text.size() - 1;
-    if (newline_pending) {
-      TextLine tl;
-      tl.Text.resize(1);
-      if (ch != '\n') {
-        tl.Text[0].push_back(ch);
-        newline_pending = false;
+    //unsigned int current_line = (text.empty()) ? 0 : text.size() - 1;
+
+    if (text.empty()) {
+      if (ch == 'r') {      
+        FirstLineColumn = 0;
       }
-      tl.AltColour = current_colour;
-      tl.FollowsReturn = return_pending;
+      TextLine tl;
+      tl.AltColour = CurrentAltColour;
+      tl.FollowsReturn = (FirstLineColumn == 0);
       text.push_back(tl);
-      return_pending = false;
-    } else if (return_pending) {
-      std::string str(1,ch);
-      text[current_line].Text.push_back(str);
-      return_pending = false;
+    }
+
+    if (ch == '\r') {
+      /*
+       * Move to a new line of overprinting text within the current
+       * physical line. If the previous overprinting line is empty
+       * (after a LF, for example) then just reuse it.
+       */
+      TextLine &tl(text.back());
+      if ((tl.Text.empty()) ||
+          ((tl.Text.size() == 1) && (tl.Text[0].empty()))) {
+        tl.FollowsReturn = true;
+      }
+      if ((tl.Text.empty()) || (! tl.Text.back().empty())) {
+        std::string str;
+        tl.Text.push_back(str);
+      }
+    } else if (ch == '\n') {
+      /*
+       * Move to a new physical line of text.
+       * If the last overprinting line of the previous physical line
+       * is empty (after a CR) then delete it.
+       */
+      bool follows_return = false;
+      TextLine &tl(text.back());
+      if (! tl.Text.empty()) {
+        std::string &str(tl.Text.back());
+        if (str.empty()) {
+          follows_return = true;
+          tl.Text.pop_back();
+        }
+      }
+      TextLine ntl;
+      std::string str;
+      ntl.AltColour = CurrentAltColour;
+      ntl.FollowsReturn = follows_return;
+      ntl.Text.push_back(str);
+      text.push_back(ntl);
     } else {
-      unsigned int current_z = ((text.empty()) ? 0 :
-                                ((text[current_line].Text.empty()) ? 0 :
-                                 text[current_line].Text.size() - 1));
-      text[current_line].Text[current_z].push_back(ch);
+      TextLine &tl(text.back());
+      if (tl.Text.empty()) {
+        std::string str(1,ch);
+        tl.Text.push_back(str);
+      } else {
+        tl.Text.back().push_back(ch);
+      }
     }
 
     if (update) {
@@ -599,6 +646,13 @@ void PrintedPaper::InternalPrint(unsigned char ch, bool update)
       }
       DisplayLast();
       inverted_cursor = false;
+      
+      unsigned int cursor_column = CursorColumn();
+      chime = ((StartColumn   <  bell_position) &&
+               (cursor_column >= bell_position));
+      if (chime) {
+        wxBell();
+      }
     }
   }
 }
@@ -614,65 +668,87 @@ void PrintedPaper::Print(std::string str)
   DecideScrollbars();
 }
 
+void PrintedPaper::OnKeyDown(wxKeyEvent& event)
+{
+  bool skip = true;
+  wxChar ch = event.GetUnicodeKey();
+
+  if (ch == WXK_NONE) {
+    ch = event.GetKeyCode();
+  }
+
+  if (ch == WXK_PAUSE) {
+    break_phase = BREAK_ACTIVE;
+    skip = false;
+  }
+
+  event.Skip(skip);
+}
+
 void PrintedPaper::OnChar(wxKeyEvent& event)
 {
+  bool skip = true;
+  
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
   wxChar ch = event.GetUnicodeKey();
 
   if (ch == WXK_NONE) {
     ch = event.GetKeyCode();
-  } else {
-    if (ch < 127) {
-      Print(ch);
+
+    if (ch == WXK_F12) {
+      TriggerAnswerBack();
     }
   }
+
+  // Map an un-modified Backspace to line-feed
+  if (ch == '\010') {
+    if (event.GetModifiers() == wxMOD_NONE) {
+      ch = '\n';
+    }
+  }
+  
+  std::cout << "ch = " << ch << std::endl;
+  
+  if (ch < 127) {
+    skip = false;
+    Print(ch);
+  }
+
+  event.Skip(skip);
+}
+
+void PrintedPaper::OnKeyUp(wxKeyEvent& event)
+{
+  bool skip = true;
+  wxChar ch = event.GetUnicodeKey();
+
+  if (ch == WXK_NONE) {
+    ch = event.GetKeyCode();
+  }
+
+  if (ch == WXK_PAUSE) {
+    break_phase = BREAK_RANDOM;
+    skip = false;
+  }
+
+  event.Skip(skip);
 }
 
 void PrintedPaper::InvertCursor()
 {
   wxClientDC dc(this);
-  unsigned int left_margin = (paper_width - carriage_width) / 2;
-  unsigned int left_offset, top_offset;
-
-  unsigned int lines = text.size();
-  int width, height;
-  unsigned int cwidth, cheight;
-  GetClientSize(&width, &height);
-
-  cwidth  = (width + font_width - 1)  / font_width;
-
-  left_offset = 0;
-  if (cwidth > paper_width) {
-    left_offset = ((cwidth-paper_width)/2);
-  }
+  unsigned int view_start_x, view_start_y;
   
-  cheight = height / font_height;
-
-  top_offset = 0;
-  if (lines < cheight) {
-    top_offset = cheight - lines;
-  }
+  UnsignedViewStart(view_start_x, view_start_y);
 
   unsigned int current_line = (text.empty()) ? 0 : text.size() - 1;
-  unsigned int current_column = 0;
-  const CacheLine_t *cl = Cached(current_line);
-  if (cl) {
-    const CacheLine_t &c(*cl);
-    unsigned int z = (c.empty()) ? 0 : (c.size() - 1);
-    current_column = (c[z].Characters.empty()) ? 0 : c[z].Characters.size();
-    if (current_column >= carriage_width) {
-      current_column = carriage_width-1;
-    }
-  }
-
-  int view_start_x, view_start_y;
-  GetViewStart(&view_start_x, &view_start_y);
+  unsigned int cursor_column = CursorColumn();
   
-  current_line += top_offset - view_start_y;
-  current_column += left_offset + left_margin - view_start_x;
+  current_line  += top_offset                - view_start_y;
+  cursor_column += left_offset + left_margin - view_start_x;
 
-  dc.Blit(current_column * font_width,
-          current_line * font_height,
+  dc.Blit(cursor_column * font_width,
+          current_line  * font_height,
           font_width,
           font_height,
           &dc, // No Source, but have to pass something...
@@ -683,7 +759,12 @@ void PrintedPaper::InvertCursor()
   inverted_cursor = !inverted_cursor;
 }
 
-void PrintedPaper::OnTimer(wxTimerEvent& WXUNUSED(event))
+void PrintedPaper::TriggerAnswerBack()
+{
+  AnswerBackCounter = 0;
+}
+
+void PrintedPaper::OnTimer(wxTimerEvent &event)
 {
   if (have_focus &&
       ((TickCounter == 0) ||
@@ -696,6 +777,32 @@ void PrintedPaper::OnTimer(wxTimerEvent& WXUNUSED(event))
   } else {
     TickCounter--;
   }
+
+  if (break_phase == BREAK_ACTIVE) {
+    std::cout << "ch = 0" << std::endl;
+  } else if (break_phase == BREAK_RANDOM) {
+    std::uniform_int_distribution<int> distribution(0,10);
+    int bit = distribution(generator);
+    int ch = 0xff;
+    if (bit < 8) {
+      ch = (ch << bit) & 0xff;
+    }
+    std::cout << "ch = " << ch << std::endl;
+    break_phase = BREAK_NONE;
+  } else if (AnswerBackCounter >= 0) {
+    int ch = AnswerBackDrum[AnswerBackCounter];
+    std::cout << "ch = " << ch << std::endl;    
+  }
+
+  // Out here in case both break and AnswerBack
+  // running at the same time...
+  if (AnswerBackCounter >= 0) {
+    AnswerBackCounter++;
+    if (AnswerBackCounter >= static_cast<int>(AnswerBackDrum.size())) {
+      AnswerBackCounter = -1;
+    }
+  }
+  
 }
 
 void PrintedPaper::OnSetFocus(wxFocusEvent &event)
@@ -718,7 +825,9 @@ void PrintedPaper::OnKillFocus(wxFocusEvent &event)
 BEGIN_EVENT_TABLE(PrintedPaper, wxScrolledCanvas)
 EVT_PAINT (PrintedPaper::OnPaint)
 EVT_SIZE  (PrintedPaper::OnSize)
+EVT_KEY_DOWN(PrintedPaper::OnKeyDown)
 EVT_CHAR(PrintedPaper::OnChar)
+EVT_KEY_UP(PrintedPaper::OnKeyUp)
 EVT_TIMER(PrintedPaper::CHARACTER_TIMER_ID, PrintedPaper::OnTimer)
 EVT_SET_FOCUS(PrintedPaper::OnSetFocus)
 EVT_KILL_FOCUS(PrintedPaper::OnKillFocus)
