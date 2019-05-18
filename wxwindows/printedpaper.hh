@@ -5,6 +5,7 @@
 #include <vector> 
 #include <map> 
 #include <string> 
+#include <random> 
 
 class PrintedPaper: public wxScrolledCanvas
 {
@@ -19,6 +20,12 @@ public:
   void Print(unsigned char ch){InternalPrint(ch);}
   void Print(std::string str);
 private:
+  enum BREAK_PHASE {
+    BREAK_NONE,
+    BREAK_ACTIVE,
+    BREAK_RANDOM
+  };
+  
   wxWindow *parent;
   wxTimer timer;
 
@@ -26,6 +33,7 @@ private:
   
   unsigned int paper_width; // Paper width in characters
   unsigned int carriage_width; // Carriage width in characters
+  unsigned int bell_position;  // Position when bell struck
   unsigned int left_margin; // Fixed, given paper and carriage widths
   
   wxFont font;
@@ -53,6 +61,7 @@ private:
 
   Text_t text;   // Storage of text
   unsigned int FirstLineColumn; // Start column of very first line
+  bool CurrentAltColour;
 
   typedef std::vector< bool > AltColour_t;
   struct Printable {
@@ -67,14 +76,16 @@ private:
   wxMemoryDC *paper;
   wxBitmap *paper_bitmap;
 
-  bool newline_pending;
-  bool return_pending;
-  bool current_colour;
 
   unsigned int TickCounter;
   bool inverted_cursor;
   bool have_focus;
-  
+
+  bool chime;
+  BREAK_PHASE break_phase;
+  std::default_random_engine generator;
+  std::string AnswerBackDrum;
+  int AnswerBackCounter;
   
   void FontMetrics();
   void DecideScrollbars();
@@ -92,13 +103,19 @@ private:
 
   void InvertCursor();
 
+  bool GetChime() const {return chime;}
+  void TriggerAnswerBack();
+  
   void OnPaint(wxPaintEvent &event);
   void OnSize(wxSizeEvent &event);
+  void OnKeyUp(wxKeyEvent &event);
   void OnChar(wxKeyEvent &event);
+  void OnKeyDown(wxKeyEvent &event);
   void OnTimer(wxTimerEvent &event);
   void OnSetFocus(wxFocusEvent &event);
   void OnKillFocus(wxFocusEvent &event);
-  
+
+ 
   static const int CHARACTER_TIMER_ID = 0;
   static const int CHARACTERS_PER_SECOND = 10;
   DECLARE_EVENT_TABLE()

@@ -1,5 +1,5 @@
 
-class wxPaperTape;
+class PaperTape;
 
 class PaperTapeReader : public wxPanel
 {
@@ -9,7 +9,7 @@ public:
   int Read();
 
 private:
-  wxPaperTape *papertape;
+  PaperTape *papertape;
 
   void OnLoad(wxCommandEvent& event);
   void OnRewind(wxCommandEvent& event);

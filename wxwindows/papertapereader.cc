@@ -53,9 +53,9 @@ PaperTapeReader::PaperTapeReader(wxWindow* parent)
 //             const wxPoint &pos = wxDefaultPosition, const wxSize &size = wxDefaultSize, 
 //             long style = wxLI_HORIZONTAL, const wxString &name = wxStaticTextNameStr );
 
-  papertape = new wxPaperTape(this, -1,
-                              wxDefaultPosition, wxDefaultSize,
-                              true, wxHORIZONTAL, wxPaperTape::wxPT_LeftToRight, false);
+  papertape = new PaperTape(this, -1,
+                            wxDefaultPosition, wxDefaultSize,
+                            true, wxHORIZONTAL, PaperTape::PT_LeftToRight, false);
 
   v_sizer->Add(
                papertape,
