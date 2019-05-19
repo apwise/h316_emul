@@ -1,7 +1,22 @@
-/*
- * fp.cpp
- * Hx16 front-panel
- * Adrian Wise
+/* Graphical representation of series-16 frontpanel
+ *
+ * Copyright (c) 2006, 2019  Adrian Wise
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA  02111-1307 USA
+ *
  */
 
 // {{{ Includes
@@ -318,14 +333,14 @@ BitButton::BitButton(wxWindow *parent, int num, wxString label)
   top_label = new wxStaticText(this, -1, str);
 
   button = new wxToggleButton(this, -1, wxT(""),
-			      wxDefaultPosition,
-			      wxSize(BUTTON_SIZE, BUTTON_SIZE));
+                              wxDefaultPosition,
+                              wxSize(BUTTON_SIZE, BUTTON_SIZE));
 
   bottom_label = new wxStaticText(this, -1, label);
 
   sizer->Add( top_label, 1, wxALIGN_CENTRE);
   sizer->Add( button,
-	      0, wxALIGN_CENTRE);
+              0, wxALIGN_CENTRE);
   sizer->Add( bottom_label, 1, wxALIGN_CENTRE);
 
   // Kludge around wxMSW bug...
@@ -438,9 +453,9 @@ WordButtons::WordButtons(wxWindow *parent)
        * space that doesn't grow.
        */
       if ((i % 3) == 0)
-	sizer->Add(BUTTON_SIZE, 0, 1);
+        sizer->Add(BUTTON_SIZE, 0, 1);
       else
-	sizer->Add(BUTTON_SIZE/2, 0, 0);
+        sizer->Add(BUTTON_SIZE/2, 0, 0);
     }
 
   clearbutton = new ClearButton(this);
@@ -603,13 +618,13 @@ Sense::Sense( wxWindow *parent )
   int i;
 
   sizer = new wxStaticBoxSizer( new wxStaticBox( this, -1, wxT("Sense") ),
-				wxHORIZONTAL );
+                                wxHORIZONTAL );
 
   for (i=1; i<=4; i++)
     {
       ss[i-1] = new SenseButton(this, i);
       if (i!=1)
-	sizer->Add( BUTTON_SIZE/2, 0, 1, wxALIGN_CENTRE);
+        sizer->Add( BUTTON_SIZE/2, 0, 1, wxALIGN_CENTRE);
       sizer->Add(ss[i-1], 0, wxALIGN_CENTRE);
     }
 
@@ -667,32 +682,32 @@ RegButtons::RegButtons( wxWindow *parent, CPU cpu_type )
   int processor = (1 << (static_cast<int>(cpu_type)-static_cast<int>(CPU_116)));
 
   sizer = new wxStaticBoxSizer( new wxStaticBox( this, -1, wxT("Register") ),
-		  wxHORIZONTAL );
+                  wxHORIZONTAL );
 
   wxBoxSizer *vsizer;
-			
+                        
   for (i=0; i<RB_NUM; i++)
     {
       if (processor & flags[i])
         {
 
-	  vsizer = new wxBoxSizer(wxVERTICAL);
+          vsizer = new wxBoxSizer(wxVERTICAL);
 
-	  vsizer->Add(new wxStaticText(this, -1,
-				       labels[i],
-				       wxDefaultPosition, wxDefaultSize,
-				       wxALIGN_CENTRE),
-		      1, wxALIGN_CENTRE);
+          vsizer->Add(new wxStaticText(this, -1,
+                                       labels[i],
+                                       wxDefaultPosition, wxDefaultSize,
+                                       wxALIGN_CENTRE),
+                      1, wxALIGN_CENTRE);
           
           button[i] = new wxRadioButton(this, FrontPanel::ID_X+i,
-					wxT(""), wxDefaultPosition, wxDefaultSize,
-					(first) ? wxRB_GROUP : 0),
+                                        wxT(""), wxDefaultPosition, wxDefaultSize,
+                                        (first) ? wxRB_GROUP : 0),
           vsizer->Add(button[i], 1, wxALIGN_CENTRE);
 
-	  if (!first)
-	    sizer->Add( BUTTON_SIZE/2, 0, 1, wxALIGN_CENTRE);
+          if (!first)
+            sizer->Add( BUTTON_SIZE/2, 0, 1, wxALIGN_CENTRE);
 
-	  sizer->Add(vsizer, 0, wxALIGN_CENTRE);
+          sizer->Add(vsizer, 0, wxALIGN_CENTRE);
 
           first = false;
         }
@@ -770,8 +785,8 @@ MasterClear::MasterClear(wxWindow *parent)
   sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
   button = new wxButton(this, FrontPanel::ID_MasterClear, wxT(""),
-			wxDefaultPosition,
-			wxSize(BUTTON_SIZE, BUTTON_SIZE));
+                        wxDefaultPosition,
+                        wxSize(BUTTON_SIZE, BUTTON_SIZE));
 
   sizer->Add( button, 0, wxALIGN_CENTRE );
   
@@ -811,15 +826,15 @@ FetchStore::FetchStore(wxWindow *parent)
   sizer = new wxBoxSizer( wxVERTICAL );
 
   fetch = new wxRadioButton(this, ID_FETCH, wxT(""),
-			    wxDefaultPosition, wxDefaultSize,
-			    wxRB_GROUP);
+                            wxDefaultPosition, wxDefaultSize,
+                            wxRB_GROUP);
   store = new wxRadioButton(this, ID_STORE, wxT(""));
 
   sizer->Add( new wxStaticText(this, -1,
-			       wxT("FETCH"),
-			       wxDefaultPosition, wxDefaultSize,
-			       wxALIGN_CENTRE),
-	      0, wxALIGN_CENTRE);
+                               wxT("FETCH"),
+                               wxDefaultPosition, wxDefaultSize,
+                               wxALIGN_CENTRE),
+              0, wxALIGN_CENTRE);
 
   sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
@@ -829,10 +844,10 @@ FetchStore::FetchStore(wxWindow *parent)
   sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
 
   sizer->Add( new wxStaticText(this, -1,
-			       wxT("STORE"),
-			       wxDefaultPosition, wxDefaultSize,
-			       wxALIGN_CENTRE),
-	      0, wxALIGN_CENTRE);
+                               wxT("STORE"),
+                               wxDefaultPosition, wxDefaultSize,
+                               wxALIGN_CENTRE),
+              0, wxALIGN_CENTRE);
 
   SetSizer(sizer);
   sizer->SetSizeHints(this);  
@@ -931,8 +946,8 @@ Start::Start(wxWindow *parent)
   sizer = new wxBoxSizer( wxVERTICAL );
 
   toptext = new wxStaticText(this, -1,
-			     wxT("START"),
-			     wxDefaultPosition, wxDefaultSize,
+                             wxT("START"),
+                             wxDefaultPosition, wxDefaultSize,
                              wxALIGN_CENTRE);
   
   sizer->Add(toptext, 0, wxALIGN_CENTRE);
@@ -940,8 +955,8 @@ Start::Start(wxWindow *parent)
   sizer->Add( 0, 0, 1, wxALIGN_CENTRE);
   
   button = new wxToggleButton(this, FrontPanel::ID_Start, wxT(""),
-			      wxDefaultPosition,
-			      wxSize(BUTTON_SIZE*2, BUTTON_SIZE*2));
+                              wxDefaultPosition,
+                              wxSize(BUTTON_SIZE*2, BUTTON_SIZE*2));
   
   sizer->Add( button, 0, wxALIGN_CENTRE );
   
@@ -1048,7 +1063,7 @@ void ControlButtons::DisableButtons(int flags)
    */
 
   masterclear->EnableButton(!( (flags & FrontPanel::DISABLE_OFF) ||
-			       (flags & FrontPanel::DISABLE_SI_RUN)) );
+                               (flags & FrontPanel::DISABLE_SI_RUN)) );
   start->EnableButton(!(flags & FrontPanel::DISABLE_OFF));
 }
 
