@@ -40,12 +40,17 @@
  */
 
 PrintedPaper::PrintedPaper( wxWindow *parent,
+                            const int keyboardSource,
+                            const int specialSource,
                             wxWindowID id,
                             const wxPoint &pos,
                             const wxSize &size,
                             const wxString &name )
   : wxScrolledCanvas(parent, id, pos, size, 0, name)
-  , timer(this, CHARACTER_TIMER_ID)
+  , keyboardSource(keyboardSource)
+  , specialSource(specialSource)
+  , port(dynamic_cast<SimplePort *>(parent))
+  , timer(new wxTimer(this, CHARACTER_TIMER_ID))
   , paper_width(85)
   , carriage_width(72)
   , bell_position(62)
@@ -69,12 +74,12 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
   , chime(false)
   , break_phase(BREAK_NONE)
   , AnswerBackCounter(-1)
-{  
+{
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
   FontMetrics();
   DecideScrollbars();
 
-  timer.Start(100, wxTIMER_CONTINUOUS);
+  timer->Start(100, wxTIMER_CONTINUOUS);
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   generator.seed(seed);
@@ -88,6 +93,13 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
 
 PrintedPaper::~PrintedPaper()
 {
+  if (paper) {
+    delete paper;
+  }
+
+  if (paper_bitmap) {
+    delete paper_bitmap;
+  }
 }
 
 void PrintedPaper::DrawPaper(int width, int height)
@@ -726,9 +738,10 @@ void PrintedPaper::OnChar(wxKeyEvent& event)
   
   std::cout << "ch = " << ch << std::endl;
   
-  if (ch < 127) {
+  if (ch <= 127) {
     skip = false;
-    Print(ch);
+    Print(ch); // For now
+    Send(ch);
   }
 
   event.Skip(skip);
@@ -781,6 +794,25 @@ void PrintedPaper::TriggerAnswerBack()
   AnswerBackCounter = 0;
 }
 
+void PrintedPaper::Send(unsigned char ch, bool special)
+{
+  if (port) {
+    if (!special) {
+      /* This came from a normal keyboard key-press... */
+      
+      ch &= 0x7f;
+
+      if ((ch >= 'a') && (ch <= 'z')) {
+        ch -= ('a'-'A');
+      }
+
+      /* Deal with parity options here... */
+      ch |= 0x80;
+    }
+    port->Process(ch, ((special) ? specialSource :  keyboardSource));
+  }
+}
+  
 void PrintedPaper::OnTimer(wxTimerEvent &event)
 {
   if (have_focus &&

@@ -46,9 +46,15 @@ public:
              const wxString& name = wxT("paperTape") );
   ~PaperTape( );
   
-  void Load(const char *buffer, long size);
+  void Load(const unsigned char *buffer, unsigned long size);
   void Rewind();
   int Read();
+
+  void PunchLeader();
+  void Punch(unsigned char ch);
+  bool UnPunch(unsigned char &ch);
+
+  unsigned long DataSize(){return total_size(true);}
   
 private:
   wxWindow *parent;
@@ -62,8 +68,8 @@ private:
   
   wxBitmap **bitmaps;
 
-  int black_start;
-  int black_end;
+  unsigned int black_start;
+  unsigned int black_end;
   
   void DrawCircle(wxDC &dc,
                   double xc, double yc, double r,
@@ -107,13 +113,14 @@ private:
   class TapeChunk;
   
   std::list<TapeChunk> chunks;
-  long total_size();
-  int get_element(int index, PT_type &type);
+  unsigned long total_size(bool only_holes = false);
+  unsigned int get_element(unsigned int index, PT_type &type);
   
-  long position, initial_position;
+  unsigned long position, initial_position;
   void SetScrollBars();
   void SetScrollBarPosition();
 
+  void OnSize(wxSizeEvent &event);
   void OnPaint(wxPaintEvent &event);
   void OnTimer(wxTimerEvent& event);
 

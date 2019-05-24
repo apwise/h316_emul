@@ -25,13 +25,17 @@
 #include <vector> 
 #include <map> 
 #include <string> 
-#include <random> 
+#include <random>
+
+#include "simpleport.hh"
 
 class PrintedPaper: public wxScrolledCanvas
 {
 public:
 
   PrintedPaper( wxWindow *parent,
+                const int keyboardSource,
+                const int specialSource,
                 wxWindowID id = -1,
                 const wxPoint& pos = wxDefaultPosition,
                 const wxSize& size = wxDefaultSize,
@@ -46,8 +50,11 @@ private:
     BREAK_RANDOM
   };
   
-  wxWindow *parent;
-  wxTimer timer;
+  const int keyboardSource;
+  const int specialSource;
+  SimplePort *port;
+
+  wxTimer *timer;
 
   static const unsigned int MAX_CARRIAGE_WIDTH = 150;
   
@@ -125,7 +132,9 @@ private:
 
   bool GetChime() const {return chime;}
   void TriggerAnswerBack();
-  
+
+  void Send(unsigned char ch, bool special = false);
+ 
   void OnPaint(wxPaintEvent &event);
   void OnSize(wxSizeEvent &event);
   void OnKeyUp(wxKeyEvent &event);
