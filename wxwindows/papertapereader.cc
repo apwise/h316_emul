@@ -93,11 +93,12 @@ void PaperTapeReader::OnLoad(wxCommandEvent& WXUNUSED(event))
         {
           size_t len = file.Length();
           size_t len_read;
-          char *buffer = new char[len];
+          unsigned char *buffer = new unsigned char[len];
           len_read = file.Read(buffer, len);
           file.Close();
 
           papertape->Load(buffer, len_read);
+          delete [] buffer;
         }
     }
 }

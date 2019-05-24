@@ -35,8 +35,8 @@ public:
           const wxString& name = wxT("AsrPtr") );
   ~AsrPtr( );
 private:
-  PaperTape   papertape;
-  wxBoxSizer  top_sizer;
+  PaperTape  *papertape;
+  wxBoxSizer *top_sizer;
 };
 
 #endif // __ASR_PTR_HH__
