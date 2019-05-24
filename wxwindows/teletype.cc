@@ -21,13 +21,14 @@
 #include "printedpaper.hh"
 #include "asr_ptp.hh"
 #include "asr_ptr.hh"
+#include "simpleport.hh"
 
 class MyApp: public wxApp
 {
     virtual bool OnInit();
 };
 
-class MyFrame: public wxFrame
+class MyFrame: public wxFrame, public SimplePort
 {
 public:
   
@@ -40,14 +41,24 @@ public:
   void OnKeyUp(wxKeyEvent& event);
   void OnChar(wxKeyEvent& event);
 
+  virtual void Process(unsigned char ch, int source);
+
 private:
   static const int CHARACTER_TIMER_ID = 0;
 
-  wxBoxSizer   top_sizer;
-  wxBoxSizer   tape_sizer;
-  PrintedPaper printer;
-  AsrPtp       asr_ptp;
-  AsrPtr       asr_ptr;
+  enum class Sources {
+    Keyboard,
+    SpecialFunctionKey,
+    TapeReader,
+    AnswerBack,
+    Line
+  };
+  
+  wxBoxSizer   *top_sizer;
+  wxBoxSizer   *tape_sizer;
+  PrintedPaper *printer;
+  AsrPtp       *asr_ptp;
+  AsrPtr       *asr_ptr;
   
   DECLARE_EVENT_TABLE()
 };
@@ -77,11 +88,11 @@ bool MyApp::OnInit()
 
 MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   : wxFrame((wxFrame *)NULL, -1, title, pos, size)
-  , top_sizer(wxHORIZONTAL)
-  , tape_sizer(wxVERTICAL)
-  , printer(this)
-  , asr_ptp(this)
-  , asr_ptr(this)
+  , top_sizer(new wxBoxSizer(wxHORIZONTAL))
+  , tape_sizer(new wxBoxSizer(wxVERTICAL))
+  , printer(new PrintedPaper(this, static_cast<int>(Sources::Keyboard), static_cast<int>(Sources::SpecialFunctionKey)))
+  , asr_ptp(new AsrPtp(this))
+  , asr_ptr(new AsrPtr(this))
 
 {
     wxMenu *menuFile = new wxMenu;
@@ -99,19 +110,19 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
     CreateStatusBar();
     SetStatusText( wxT("Welcome to wxWindows!") );
 
-    top_sizer.Add(&tape_sizer,
-                  wxSizerFlags(0).Border().Expand());
-    top_sizer.Add(&printer,
-                  wxSizerFlags(1).Expand());
-    printer.SetMinSize(wxSize(500,100));
+    top_sizer->Add(tape_sizer,
+                   wxSizerFlags(0).Border().Expand());
+    top_sizer->Add(printer,
+                   wxSizerFlags(1).Expand());
+    printer->SetMinSize(wxSize(500,100));
 
-    tape_sizer.Add(&asr_ptp,
-                   wxSizerFlags(1).Align(wxALIGN_TOP));
-    tape_sizer.AddSpacer(10);
-    tape_sizer.Add(&asr_ptr,
-                  wxSizerFlags(1).Align(wxALIGN_BOTTOM));
-
-    SetSizerAndFit(&top_sizer);
+    tape_sizer->Add(asr_ptp,
+                    wxSizerFlags(1).Align(wxALIGN_TOP));
+    tape_sizer->AddSpacer(10);
+    tape_sizer->Add(asr_ptr,
+                    wxSizerFlags(1).Align(wxALIGN_BOTTOM));
+    
+    SetSizerAndFit(top_sizer);
        
     /*
     printer.Print("HELLO \016CRUEL\017 WORLD\r\n");
@@ -134,4 +145,10 @@ void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
   wxMessageBox(wxT("This is a wxWindows Hello world sample"),
                wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
+}
+
+void MyFrame::Process(unsigned char ch, int source)
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  asr_ptp->Punch(ch);
 }

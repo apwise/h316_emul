@@ -21,6 +21,8 @@
 #ifndef __ASR_PTP_HH__
 #define __ASR_PTP_HH__
 
+#include <list> 
+#include <vector> 
 #include <wx/wx.h> 
 #include "papertape.hh"
 
@@ -34,20 +36,45 @@ public:
           long style = wxTAB_TRAVERSAL,
           const wxString& name = wxT("AsrPtp") );
   ~AsrPtp( );
-private:
-  PaperTape   papertape;
-  wxBoxSizer  top_sizer;
-  wxGridSizer button_sizer;
 
-  enum AsrPtpButtons {
-    AP_REL = wxID_HIGHEST,
-    AP_OFF,
-    AP_BSP,
-    AP_ON
-  };
+  void Punch(unsigned char ch);
+private:
+  PaperTape   *papertape;
+  wxBoxSizer  *top_sizer;
+  wxGridSizer *button_sizer;
+  bool punch_on;
   
-  wxBoxSizer *ControlButton(std::string label);
+  enum class Buttons {
+    REL,
+    OFF,
+    BSP,
+    ON,
+
+    NUM
+  };
+  static const int ButtonIdOffset = 200;
+
+  struct ButtonDescriptor {
+    const char *label;
+    bool toggle;
+    bool state;
+    bool disable;
+  };
+  static ButtonDescriptor descriptions[static_cast<int>(Buttons::NUM)];
+  std::vector<wxAnyButton *>buttons;
+  std::vector<wxStaticText *>labels;
+  
+  std::list<unsigned char> bsp_buffer;
+  
+  wxBoxSizer *ControlButton(unsigned int index);
   static const unsigned int BUTTON_SIZE = 20;
+
+  void CanBsp(bool value);
+  void OnOff(Buttons b);
+
+  void OnButton(wxCommandEvent &event);
+
+  DECLARE_EVENT_TABLE()
 };
 
 #endif // __ASR_PTP_HH__

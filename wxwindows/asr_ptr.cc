@@ -27,24 +27,24 @@ AsrPtr::AsrPtr( wxWindow      *parent,
                 long           style,
                 const wxString &name)
   : wxPanel(parent, id, pos, size, style, name)
-  , papertape(this)
-  , top_sizer(wxVERTICAL)
+  , papertape(new PaperTape(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, /* reader = */ true))
+  , top_sizer(new wxBoxSizer(wxVERTICAL))
 {
-  top_sizer.Add(&papertape,
+  top_sizer->Add(papertape,
                 wxSizerFlags(1).Expand());
 
-  top_sizer.Add(new wxRadioButton(this, wxID_ANY, wxT("START")),
+  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("START")),
                 wxSizerFlags(0).Left());
-  top_sizer.Add(new wxRadioButton(this, wxID_ANY, wxT("STOP")),
+  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("STOP")),
                 wxSizerFlags(0).Left());
-  top_sizer.Add(new wxRadioButton(this, wxID_ANY, wxT("AUTO")),
+  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("AUTO")),
                 wxSizerFlags(0).Left());
-  top_sizer.Add(new wxRadioButton(this, wxID_ANY, wxT("REL.")),
+  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("REL.")),
                 wxSizerFlags(0).Left());
 
-  papertape.SetMinSize(wxSize(100,100));
+  papertape->SetMinSize(wxSize(100,100));
   
-  SetSizerAndFit(&top_sizer);
+  SetSizerAndFit(top_sizer);
 }
 
 AsrPtr::~AsrPtr()
