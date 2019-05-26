@@ -1,7 +1,8 @@
 TOOLKIT=gtk2
 WXGTK_CXXFLAGS := $(shell wx-config --toolkit=$(TOOLKIT) --cxxflags)
 WXGTK_LIBS := $(shell wx-config --toolkit=$(TOOLKIT) --libs html,adv,core,base)
-LD := g++ -o
+CXX := g++-8
+LD := $(CXX) -o
 
 CXXFLAGS := $(WXGTK_CXXFLAGS) -g -O0 -Wall
 LDFLAGS := $(WXGTK_LIBS)

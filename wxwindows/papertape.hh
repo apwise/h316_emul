@@ -22,7 +22,10 @@
 #define __PAPERTAPE_HH__
 
 #include <list>
+#include <vector>
+
 #include <wx/wx.h> 
+#include <wx/ffile.h> 
 
 class PaperTape: public wxScrolledCanvas
 {
@@ -52,24 +55,77 @@ public:
 
   void PunchLeader();
   void Punch(unsigned char ch);
-  bool UnPunch(unsigned char &ch);
+  bool CanBackspace();
+  void Backspace();
 
+  bool IsAttached();
+  bool Attach(wxString filename);
+  bool CloseAttached();
+  bool Save(wxString filename);
+  
   unsigned long DataSize(){return total_size(true);}
   
 private:
-  wxWindow *parent;
-  bool reader;
-  int orient;
-  enum PT_direction direction;
-  bool mirror;
+  enum PT_type {
+    PT_holes,
+    PT_light,
+    PT_leader,
+    PT_no_feed,
+    PT_no_tape,
+    PT_lead_triangle,
+    PT_tail_triangle,
+    
+    PT_num_types
+  };
+
+  class TapeChunk
+  {
+  public:
+    TapeChunk(PT_type type, unsigned long size = 0, const unsigned char *ptr = 0);
+    ~TapeChunk();
+    
+    PT_type get_type() {return type;}
+    unsigned long get_size() {return (type == PT_holes) ? buffer.size() : size;}
+    unsigned int get_element(unsigned int index, PT_type &type);
+    void append(unsigned char ch);
+    unsigned char modify(unsigned int offset, unsigned char ch);
+    bool un_append(unsigned char &ch);
+    
+  private:
+    const PT_type type;
+    const unsigned long size;
+    std::vector<unsigned char> buffer;
+  };
+  
+  static const unsigned int LeaderLength = 20;
+  static const int num_type[PT_num_types];
+
+  const bool reader;
+  const int orient;
+  const enum PT_direction direction;
+  const bool mirror;
   
   int current_tape_width;
   int row_spacing;
-  
+  int paper_tape_visible_rows;
+  int paper_tape_offset;
   wxBitmap **bitmaps;
 
   unsigned int black_start;
   unsigned int black_end;
+
+  wxFFile *AttachedFile;
+  unsigned int AttachedLeaderCount;
+  unsigned int AttachedZeroCount;
+  bool AttachedError;
+  
+  int start_type[PT_num_types + 1];
+  wxTimer *timer;
+  bool pending_refresh;
+
+  unsigned long position, initial_position;
+
+  std::list<TapeChunk> chunks;
   
   void DrawCircle(wxDC &dc,
                   double xc, double yc, double r,
@@ -85,44 +141,27 @@ private:
                  double x, double y, double d);
   int PointLeftOfLine(double m, double c,
                       double x, double y);
-  
-  enum PT_type {
-    PT_holes,
-    PT_light,
-    PT_leader,
-    PT_no_feed,
-    PT_no_tape,
-    PT_lead_triangle,
-    PT_tail_triangle,
-    
-    PT_num_types
-  };
-  
-  int start_type[PT_num_types + 1];
-  static const int num_type[PT_num_types];
 
-  wxTimer *timer;
-  bool pending_refresh;
-  
   void set_pending_refresh();
   
   void DestroyBitmaps();
   void AllocateBitmaps();
   wxBitmap *GetBitmap(int i, PT_type c);
   
-  class TapeChunk;
-  
-  std::list<TapeChunk> chunks;
   unsigned long total_size(bool only_holes = false);
   unsigned int get_element(unsigned int index, PT_type &type);
   
-  unsigned long position, initial_position;
   void SetScrollBars();
   void SetScrollBarPosition();
+
+  void Write(unsigned char ch);
+  void WriteAll(bool fromCurrent = false);
+  void UnWrite();
 
   void OnSize(wxSizeEvent &event);
   void OnPaint(wxPaintEvent &event);
   void OnTimer(wxTimerEvent& event);
+  void OnIdle(wxIdleEvent& event);
 
   DECLARE_EVENT_TABLE()
 };

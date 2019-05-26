@@ -36,6 +36,7 @@ public:
 
   void OnQuit(wxCommandEvent& event);
   void OnAbout(wxCommandEvent& event);
+  void OnClose(wxCloseEvent &event);
   
   void OnKeyDown(wxKeyEvent& event);
   void OnKeyUp(wxKeyEvent& event);
@@ -73,6 +74,7 @@ enum
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 EVT_MENU(ID_Quit, MyFrame::OnQuit)
 EVT_MENU(ID_About, MyFrame::OnAbout)
+EVT_CLOSE(MyFrame::OnClose)
 END_EVENT_TABLE()
 
 
@@ -84,7 +86,20 @@ bool MyApp::OnInit()
     frame->Show(TRUE);
     SetTopWindow(frame);
     return TRUE;
-} 
+}
+
+void MyFrame::OnClose(wxCloseEvent &event)
+{
+  if ( event.CanVeto() && asr_ptp->Unsaved() ) {
+    if ( wxMessageBox("The papertape punch has unsaved data... continue closing?",
+                      "Please confirm",
+                      wxICON_QUESTION | wxYES_NO) != wxYES ) {
+      event.Veto();
+      return;
+    }
+  }
+  event.Skip(); // Let the default handler do its thing
+}
 
 MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   : wxFrame((wxFrame *)NULL, -1, title, pos, size)
@@ -149,6 +164,6 @@ void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::Process(unsigned char ch, int source)
 {
-  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   asr_ptp->Punch(ch);
 }

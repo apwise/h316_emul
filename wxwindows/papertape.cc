@@ -19,7 +19,7 @@
  *
  */
 #include <cmath>
-#include <vector>
+
 #include "papertape.hh"
 
 #define TIMER_PERIOD 100 // update every tenth of a second
@@ -28,6 +28,7 @@ BEGIN_EVENT_TABLE(PaperTape, wxScrolledCanvas)
 EVT_SIZE(     PaperTape::OnSize)
 EVT_PAINT(    PaperTape::OnPaint)
 EVT_TIMER(-1, PaperTape::OnTimer)
+EVT_IDLE(     PaperTape::OnIdle)
 END_EVENT_TABLE()
 
 const int PaperTape::num_type[PT_num_types] =
@@ -41,33 +42,11 @@ const int PaperTape::num_type[PT_num_types] =
   7
 };
 
-class PaperTape::TapeChunk
-{
-public:
-  TapeChunk(PT_type type, unsigned long size = 0, const unsigned char *ptr = 0);
-  ~TapeChunk();
-
-  PT_type get_type() {return type;}
-  unsigned long get_size() {return (type == PT_holes) ? buffer.size() : size;}
-  unsigned int get_element(unsigned int index, PT_type &type);
-  void append(unsigned char ch);
-  bool un_append(unsigned char &ch);
-  
-private:
-  PT_type type;
-  std::vector<unsigned char> buffer;
-  unsigned long size;
-};
-
 PaperTape::TapeChunk::TapeChunk(PT_type type, unsigned long size, const unsigned char *ptr)
   : type(type)
-  , size(size)
+  , size(((type == PT_lead_triangle) ||
+          (type == PT_tail_triangle)) ? num_type[type] : size)
 {
-  if ((type == PT_lead_triangle) ||
-      (type == PT_tail_triangle)) {
-    this->size = num_type[type];
-  }
-  
   if (type == PT_holes) {
     unsigned int i;
     for (i=0; i<size; i++) {
@@ -105,6 +84,20 @@ void PaperTape::TapeChunk::append(unsigned char ch)
   }
 }
 
+unsigned char PaperTape::TapeChunk::modify(unsigned int offset, unsigned char ch)
+{
+  unsigned int i = buffer.size();
+
+  if (i >= offset) {
+    i -= offset;
+
+    ch = buffer[i] | ch;
+    buffer[i] = ch;
+  }
+
+  return ch;
+}
+
 bool PaperTape::TapeChunk::un_append(unsigned char &ch)
 {
   bool r = false;
@@ -128,59 +121,49 @@ PaperTape::PaperTape( wxWindow *parent,
   : wxScrolledCanvas(parent, id, pos, size,
                      (orient == wxVERTICAL) ? wxVSCROLL : wxHSCROLL,
                      name)
-  , parent(parent)
   , reader(reader)
   , orient(orient)
   , direction(direction)
   , mirror(mirror)
   , current_tape_width(-1)
+  , row_spacing(0)
+  , paper_tape_visible_rows(0)
+  , paper_tape_offset(0)
   , bitmaps(0)
+  , black_start(0)
+  , black_end(0)
+  , AttachedFile(0)
+  , AttachedLeaderCount(0)
+  , AttachedZeroCount(0)
+  , AttachedError(false)
+  , timer(0)
+  , pending_refresh(false)
+  , position(0)
+  , initial_position(0)
+  , chunks()
 {
-  /*
-   * At this point we don't know how big (in pixels) the
-   * window is - so delay anything real until the first call
-   * to OnPaint(), however we know that we do want a scrollbar
-   * and painting it will change the client area size so
-   * ask for a default scrollbar now.
-   */
-  //if (orient == wxVERTICAL) {
-  //  SetScrollbars(0, 10, 0, 100);
-  //} else {
-  //  SetScrollbars(10, 0, 100, 0);
-  //}
-  
   /*
    * No point allowing physical scrolling because we always
    * repaint the whole visible area of paper-tape anyway
    */
   EnableScrolling(false, false);
 
-  position = initial_position = 0;
-
   timer = new wxTimer(this);
-  pending_refresh = false;
 
-  /* for testing ... */
-  
-//   int i;
-//   static char buffer[1024];
-//   for (i=0; i<1024;i++)
-//     {
-//       buffer[i] = i & 255;
-//       //std::cout << "buffer[" << i << "] = " << (static_cast<int>(buffer[i]) & 255) << std::endl;
-//     }
+  int i, j;
 
-//   chunks.push_back(*new TapeChunk(PT_lead_triangle));
-//   chunks.push_back(*new TapeChunk(PT_leader, 20));
-//   chunks.push_back(*new TapeChunk(PT_holes, 1024, buffer));
-//   chunks.push_back(*new TapeChunk(PT_leader, 20));
-//   chunks.push_back(*new TapeChunk(PT_tail_triangle));
-  
-
+  j = 0;
+  for (i=0; i<PT_num_types; i++) {
+    start_type[i] = j;
+    j += num_type[i];
+  }
+  start_type[PT_num_types] = j;
 }
 
 PaperTape::~PaperTape( )
 {
+  CloseAttached();
+  
   DestroyBitmaps();
 
   if (!chunks.empty()) {
@@ -189,18 +172,6 @@ PaperTape::~PaperTape( )
 
   delete timer;
 }
-
-/*
-void PaperTape::DestroyChunks()
-{
-  std::list<TapeChunk>::iterator it = chunks.begin();
-
-  while (it != chunks.end()) {
-    
-    it++;
-  }
-}
-*/
 
 void PaperTape::Load(const unsigned char *buffer, unsigned long size)
 {
@@ -268,25 +239,44 @@ void PaperTape::Punch(unsigned char ch)
       (chunks.back().get_type() != PT_holes)) {
     chunks.push_back(TapeChunk(PT_holes, 1, &ch));
   } else {
-    chunks.back().append(ch);
+    unsigned long ts = total_size();
+    if (position >= ts) {
+      chunks.back().append(ch);
+    } else {
+      ch = chunks.back().modify(ts-position, ch);
+    }
   }
+  Write(ch);
+  position++;
   
   SetScrollBars();
   Refresh();
 }
 
-bool PaperTape::UnPunch(unsigned char &ch)
+bool PaperTape::CanBackspace()
 {
   bool r = false;
 
-  if (!chunks.empty()) {
-    r = chunks.back().un_append(ch);
+  if ((!chunks.empty()) &&
+      (chunks.back().get_type() == PT_holes)) {
+    
+    unsigned long min_pos = total_size() - chunks.back().get_size();
+    if (position > min_pos) {
+      r = true;
+    }
   }
-  
+
+  return r;
+}
+
+void PaperTape::Backspace()
+{
+  if (CanBackspace()) {
+    position--;
+    UnWrite();
+  }
   SetScrollBars();
   Refresh();
-  
-  return r;
 }
 
 void PaperTape::Rewind()
@@ -338,21 +328,152 @@ void PaperTape::DestroyBitmaps()
   }
 }
 
+bool PaperTape::IsAttached()
+{
+  return (AttachedFile);
+}
+
+bool PaperTape::Attach(wxString filename)
+{
+  bool r = false;
+
+  AttachedFile = new wxFFile(filename, "wb");
+  r = AttachedFile->IsOpened();
+
+  if (r) {
+    if (AttachedFile->GetKind() != wxFILE_KIND_DISK) {
+      /* Have to be able to seek (for backspace) */
+      r = false;
+    }
+  }
+  
+  if (r) {
+    AttachedLeaderCount = LeaderLength;
+    AttachedError = false;
+
+    WriteAll();
+  } else {
+    AttachedFile = 0;
+    AttachedError = true;
+  }
+  AttachedZeroCount = 0;
+  return r;
+}
+
+bool PaperTape::Save(wxString filename)
+{
+  bool r = Attach(filename);
+
+  if (r) {
+    r = CloseAttached();
+  }
+  return r;
+}
+
+void PaperTape::Write(unsigned char ch)
+{
+  if (AttachedFile) {
+    if (AttachedLeaderCount > 0) {
+      if (ch == 0) {
+        /* Write nothing yet */
+        AttachedLeaderCount--;
+      } else {
+        unsigned char buffer[LeaderLength + 1];
+        unsigned int i;
+        for (i = 0; i<LeaderLength; i++) {
+          buffer[i] = 0;
+        }
+        buffer[i++] = ch;
+        if (AttachedFile->Write(buffer, i) != i) {
+          AttachedError = true;
+        }
+        AttachedLeaderCount = 0;
+      }
+    } else {
+      if (AttachedFile->Write(&ch, 1) != 1) {
+        AttachedError = true;
+      }
+      if (ch == 0) {
+        AttachedZeroCount++;
+      } else {
+        AttachedZeroCount = 0;
+      }
+    }
+  }
+}
+
+/*
+ * Write all characters currently buffered to the file
+ */
+void PaperTape::WriteAll(bool fromCurrent)
+{
+  if (! fromCurrent) {
+    position = initial_position;
+  }
+  
+  while ( (position - initial_position) < DataSize() ) {
+    unsigned char ch;
+    PT_type type;
+    
+    ch = get_element(position, type);
+    Write(ch);
+    position++;
+  }
+}
+
+void PaperTape::UnWrite()
+{
+  if (AttachedFile) {
+    if (! AttachedFile->Seek(-1, wxFromCurrent)) {
+      AttachedError = true;
+    }
+  }
+}
+
+bool PaperTape::CloseAttached()
+{
+  if (AttachedFile) {
+
+    /*
+     * If there's been backspacing near the end of the tape (file)
+     * then advance through these characters once more and
+     * write them back to the file. This also updates
+     * AttachedZeroCount.
+     */
+    WriteAll(true);
+   
+    if (AttachedFile->Tell() != 0) {
+      /* If anything has been written then add trailing "leader" */
+      if (AttachedZeroCount < LeaderLength) {
+        unsigned char buffer[LeaderLength];
+        unsigned int i;
+        for (i = 0; i<LeaderLength; i++) {
+          buffer[i] = 0;
+        }
+        i -= AttachedZeroCount;
+        if (AttachedFile->Write(buffer, i) != i) {
+          AttachedError = true;
+        }
+      }
+    }
+    if (! AttachedFile->Close()) {
+      AttachedError = true;
+    }
+    delete AttachedFile;
+    AttachedFile = 0;
+  }
+
+  return !AttachedError;
+}
+
 void PaperTape::AllocateBitmaps()
 {
-  int i, j;
-
+  int i;
+  
   if (bitmaps) {
     abort();
   }
-  
-  j = 0;
-  for (i=0; i<PT_num_types; i++) {
-    start_type[i] = j;
-    j += num_type[i];
-  }
-  start_type[PT_num_types] = j;
-  
+
   bitmaps = new wxBitmap *[start_type[PT_num_types]];
   
   for (i=0; i<start_type[PT_num_types]; i++) {
@@ -379,6 +500,15 @@ void PaperTape::OnTimer(wxTimerEvent& WXUNUSED(event))
   } else {
     timer->Stop();
   }
+}
+
+void PaperTape::OnIdle(wxIdleEvent& WXUNUSED(event))
+{
+  if (AttachedFile) {
+    if (! AttachedFile->Flush()) {
+      AttachedError = true;
+    }
+  }  
 }
 
 wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
@@ -429,26 +559,7 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
   wxBrush paper_brush(paper_colour, wxSOLID);
   dc.SetBackground(paper_brush);
   dc.Clear();
-  
-  /*
-   * For the "light" type used to represent the
-   * reading point for a paper-tape reader draw a line
-   * across the centre of the dots
-   */
-  if (type == PT_light) {
-    wxPen pen(hole_colour, 1, wxSOLID);
-    dc.SetPen(pen);
-    if (orient == wxVERTICAL) {
-      dc.DrawLine(0, row_spacing/2, current_tape_width, row_spacing/2);
-    } else {
-      dc.DrawLine(row_spacing/2, 0, row_spacing/2, current_tape_width);
-    }
-    dc.SetPen(wxNullPen);
-  }
-
-  dc.SetBrush(wxNullBrush);
-  dc.SetBackground(wxNullBrush);
-  
+   
   if (type == PT_no_feed) {
     return bitmaps[bm];  
   }
@@ -487,7 +598,7 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
     double data_hole = d_paper_tape_width / 32.0;
     double feed_hole = d_paper_tape_width / 64.0;
       
-    if (type == PT_light) {
+    if ((type == PT_light) && (reader)) {
       /*
        * Make the holes bright white and
        * make the holes a little bigger to further the
@@ -569,6 +680,25 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
       xx = next_xx;
     }
   }
+
+  /*
+   * For the "light" type used to represent the
+   * reading point for a paper-tape reader draw a line
+   * across the centre of the dots
+   */
+  if (type == PT_light) {
+    wxPen pen(hole_colour, 1, wxSOLID);
+    dc.SetPen(pen);
+    if (orient == wxVERTICAL) {
+      dc.DrawLine(0, row_spacing/2, current_tape_width, row_spacing/2);
+    } else {
+      dc.DrawLine(row_spacing/2, 0, row_spacing/2, current_tape_width);
+    }
+    dc.SetPen(wxNullPen);
+  }
+
+  dc.SetBrush(wxNullBrush);
+  dc.SetBackground(wxNullBrush);
 
   if ((type != PT_tail_triangle) && (type != PT_lead_triangle)) {
     return bitmaps[bm];
@@ -764,8 +894,6 @@ void PaperTape::SetScrollBars()
     // i.e. OnSize() has been run...
     long total = black_start + ts + black_end;
     
-    std::cout << "SetScrollBars() " << row_spacing
-              << " " << total << std::endl;
     if (orient == wxVERTICAL) {
       SetScrollbars(0, row_spacing, 0, total);
     } else {
@@ -779,13 +907,18 @@ void PaperTape::SetScrollBarPosition()
 {
   long pos = position;
   
+  //std::cout << __PRETTY_FUNCTION__ << " position = " << position << std::endl;
+  //std::cout << __PRETTY_FUNCTION__ << " total_size = " << total_size() << std::endl;
+
   if (direction == PT_LeftToRight) {
     pos = total_size() - position;
   }
 
-  if (!reader) {
-    pos = 0;
+  if (paper_tape_offset != 0) {
+    pos++;
   }
+
+  //std::cout << __PRETTY_FUNCTION__ << " pos = " << pos << std::endl;
   
   /*
    * NB this works because the MIDDLE of the window
@@ -802,9 +935,14 @@ void PaperTape::SetScrollBarPosition()
 
 void PaperTape::OnSize(wxSizeEvent &WXUNUSED(event))
 {
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   int width, height;
   GetClientSize(&width, &height);
 
+  //std::cout << "reader = " << reader << std::endl;
+  //std::cout << "width = " << width << std::endl;
+  //std::cout << "height = " << height << std::endl;
+  
   int paper_tape_width = (orient == wxVERTICAL) ? width : height;
 
   if (paper_tape_width > 0) {
@@ -821,21 +959,25 @@ void PaperTape::OnSize(wxSizeEvent &WXUNUSED(event))
       row_spacing = 1;
     }
     
+    
+    int paper_tape_visible_length = (orient == wxVERTICAL) ? height :  width;
+    paper_tape_visible_rows  = (paper_tape_visible_length + row_spacing - 1) / row_spacing;
+    int paper_tape_full_rows =  paper_tape_visible_length                    / row_spacing;
+    paper_tape_offset = 0;
+    if (direction == PT_BottomToTop) {
+      paper_tape_offset = paper_tape_visible_length - (paper_tape_full_rows * row_spacing);
+    }
+    
+    black_start = (reader) ? (paper_tape_visible_rows/2) : paper_tape_visible_rows;
+    black_end = paper_tape_visible_rows - black_start;
+    
     if (current_tape_width != paper_tape_width) {
-      
       DestroyBitmaps();
       AllocateBitmaps();
-
-      int paper_tape_visible_length = (orient == wxVERTICAL) ? height :  width;
-      int paper_tape_visible_spaces = (paper_tape_visible_length + row_spacing - 1) / row_spacing;
-      
-      black_start = (reader) ? (paper_tape_visible_spaces/2) : paper_tape_visible_spaces;
-      black_end = paper_tape_visible_spaces - black_start;
-
-      SetScrollBars(); // Because black_{start,end} may have changed
-      
       current_tape_width = paper_tape_width;
     }
+
+    SetScrollBars();
   }
 
   Refresh();
@@ -852,26 +994,43 @@ void PaperTape::OnPaint(wxPaintEvent &WXUNUSED(event))
   GetClientSize(&width, &height);
   GetViewStart(&view_start_x, &view_start_y);
   
-  int paper_tape_visible_length = (orient == wxVERTICAL) ? height :  width;
-  int paper_tape_visible_spaces = (paper_tape_visible_length + row_spacing - 1) / row_spacing;
+  //int paper_tape_visible_length = (orient == wxVERTICAL) ? height :  width;
+  //int paper_tape_visible_rows = (paper_tape_visible_length + row_spacing - 1) / row_spacing;
+  //int paper_tape_full_rows    =  paper_tape_visible_length                    / row_spacing;
   int paper_tape_first_visible = (orient == wxVERTICAL) ? view_start_y : view_start_x;
-  
+  //int offset = 0;
+  if ((paper_tape_offset > 0) && (paper_tape_first_visible > 0)) {
+    paper_tape_first_visible--;
+  }
   wxMemoryDC src_dc;
+
+  //if (direction == PT_BottomToTop) {
+  //  std::cout << "paper_tape_visible_length = " << paper_tape_visible_length << std::endl;
+  //  std::cout << "row_spacing = " << row_spacing << std::endl;
+  //  offset = paper_tape_visible_length - (paper_tape_full_rows * row_spacing);
+  //  std::cout << "offset = " << offset << std::endl;
+  //}
   
   int i;
-  for (i=0; i < paper_tape_visible_spaces; i++) {
+  for (i=0; i < paper_tape_visible_rows; i++) {
     unsigned long pos = i + paper_tape_first_visible;
     unsigned long total = black_start + total_size() + black_end;
     unsigned long index;
     unsigned int data;
     PT_type type;
-    
+
+    /*
     if (pos >= total) {
       pos = total - 1;
     }
+    */
     
     if (direction == PT_TopToBottom) {
-      pos = (total - 1) - pos;
+      if (pos >= total) {
+        pos = 0;
+      } else {
+        pos = (total - 1) - pos;
+      }
     }
     
     data = 0;
@@ -882,8 +1041,7 @@ void PaperTape::OnPaint(wxPaintEvent &WXUNUSED(event))
     } else if ((index = pos - black_start) < total_size()) {
       data = get_element(index, type);
       
-      if ((reader) &&
-          ((type == PT_holes) || (type == PT_leader)) &&
+      if (((type == PT_holes) || (type == PT_leader)) &&
           (index == position)) {
         type = PT_light;
       }
@@ -892,8 +1050,8 @@ void PaperTape::OnPaint(wxPaintEvent &WXUNUSED(event))
     }
     src_dc.SelectObject(*GetBitmap(data, type));
     
-    dc.Blit( (orient == wxVERTICAL) ? 0 : row_spacing * (i + paper_tape_first_visible),
-             (orient == wxVERTICAL) ? row_spacing * (i + paper_tape_first_visible) : 0,
+    dc.Blit( (orient == wxVERTICAL) ? 0 : row_spacing * (i + paper_tape_first_visible) - paper_tape_offset,
+             (orient == wxVERTICAL) ? row_spacing * (i + paper_tape_first_visible)  - paper_tape_offset : 0,
              (orient == wxVERTICAL) ? current_tape_width : row_spacing,
              (orient == wxVERTICAL) ? row_spacing : current_tape_width,
              &src_dc, 0, 0);
