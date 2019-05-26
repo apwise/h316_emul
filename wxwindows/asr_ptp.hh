@@ -38,41 +38,57 @@ public:
   ~AsrPtp( );
 
   void Punch(unsigned char ch);
+  bool Unsaved();
+  
 private:
   PaperTape   *papertape;
   wxBoxSizer  *top_sizer;
   wxGridSizer *button_sizer;
   bool punch_on;
   
-  enum class Buttons {
-    REL,
-    OFF,
-    BSP,
-    ON,
+  enum ButtonId {
+    ButtonIdRel = 200,
+    ButtonIdOff,
+    ButtonIdBsp,
+    ButtonIdOn,
 
-    NUM
+    ButtonIdEnd
   };
-  static const int ButtonIdOffset = 200;
 
+  enum MenuId {
+    MenuIdAttach = 210,
+    MenuIdDetach,
+    MenuIdSave,
+    MenuIdDiscard,
+    MenuIdOn,
+    MenuIdOff,
+    MenuIdBsp
+  };
+  
   struct ButtonDescriptor {
     const char *label;
     bool toggle;
     bool state;
     bool disable;
   };
-  static ButtonDescriptor descriptions[static_cast<int>(Buttons::NUM)];
+  static ButtonDescriptor descriptions[ButtonIdEnd - ButtonIdRel];
   std::vector<wxAnyButton *>buttons;
   std::vector<wxStaticText *>labels;
   
   std::list<unsigned char> bsp_buffer;
   
-  wxBoxSizer *ControlButton(unsigned int index);
+  wxBoxSizer *ControlButton(int id);
   static const unsigned int BUTTON_SIZE = 20;
 
   void CanBsp(bool value);
-  void OnOff(Buttons b);
+  void OnOff(ButtonId id, bool force = false);
+  void FileDialog(bool attach);
+  void Detach();
 
+  void ShowContextMenu(const wxPoint &pos);
+  void Backspace();
   void OnButton(wxCommandEvent &event);
+  void OnContextMenu(wxContextMenuEvent &event);
 
   DECLARE_EVENT_TABLE()
 };
