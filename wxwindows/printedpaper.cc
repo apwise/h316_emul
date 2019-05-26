@@ -107,9 +107,10 @@ void PrintedPaper::DrawPaper(int width, int height)
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
   int x, y;
   
-  wxBitmap bitmap(width, height);
+  //wxBitmap bitmap(width, height);
 
   if (paper) {
+    paper->SelectObject(wxNullBitmap);
     delete paper;
   }
 
@@ -118,7 +119,9 @@ void PrintedPaper::DrawPaper(int width, int height)
   }
   
   paper_bitmap = new wxBitmap(width, height);
-  paper = new wxMemoryDC(bitmap);
+  paper = new wxMemoryDC();
+
+  paper->SelectObject(*paper_bitmap);
 
   wxColour EdgeColour(0xe6, 0xc7, 0x9b);
   wxColour CentreColour(0xf7, 0xe7, 0xcd);
@@ -185,6 +188,12 @@ void PrintedPaper::DecideScrollbars()
   unsigned int lines = text.size();
   //unsigned int cols  = CursorColumn();
 
+  // At the very start, when nothing has been typed, pretend there is
+  // one line (so that the cursor is visible)
+  if (lines == 0) {
+    lines = 1;
+  }
+  
   // If less text than window height, put it in the lower lines
   top_offset  = (lines < fc_height) ? fc_height - lines : 0;
 
@@ -736,7 +745,7 @@ void PrintedPaper::OnChar(wxKeyEvent& event)
     }
   }
   
-  std::cout << "ch = " << ch << std::endl;
+  //std::cout << "ch = " << ch << std::endl;
   
   if (ch <= 127) {
     skip = false;

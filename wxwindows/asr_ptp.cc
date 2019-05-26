@@ -21,7 +21,7 @@
 #include <wx/tglbtn.h>
 #include "asr_ptp.hh"
 
-AsrPtp::ButtonDescriptor AsrPtp::descriptions[static_cast<int>(Buttons::NUM)] = {
+AsrPtp::ButtonDescriptor AsrPtp::descriptions[ButtonIdEnd - ButtonIdRel] = {
   /* label  toggle state disable */
   {"REL.",  false, false,  true},
   {"OFF",    true,  true, false},
@@ -36,14 +36,16 @@ AsrPtp::AsrPtp( wxWindow      *parent,
                 long           style,
                 const wxString &name)
   : wxPanel(parent, id, pos, size, style, name)
-  , papertape(new PaperTape(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, /* reader = */ false))
+  , papertape(new PaperTape(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                            /* reader = */ false,
+                            wxVERTICAL, PaperTape::PT_TopToBottom))
   , top_sizer(new wxBoxSizer(wxVERTICAL))
   , button_sizer(new wxGridSizer(2, 10, 10))
   , punch_on(false)
 {
-  unsigned int i;
+  int i;
 
-  for (i=0; i<static_cast<int>(Buttons::NUM); i++) {
+  for (i=ButtonIdRel; i<ButtonIdEnd; i++) {
     button_sizer->Add(ControlButton(i),
                       wxSizerFlags().
                       Align(wxALIGN_CENTER|wxALIGN_CENTER_VERTICAL).
@@ -61,20 +63,21 @@ AsrPtp::AsrPtp( wxWindow      *parent,
   SetSizerAndFit(top_sizer);
 }
 
-wxBoxSizer *AsrPtp::ControlButton(unsigned int index)
+wxBoxSizer *AsrPtp::ControlButton(int id)
 {
+  const int index = id - ButtonIdRel;
   wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
   wxAnyButton *b;
   wxStaticText *t;
   
   if (descriptions[index].toggle) {
-    wxToggleButton *tb = new wxToggleButton(this, ButtonIdOffset + index, wxT(""),
+    wxToggleButton *tb = new wxToggleButton(this, id, wxT(""),
                                             wxDefaultPosition,
                                             wxSize(BUTTON_SIZE, BUTTON_SIZE));
     tb->SetValue(descriptions[index].state);
     b = tb;
   } else {
-    b = new wxButton(this, ButtonIdOffset + index, wxT(""),
+    b = new wxButton(this, id, wxT(""),
                      wxDefaultPosition, wxSize(BUTTON_SIZE, BUTTON_SIZE));
   }
   t = new wxStaticText(this, -1, descriptions[index].label);
@@ -103,9 +106,8 @@ AsrPtp::~AsrPtp()
 
 void AsrPtp::CanBsp(bool value)
 {
-  const unsigned int index = static_cast<unsigned int>(Buttons::BSP);
-  buttons[index]->Enable(value);
-  labels[index]->Enable(value);
+  buttons[ButtonIdBsp - ButtonIdRel]->Enable(value);
+  labels[ButtonIdBsp - ButtonIdRel]->Enable(value);
 }
 
 void AsrPtp::Punch(unsigned char ch)
@@ -120,27 +122,33 @@ void AsrPtp::Punch(unsigned char ch)
     }
     
     papertape->Punch(ch);
-    if (papertape->DataSize() > 0) {
+    if (papertape->CanBackspace()) {
       CanBsp(true);
     }
   }
 }
 
-void AsrPtp::OnOff(Buttons b)
+void AsrPtp::OnOff(ButtonId id, bool force)
 {
-  const unsigned int i_on  = static_cast<unsigned int>(Buttons::ON );
-  const unsigned int i_off = static_cast<unsigned int>(Buttons::OFF);
-  wxToggleButton * const tb_on = dynamic_cast<wxToggleButton *>(buttons[i_on]);
-  wxToggleButton * const tb_off = dynamic_cast<wxToggleButton *>(buttons[i_off]);
+  wxToggleButton * const tb_on  =
+    dynamic_cast<wxToggleButton *>(buttons[ButtonIdOn  - ButtonIdRel]);
+  wxToggleButton * const tb_off =
+    dynamic_cast<wxToggleButton *>(buttons[ButtonIdOff - ButtonIdRel]);
 
   if ((tb_on) && (tb_off)) {
     bool v;
 
-    if (b == Buttons::ON) {
+    if (id == ButtonIdOn) {
+      if (force) {
+        tb_on->SetValue(true);
+      }
       v = tb_on->GetValue();
       punch_on = v;
       tb_off->SetValue(!v);
-    } else if (b == Buttons::OFF) {
+    } else if (id == ButtonIdOff) {
+      if (force) {
+        tb_off->SetValue(true);
+      }
       v = tb_off->GetValue();
       punch_on = !v;
       tb_on->SetValue(!v);
@@ -148,25 +156,63 @@ void AsrPtp::OnOff(Buttons b)
   }
 }
 
+void AsrPtp::Backspace()
+{
+  papertape->Backspace();
+  if (! papertape->CanBackspace()) {
+    CanBsp(false);
+  }
+}
+
+void AsrPtp::FileDialog(bool attach)
+{
+  wxFileDialog dialog(this,
+                      ((attach) ? "Attach" : "Save"),
+                      wxEmptyString, wxEmptyString,
+                      "Papertape files (*.ptp)|*.ptp|All files|*",
+                      wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
+
+  if (dialog.ShowModal() == wxID_CANCEL)
+    return;
+
+  std::cout << dialog.GetPath() << std::endl;
+
+  if (attach) {
+    papertape->Attach(dialog.GetPath());
+    OnOff(ButtonIdOn,  true);
+  } else {
+    papertape->Save(dialog.GetPath());
+    papertape->PunchLeader();
+  }
+}
+
+void AsrPtp::Detach()
+{
+  papertape->CloseAttached();
+  papertape->PunchLeader();
+}
+
+bool AsrPtp::Unsaved()
+{
+  bool r = true;
+
+  if (papertape->IsAttached() ||
+      (papertape->DataSize() == 0)) {
+    r = false;
+  }
+
+  return r;
+}
+
 void AsrPtp::OnButton(wxCommandEvent &event)
 {
+  const ButtonId id = static_cast<ButtonId>(event.GetId());
   //std::cout << __PRETTY_FUNCTION__ << " " << event.GetId() << std::endl;
 
-  switch(static_cast<Buttons>(event.GetId() - ButtonIdOffset)) {
-  case Buttons::BSP: {
-    unsigned char ch;
-    bool unpunched = papertape->UnPunch(ch);
-
-    if (unpunched) {
-      bsp_buffer.push_back(ch);
-      if (papertape->DataSize() == 0) {
-        CanBsp(false);
-      }
-    }
-  } break;
-
-  case Buttons::ON:  OnOff(Buttons::ON);  break;
-  case Buttons::OFF: OnOff(Buttons::OFF); break;
+  switch(id) {
+  case ButtonIdBsp: Backspace(); break;
+  case ButtonIdOn:
+  case ButtonIdOff: OnOff(id); break;
     
   default:
     /* Ignore */
@@ -174,10 +220,72 @@ void AsrPtp::OnButton(wxCommandEvent &event)
   }
 }
 
+void AsrPtp::OnContextMenu(wxContextMenuEvent &event)
+{
+  wxPoint point = event.GetPosition();
+
+  if (point == wxDefaultPosition) {
+    // From keyboard
+    wxSize size = GetSize();
+    point.x = size.x / 2;
+    point.y = size.y / 2;
+  } else {
+    point = wxDefaultPosition;
+  }
+  ShowContextMenu(point);
+}
+
+void AsrPtp::ShowContextMenu(const wxPoint &pos)
+{
+  wxMenu menu;
+
+  if (papertape->IsAttached()) {
+    menu.Append(MenuIdDetach, wxT("&Detach"));
+  } else {
+    menu.Append(MenuIdAttach, wxT("&Attach"));
+    if (papertape->DataSize() != 0) {
+      menu.Append(MenuIdSave, wxT("&Save"));
+      menu.Append(MenuIdDiscard, wxT("&Discard"));
+    }
+  }
+  
+  menu.AppendSeparator();
+  
+  if (punch_on) {
+    menu.Append(MenuIdOff, wxT("O&ff"));
+  } else {
+    menu.Append(MenuIdOn, wxT("O&n"));
+  }
+  
+  if (papertape->CanBackspace()) {
+    menu.Append(MenuIdBsp, wxT("&Backspace"));
+  }
+  
+  int id = GetPopupMenuSelectionFromUser(menu, pos);
+  switch(id) {
+  case MenuIdAttach: FileDialog(true); break;
+  case MenuIdDetach: Detach(); break;
+  case MenuIdSave:   FileDialog(false); break;
+  case MenuIdOn:  OnOff(ButtonIdOn,  true); break;
+  case MenuIdOff: OnOff(ButtonIdOff, true); break;
+  case MenuIdDiscard: {
+    wxMessageDialog dialog(this, "Confirm discard", "Confirm", wxOK|wxCANCEL);
+    if (dialog.ShowModal() == wxID_OK) {
+      papertape->PunchLeader();
+    }
+  } break;
+  case MenuIdBsp: Backspace(); break;
+  default:
+    /* Do nothing */
+    ;
+  }
+}
+
 #define ID(e) AsrPtp::ButtonIdOffset + static_cast<int>(AsrPtp::Buttons::e)
 
 BEGIN_EVENT_TABLE(AsrPtp, wxPanel)
-EVT_TOGGLEBUTTON(ID(OFF), AsrPtp::OnButton)
-EVT_BUTTON      (ID(BSP), AsrPtp::OnButton)
-EVT_TOGGLEBUTTON(ID(ON),  AsrPtp::OnButton)
+EVT_TOGGLEBUTTON(ButtonIdOff, AsrPtp::OnButton)
+EVT_BUTTON      (ButtonIdBsp, AsrPtp::OnButton)
+EVT_TOGGLEBUTTON(ButtonIdOn,  AsrPtp::OnButton)
+EVT_CONTEXT_MENU(             AsrPtp::OnContextMenu)
 END_EVENT_TABLE()
