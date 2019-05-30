@@ -20,6 +20,8 @@
  */
 #include "asr_ptr.hh"
 
+#define BINDEX(b) ((b) - ButtonIdStart)
+
 BEGIN_EVENT_TABLE(AsrPtr, wxPanel)
 EVT_RADIOBUTTON(ButtonIdStart, AsrPtr::OnButton)
 EVT_RADIOBUTTON(ButtonIdAuto,  AsrPtr::OnButton)
@@ -28,8 +30,6 @@ EVT_RADIOBUTTON(ButtonIdRel,   AsrPtr::OnButton)
 EVT_TIMER(ButtonTimerId, AsrPtr::OnTimer)
 //EVT_CONTEXT_MENU(AsrPtr::OnContextMenu)
 END_EVENT_TABLE()
-
-#define BINDEX(b) ((b) - ButtonIdStart)
 
 AsrPtr::AsrPtr( wxWindow      *parent,
                 wxWindowID     id,
@@ -62,13 +62,32 @@ AsrPtr::AsrPtr( wxWindow      *parent,
     buttons[BINDEX(ButtonIdAuto)]->Hide();
   }
     
-  papertape->SetMinSize(wxSize(100,200));
+  unsigned int ppi = GetPPI();
+  unsigned int sb_width = wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, this);
+  
+  papertape->SetMinSize(wxSize(ppi + sb_width, 2 * ppi));
   
   SetSizerAndFit(top_sizer);
 }
 
 AsrPtr::~AsrPtr()
 {
+}
+
+unsigned int AsrPtr::GetPPI()
+{
+  wxSize size;
+  int r;
+  
+  wxClientDC dc(this);
+  size = dc.GetPPI();
+
+  r = size.GetWidth();
+  if (size.GetHeight() > r) {
+    r = size.GetHeight();
+  }
+
+  return r;
 }
 
 void AsrPtr::FileDialog()

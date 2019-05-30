@@ -909,11 +909,17 @@ void PaperTape::SetScrollBars()
    *
    * Use manual control - always have scrollbars, unless there is no
    * tape at all to display.
-   */
+   *
   if (orient == wxVERTICAL) {
     ShowScrollbars(wxSHOW_SB_NEVER, ((ts == 0) ? wxSHOW_SB_NEVER : wxSHOW_SB_ALWAYS));
   } else {
     ShowScrollbars(((ts == 0) ? wxSHOW_SB_NEVER : wxSHOW_SB_ALWAYS), wxSHOW_SB_NEVER);
+  }
+  */
+  if (orient == wxVERTICAL) {
+    ShowScrollbars(wxSHOW_SB_NEVER, wxSHOW_SB_ALWAYS);
+  } else {
+    ShowScrollbars(wxSHOW_SB_ALWAYS, wxSHOW_SB_NEVER);
   }
 
   if (current_tape_width > 0) {

@@ -18,21 +18,23 @@
  * MA  02111-1307 USA
  *
  */
-#include "printedpaper.hh"
-#include "asr_ptp.hh"
-#include "asr_ptr.hh"
-#include "simpleport.hh"
+#include "asr_widget.hh"
+
+#include <wx/graphics.h>
+
+#include "teletype_logo_128.xpm"
 
 class MyApp: public wxApp
 {
-    virtual bool OnInit();
+  virtual bool OnInit();
 };
 
 class MyFrame: public wxFrame, public SimplePort
 {
 public:
   
-  MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
+  MyFrame(const wxString &title, const wxPoint &pos = wxDefaultPosition,
+          const wxSize &size = wxDefaultSize);
 
   void OnQuit(wxCommandEvent& event);
   void OnAbout(wxCommandEvent& event);
@@ -54,22 +56,22 @@ private:
     AnswerBack,
     Line
   };
-  
-  wxBoxSizer   *top_sizer;
-  wxBoxSizer   *tape_sizer;
-  PrintedPaper *printer;
-  AsrPtp       *asr_ptp;
-  AsrPtr       *asr_ptr;
+
+  //unsigned int ppi;
+  wxBoxSizer *top_sizer;
+  AsrWidget  *asr_widget;
+
+  //unsigned int GetPPI();
   
   DECLARE_EVENT_TABLE()
 };
 
 enum
-{
+  {
     ID_Quit = 1,
     ID_About,
     ID_Read
-};
+  };
 
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 EVT_MENU(ID_Quit, MyFrame::OnQuit)
@@ -82,16 +84,18 @@ IMPLEMENT_APP(MyApp)
 
 bool MyApp::OnInit()
 {
-  MyFrame *frame = new MyFrame( wxT("Hello World"), wxPoint(50,50), wxSize(450,340) );
-    frame->Show(TRUE);
-    SetTopWindow(frame);
-    return TRUE;
+  MyFrame *frame = new MyFrame( wxT("Teletype") );
+  frame->Show(TRUE);
+  SetTopWindow(frame);
+  return TRUE;
 }
 
 void MyFrame::OnClose(wxCloseEvent &event)
 {
-  if ( event.CanVeto() && asr_ptp->Unsaved() ) {
-    if ( wxMessageBox("The papertape punch has unsaved data... continue closing?",
+  wxString message;
+  
+  if ( event.CanVeto() && asr_widget->Unsaved(message) ) {
+    if ( wxMessageBox(message,
                       "Please confirm",
                       wxICON_QUESTION | wxYES_NO) != wxYES ) {
       event.Veto();
@@ -101,59 +105,59 @@ void MyFrame::OnClose(wxCloseEvent &event)
   event.Skip(); // Let the default handler do its thing
 }
 
+/*
+unsigned int MyFrame::GetPPI()
+{
+  wxSize size;
+  int r;
+  
+  wxClientDC dc(this);
+  size = dc.GetPPI();
+
+  r = size.GetWidth();
+  if (size.GetHeight() > r) {
+    r = size.GetHeight();
+  }
+
+  return r;
+}
+*/
+
 MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   : wxFrame((wxFrame *)NULL, -1, title, pos, size)
+    //, ppi(GetPPI())
   , top_sizer(new wxBoxSizer(wxHORIZONTAL))
-  , tape_sizer(new wxBoxSizer(wxVERTICAL))
-  , printer(new PrintedPaper(this, static_cast<int>(Sources::Keyboard), static_cast<int>(Sources::SpecialFunctionKey)))
-  , asr_ptp(new AsrPtp(this))
-  , asr_ptr(new AsrPtr(this))
-
+  , asr_widget(new AsrWidget(this))
 {
-    wxMenu *menuFile = new wxMenu;
+  /*
+  wxMenu *menuFile = new wxMenu;
 
-    menuFile->Append( ID_About, wxT("&About...") );
-    menuFile->Append( ID_Read, wxT("&Read...") );
-    menuFile->AppendSeparator();
-    menuFile->Append( ID_Quit, wxT("E&xit") );
+  menuFile->Append( ID_About, wxT("&About...") );
+  menuFile->Append( ID_Read, wxT("&Read...") );
+  menuFile->AppendSeparator();
+  menuFile->Append( ID_Quit, wxT("E&xit") );
 
-    wxMenuBar *menuBar = new wxMenuBar;
-    menuBar->Append( menuFile, wxT("&File") );
+  wxMenuBar *menuBar = new wxMenuBar;
+  menuBar->Append( menuFile, wxT("&File") );
 
-    SetMenuBar( menuBar );
+  SetMenuBar( menuBar );
+  */
 
-    CreateStatusBar();
-    SetStatusText( wxT("Welcome to wxWindows!") );
+  SetIcon(wxICON(teletype_logo_128));
+  
+  //CreateStatusBar();
+  //SetStatusText( wxT("Welcome to wxWindows!") );
 
-    top_sizer->Add(tape_sizer,
-                   wxSizerFlags(0).Border().Expand());
-    top_sizer->Add(printer,
-                   wxSizerFlags(1).Expand());
-    printer->SetMinSize(wxSize(500,100));
-
-    tape_sizer->Add(asr_ptp,
-                    wxSizerFlags(1).Align(wxALIGN_TOP));
-    tape_sizer->AddSpacer(10);
-    tape_sizer->Add(asr_ptr,
-                    wxSizerFlags(1).Align(wxALIGN_BOTTOM));
+  top_sizer->Add(asr_widget,
+                 wxSizerFlags(1).Expand());
     
-    SetSizerAndFit(top_sizer);
-       
-    /*
-    printer.Print("HELLO \016CRUEL\017 WORLD\r\n");
-    printer.Print("0123456789_\n");
-    printer.Print("01234567890123456789012345678901234567890123456789012345678901234567890123456789\r\n");
-    printer.Print("+/\rX\\\n");
-    printer.Print("ABC\n\n");
-    printer.Print("DEF");
-    */
-    
-    Refresh();
+  SetSizerAndFit(top_sizer);
+  Refresh();
 }
 
 void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 {
-    Close(TRUE);
+  Close(TRUE);
 }
 
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
@@ -165,5 +169,5 @@ void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 void MyFrame::Process(unsigned char ch, int source)
 {
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
-  asr_ptp->Punch(ch);
+  //asr_ptp->Punch(ch);
 }

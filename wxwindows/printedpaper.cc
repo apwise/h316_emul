@@ -89,6 +89,8 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
     unsigned char ch = i;
     AnswerBackDrum.push_back(ch);
   }
+
+  SetMinSize(wxSize(font_width * paper_width, font_height * 20));
 }
 
 PrintedPaper::~PrintedPaper()
