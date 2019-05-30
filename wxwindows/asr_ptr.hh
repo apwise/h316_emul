@@ -21,6 +21,7 @@
 #ifndef __ASR_PTR_HH__
 #define __ASR_PTR_HH__
 
+#include <vector> 
 #include <wx/wx.h> 
 #include "papertape.hh"
 
@@ -35,8 +36,35 @@ public:
           const wxString& name = wxT("AsrPtr") );
   ~AsrPtr( );
 private:
+  enum ButtonId {
+    ButtonIdStart = 200,
+    ButtonIdAuto,
+    ButtonIdStop,
+    ButtonIdRel,
+
+    ButtonIdEnd
+  };
+
+  static const int ButtonTimerId = 209;
+  static const int ButtonBiasTime = 300;
+
   PaperTape  *papertape;
   wxBoxSizer *top_sizer;
+  std::vector<wxRadioButton *>buttons;
+  
+  bool hasAuto;
+
+  wxTimer *buttonTimer;
+
+  void ButtonBias();
+  
+  void FileDialog();
+
+  void OnButton(wxCommandEvent &event);
+  void OnTimer(wxTimerEvent &event);
+  //  void OnContextMenu(wxContextMenuEvent &event);
+
+  DECLARE_EVENT_TABLE() 
 };
 
 #endif // __ASR_PTR_HH__
