@@ -80,6 +80,8 @@ private:
   wxBoxSizer *ControlButton(int id);
   static const unsigned int BUTTON_SIZE = 20;
 
+  unsigned int GetPPI();
+  
   void CanBsp(bool value);
   void OnOff(ButtonId id, bool force = false);
   void FileDialog(bool attach);

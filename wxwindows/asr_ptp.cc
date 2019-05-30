@@ -57,10 +57,29 @@ AsrPtp::AsrPtp( wxWindow      *parent,
   top_sizer->Add(papertape,
                 wxSizerFlags(1).Expand());
 
-  papertape->SetMinSize(wxSize(100,200));
+  unsigned int ppi = GetPPI();
+  unsigned int sb_width = wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, this);
+  
+  papertape->SetMinSize(wxSize(ppi + sb_width, 2 * ppi));
 
   papertape->PunchLeader(5);
   SetSizerAndFit(top_sizer);
+}
+
+unsigned int AsrPtp::GetPPI()
+{
+  wxSize size;
+  int r;
+  
+  wxClientDC dc(this);
+  size = dc.GetPPI();
+
+  r = size.GetWidth();
+  if (size.GetHeight() > r) {
+    r = size.GetHeight();
+  }
+
+  return r;
 }
 
 wxBoxSizer *AsrPtp::ControlButton(int id)

@@ -56,6 +56,8 @@ private:
 
   wxTimer *buttonTimer;
 
+  unsigned int GetPPI();
+  
   void ButtonBias();
   
   void FileDialog();

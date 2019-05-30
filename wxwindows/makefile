@@ -10,7 +10,7 @@ LDFLAGS := $(WXGTK_LIBS)
 CXXSOURCE := draw.cc papertape.cc papertapereader.cc printedpaper.cc
 CXXSOURCE2 := fp.cpp gui.cpp
 CXXSOURCE3 := message.cpp h16cmd.cpp
-CXXSOURCE4 := printedpaper.cc teletype.cc asr_ptp.cc asr_ptr.cc papertape.cc
+CXXSOURCE4 := teletype.cc asr_widget.cc printedpaper.cc asr_ptp.cc asr_ptr.cc papertape.cc
 
 CXXOBJECTS := $(CXXSOURCE:%.cc=%.o)
 OBJECTS := $(CXXOBJECTS)
