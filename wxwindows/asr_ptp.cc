@@ -57,9 +57,9 @@ AsrPtp::AsrPtp( wxWindow      *parent,
   top_sizer->Add(papertape,
                 wxSizerFlags(1).Expand());
 
-  papertape->SetMinSize(wxSize(100,100));
+  papertape->SetMinSize(wxSize(100,200));
 
-  papertape->PunchLeader();
+  papertape->PunchLeader(5);
   SetSizerAndFit(top_sizer);
 }
 
@@ -280,8 +280,6 @@ void AsrPtp::ShowContextMenu(const wxPoint &pos)
     ;
   }
 }
-
-#define ID(e) AsrPtp::ButtonIdOffset + static_cast<int>(AsrPtp::Buttons::e)
 
 BEGIN_EVENT_TABLE(AsrPtp, wxPanel)
 EVT_TOGGLEBUTTON(ButtonIdOff, AsrPtp::OnButton)

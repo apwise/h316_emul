@@ -26,6 +26,7 @@
 
 #include <wx/wx.h> 
 #include <wx/ffile.h> 
+#include <wx/filename.h> 
 
 class PaperTape: public wxScrolledCanvas
 {
@@ -37,6 +38,8 @@ public:
     PT_BottomToTop = 1,
     PT_RightToLeft = 1
   };
+
+  static const unsigned int LeaderLength = 20;
   
   PaperTape( wxWindow *parent,
              wxWindowID id = -1,
@@ -49,11 +52,12 @@ public:
              const wxString& name = wxT("paperTape") );
   ~PaperTape( );
   
-  void Load(const unsigned char *buffer, unsigned long size);
+  void Load(const unsigned char *buffer, unsigned long size, unsigned int leader = LeaderLength);
+  void Load(const wxFileName &filename, unsigned int leader = LeaderLength);
   void Rewind();
   int Read();
 
-  void PunchLeader();
+  void PunchLeader(unsigned int leader = LeaderLength);
   void Punch(unsigned char ch);
   bool CanBackspace();
   void Backspace();
@@ -97,7 +101,6 @@ private:
     std::vector<unsigned char> buffer;
   };
   
-  static const unsigned int LeaderLength = 20;
   static const int num_type[PT_num_types];
 
   const bool reader;

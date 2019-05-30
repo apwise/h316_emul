@@ -173,7 +173,8 @@ PaperTape::~PaperTape( )
   delete timer;
 }
 
-void PaperTape::Load(const unsigned char *buffer, unsigned long size)
+void PaperTape::Load(const unsigned char *buffer, unsigned long size,
+                     unsigned int leader)
 {
   /*
    * If there are any existing chunks then they need
@@ -184,12 +185,10 @@ void PaperTape::Load(const unsigned char *buffer, unsigned long size)
     chunks.clear();
   }
 
-  const int leader = 20;
-
   chunks.push_back(TapeChunk(PT_lead_triangle));
-  chunks.push_back(TapeChunk(PT_leader, leader));
+  if (leader > 0) chunks.push_back(TapeChunk(PT_leader, leader));
   chunks.push_back(TapeChunk(PT_holes, size, buffer));
-  chunks.push_back(TapeChunk(PT_leader, leader));
+  if (leader > 0) chunks.push_back(TapeChunk(PT_leader, leader));
   chunks.push_back(TapeChunk(PT_tail_triangle));
   
   /*
@@ -210,7 +209,35 @@ void PaperTape::Load(const unsigned char *buffer, unsigned long size)
   Refresh();
 }
 
-void PaperTape::PunchLeader()
+void PaperTape::Load(const wxFileName &filename, unsigned int leader)
+{
+  bool ok = false;
+
+  if (filename.IsOk()) {
+    wxString path(filename.GetFullPath());
+    wxFFile file(path, "rb");
+    
+    if (file.IsOpened()) {
+      size_t length = file.Length();
+      unsigned char *buffer = new unsigned char[length];
+      size_t num_read = file.Read(buffer, length);
+      if (num_read == length) {
+        Load(buffer, length, leader);
+        ok = true;
+      }
+    }
+  }
+  
+  if (!ok) {
+    wxString message = "Error reading file <";
+    message += filename.GetFullName();
+    message += ">";
+    wxMessageDialog dialog(this, message, "Error", wxOK | wxICON_ERROR);
+    (void) dialog.ShowModal();
+  }
+}
+
+void PaperTape::PunchLeader(unsigned int leader)
 {
   /*
    * If there are any existing chunks then they need
@@ -221,11 +248,9 @@ void PaperTape::PunchLeader()
     chunks.clear();
   }
 
-  const int leader = 2;
-
   chunks.push_back(TapeChunk(PT_lead_triangle));
-  chunks.push_back(TapeChunk(PT_leader, leader));
-
+  if (leader > 0) chunks.push_back(TapeChunk(PT_leader, leader));
+  
   position = initial_position = num_type[PT_lead_triangle] + leader;
 
   SetScrollBars();
@@ -687,6 +712,7 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
    * across the centre of the dots
    */
   if (type == PT_light) {
+    hole_colour.Set(0, 0, 0);
     wxPen pen(hole_colour, 1, wxSOLID);
     dc.SetPen(pen);
     if (orient == wxVERTICAL) {

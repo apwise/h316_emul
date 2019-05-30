@@ -20,6 +20,17 @@
  */
 #include "asr_ptr.hh"
 
+BEGIN_EVENT_TABLE(AsrPtr, wxPanel)
+EVT_RADIOBUTTON(ButtonIdStart, AsrPtr::OnButton)
+EVT_RADIOBUTTON(ButtonIdAuto,  AsrPtr::OnButton)
+EVT_RADIOBUTTON(ButtonIdStop,  AsrPtr::OnButton)
+EVT_RADIOBUTTON(ButtonIdRel,   AsrPtr::OnButton)
+EVT_TIMER(ButtonTimerId, AsrPtr::OnTimer)
+//EVT_CONTEXT_MENU(AsrPtr::OnContextMenu)
+END_EVENT_TABLE()
+
+#define BINDEX(b) ((b) - ButtonIdStart)
+
 AsrPtr::AsrPtr( wxWindow      *parent,
                 wxWindowID     id,
                 const wxPoint &pos,
@@ -29,20 +40,29 @@ AsrPtr::AsrPtr( wxWindow      *parent,
   : wxPanel(parent, id, pos, size, style, name)
   , papertape(new PaperTape(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, /* reader = */ true))
   , top_sizer(new wxBoxSizer(wxVERTICAL))
+  , hasAuto(true)
+  , buttonTimer(0)
 {
-  top_sizer->Add(papertape,
-                wxSizerFlags(1).Expand());
+  buttons.push_back(new wxRadioButton(this, ButtonIdStart, wxT("START")));
+  buttons.push_back(new wxRadioButton(this, ButtonIdAuto,  wxT("AUTO" )));
+  buttons.push_back(new wxRadioButton(this, ButtonIdStop,  wxT("STOP" )));
+  buttons.push_back(new wxRadioButton(this, ButtonIdRel,   wxT("REL." )));
+  
+  top_sizer->Add(papertape, wxSizerFlags(1).Expand());
 
-  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("START")),
-                wxSizerFlags(0).Left());
-  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("STOP")),
-                wxSizerFlags(0).Left());
-  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("AUTO")),
-                wxSizerFlags(0).Left());
-  top_sizer->Add(new wxRadioButton(this, wxID_ANY, wxT("REL.")),
-                wxSizerFlags(0).Left());
+  top_sizer->Add(buttons[BINDEX(ButtonIdStart)], wxSizerFlags(0).Left());
+  top_sizer->Add(buttons[BINDEX(ButtonIdAuto )], wxSizerFlags(0).Left());
+  top_sizer->Add(buttons[BINDEX(ButtonIdStop )], wxSizerFlags(0).Left());
+  top_sizer->Add(buttons[BINDEX(ButtonIdRel  )], wxSizerFlags(0).Left());
 
-  papertape->SetMinSize(wxSize(100,100));
+  if (hasAuto) {
+    buttons[BINDEX(ButtonIdAuto)]->SetValue(true);
+  } else {
+    buttons[BINDEX(ButtonIdStop)]->SetValue(true);
+    buttons[BINDEX(ButtonIdAuto)]->Hide();
+  }
+    
+  papertape->SetMinSize(wxSize(100,200));
   
   SetSizerAndFit(top_sizer);
 }
@@ -51,3 +71,51 @@ AsrPtr::~AsrPtr()
 {
 }
 
+void AsrPtr::FileDialog()
+{
+  wxFileDialog dialog(this,
+                      "Load",
+                      wxEmptyString, wxEmptyString,
+                      "Papertape files (*.ptp)|*.ptp|All files|*",
+                      wxFD_OPEN);
+
+  if (dialog.ShowModal() == wxID_CANCEL)
+    return;
+
+  std::cout << dialog.GetPath() << std::endl;
+
+  wxFileName filename(dialog.GetPath());
+  papertape->Load(filename, 5);
+}
+
+void AsrPtr::OnButton(wxCommandEvent &event)
+{
+  const ButtonId id = static_cast<ButtonId>(event.GetId());
+  //std::cout << __PRETTY_FUNCTION__ << " " << event.GetId() << std::endl;
+
+  switch(id) {
+  case ButtonIdStart: ButtonBias(); FileDialog(); break;
+  case ButtonIdAuto:  break;
+  case ButtonIdStop:  ButtonBias(); break;
+  case ButtonIdRel:   break;
+    
+  default:
+    /* Ignore */
+    break;
+  }
+}
+
+void AsrPtr::ButtonBias()
+{
+  if (hasAuto) {
+    if (! buttonTimer) {
+      buttonTimer = new wxTimer(this, ButtonTimerId);
+    }
+    buttonTimer->Start(ButtonBiasTime, wxTIMER_ONE_SHOT);
+  }
+}
+
+void AsrPtr::OnTimer(wxTimerEvent &event)
+{
+  buttons[BINDEX(ButtonIdAuto)]->SetValue(true);
+}
