@@ -55,7 +55,7 @@ public:
   void Load(const unsigned char *buffer, unsigned long size, unsigned int leader = LeaderLength);
   void Load(const wxFileName &filename, unsigned int leader = LeaderLength);
   void Rewind();
-  int Read();
+  bool Read(unsigned char &ch);
 
   void PunchLeader(unsigned int leader = LeaderLength);
   void Punch(unsigned char ch);

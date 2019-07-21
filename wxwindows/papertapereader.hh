@@ -6,7 +6,7 @@ class PaperTapeReader : public wxPanel
 public:
   PaperTapeReader(wxWindow* parent);
   ~PaperTapeReader();
-  int Read();
+  bool Read(unsigned char &ch);
 
 private:
   PaperTape *papertape;
