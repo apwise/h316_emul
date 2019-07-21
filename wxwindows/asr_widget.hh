@@ -51,11 +51,21 @@ public:
   void Process(unsigned char ch, int source);
 
 private:
+  static const int timerPeriod = 100;
+
   wxBoxSizer   *top_sizer;
   wxBoxSizer   *tape_sizer;
   PrintedPaper *printer;
   AsrPtp       *asr_ptp;
   AsrPtr       *asr_ptr;
+
+  wxTimer      *character_timer;
+
+  void CharacterPoll();
+
+  void OnTimer(wxTimerEvent& event);
+
+  DECLARE_EVENT_TABLE()
 };
 
 #endif // __ASR_WIDGET_HH__

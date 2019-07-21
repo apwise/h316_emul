@@ -43,6 +43,10 @@ public:
   ~PrintedPaper( );
   void Print(unsigned char ch){InternalPrint(ch);}
   void Print(std::string str);
+  
+  bool PollKeyboard(unsigned char &ch);
+  bool PollPrinter(unsigned char &ch);
+
 private:
   enum BREAK_PHASE {
     BREAK_NONE,
@@ -113,6 +117,11 @@ private:
   std::default_random_engine generator;
   std::string AnswerBackDrum;
   int AnswerBackCounter;
+
+  bool pending_special;
+  unsigned char pending_special_ch;
+  bool pending_keyboard;
+  unsigned char pending_keyboard_ch;
   
   void FontMetrics();
   void DecideScrollbars();

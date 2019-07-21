@@ -311,8 +311,9 @@ void PaperTape::Rewind()
   Refresh();
 }
 
-int PaperTape::Read()
+bool PaperTape::Read(unsigned char &ch)
 {
+  bool r = false;
   PT_type type;
   int data = get_element(position, type);
 
@@ -331,11 +332,12 @@ int PaperTape::Read()
      */
     
     set_pending_refresh();
-    
-    return data;
-  } else {
-    return -1;
+
+    ch = data;
+    r = true;
   }
+
+  return r;
 }
 
 void PaperTape::DestroyBitmaps()

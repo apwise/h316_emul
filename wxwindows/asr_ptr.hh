@@ -35,6 +35,9 @@ public:
           long style = wxTAB_TRAVERSAL,
           const wxString& name = wxT("AsrPtr") );
   ~AsrPtr( );
+
+  bool Read(unsigned char &ch);
+  
 private:
   enum ButtonId {
     ButtonIdStart = 200,

@@ -126,10 +126,12 @@ void MyFrame::OnRead(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnTimer(wxTimerEvent& WXUNUSED(event))
 {
-  int data = reader->Read();
+  bool valid;
+  unsigned char ch;
   
-  if (data < 0)
+  valid = reader->Read(ch);
+  
+  if (!valid) {
     timer->Stop();
-//   else
-//     std::cout << "OnTimer " << data << std::endl;
+  }
 }

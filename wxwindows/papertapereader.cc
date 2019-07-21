@@ -70,9 +70,9 @@ PaperTapeReader::~PaperTapeReader()
 {
 }
 
-int PaperTapeReader::Read()
+bool PaperTapeReader::Read(unsigned char &ch)
 {
-  return papertape->Read();
+  return papertape->Read(ch);
 }
 
 void PaperTapeReader::OnLoad(wxCommandEvent& WXUNUSED(event))
