@@ -74,6 +74,11 @@ AsrPtr::~AsrPtr()
 {
 }
 
+bool AsrPtr::Read(unsigned char &ch)
+{
+  return papertape->Read(ch);
+}
+
 unsigned int AsrPtr::GetPPI()
 {
   wxSize size;

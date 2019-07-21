@@ -74,6 +74,8 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
   , chime(false)
   , break_phase(BREAK_NONE)
   , AnswerBackCounter(-1)
+  , pending_special(false)
+  , pending_keyboard(false)
 {
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
   FontMetrics();
@@ -102,6 +104,26 @@ PrintedPaper::~PrintedPaper()
   if (paper_bitmap) {
     delete paper_bitmap;
   }
+}
+
+bool PrintedPaper::PollKeyboard(unsigned char &ch)
+{
+  bool r = pending_keyboard;
+  if (pending_keyboard) {
+    ch = pending_keyboard_ch;
+    pending_keyboard = false;
+  }
+  return r;
+}
+
+bool PrintedPaper::PollPrinter(unsigned char &ch)
+{
+  bool r = pending_special;
+  if (pending_special) {
+    ch = pending_special_ch;
+    pending_special = false;
+  }
+  return r;
 }
 
 void PrintedPaper::DrawPaper(int width, int height)
@@ -807,20 +829,29 @@ void PrintedPaper::TriggerAnswerBack()
 
 void PrintedPaper::Send(unsigned char ch, bool special)
 {
-  if (port) {
-    if (!special) {
-      /* This came from a normal keyboard key-press... */
-      
-      ch &= 0x7f;
-
-      if ((ch >= 'a') && (ch <= 'z')) {
-        ch -= ('a'-'A');
-      }
-
-      /* Deal with parity options here... */
-      ch |= 0x80;
+  if (!special) {
+    /* This came from a normal keyboard key-press... */
+    
+    ch &= 0x7f;
+    
+    if ((ch >= 'a') && (ch <= 'z')) {
+      ch -= ('a'-'A');
     }
+
+    /* Deal with parity options here... */
+    ch |= 0x80;
+  }
+
+  if (false /*port*/) {
     port->Process(ch, ((special) ? specialSource :  keyboardSource));
+  } else {
+    if (special) {
+      pending_special = true;
+      pending_special_ch = ch;
+    } else {
+      pending_keyboard = true;
+      pending_keyboard_ch = ch;
+    }
   }
 }
   

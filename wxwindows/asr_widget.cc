@@ -21,6 +21,10 @@
 
 #include "asr_widget.hh"
 
+BEGIN_EVENT_TABLE(AsrWidget, wxPanel)
+EVT_TIMER(wxID_ANY, AsrWidget::OnTimer)
+END_EVENT_TABLE()
+
 AsrWidget::AsrWidget( wxWindow      *parent,
                       wxWindowID     id,
                       const wxPoint &pos,
@@ -45,6 +49,9 @@ AsrWidget::AsrWidget( wxWindow      *parent,
   tape_sizer->AddSpacer(wxSizerFlags::GetDefaultBorder());
   tape_sizer->Add(asr_ptr,
                   wxSizerFlags(1).Align(wxALIGN_BOTTOM));
+
+  character_timer = new wxTimer(this);
+  character_timer->Start(timerPeriod, wxTIMER_CONTINUOUS);
   
   SetSizerAndFit(top_sizer);
 }
@@ -68,3 +75,59 @@ void AsrWidget::Process(unsigned char ch, int source)
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
   asr_ptp->Punch(ch);
 }
+
+void AsrWidget::OnTimer(wxTimerEvent& WXUNUSED(event))
+{
+  CharacterPoll();
+}
+
+/*
+ * If we're simulating the extact timing of a teletype then
+ * poll all the possible sources of characters and decide
+ * where the characters should be sent.
+ */
+void AsrWidget::CharacterPoll()
+{
+  bool have_ptr, have_kbd, have_prt;
+  unsigned char ptr_ch, kbd_ch, prt_ch;
+  bool have_ch = false;
+  unsigned char ch = 0;
+  bool bell = false;
+  
+  have_ptr = asr_ptr->Read(ptr_ch);
+  have_kbd = printer->PollKeyboard(kbd_ch);
+
+  if (have_ptr) {
+    ch |= ptr_ch;
+    have_ch = true;
+  }
+
+  if (have_kbd) {
+    ch |= kbd_ch;
+    have_ch = true;
+  }
+
+  if (have_ch) {
+    printer->Print(ch);
+    asr_ptp->Punch(ch);
+
+    if ((ch & 0x7f) == '\a') {
+      bell = true;
+    }
+  }
+  
+  have_prt = printer->PollPrinter(prt_ch);
+
+  if (have_prt) {
+    if ((prt_ch & 0x7f) == '\a') {
+      bell = true;
+    }
+
+    // Look for here-is...
+  }
+
+  if (bell) {
+    wxBell();
+  }
+}
+
