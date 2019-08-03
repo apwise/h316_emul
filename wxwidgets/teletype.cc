@@ -22,6 +22,8 @@
 
 #include <wx/graphics.h>
 
+#include "serialport.h"
+
 #include "teletype_logo_128.xpm"
 
 class MyApp: public wxApp
@@ -153,6 +155,13 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
     
   SetSizerAndFit(top_sizer);
   Refresh();
+
+  wxSerialPort sp;
+  const wxArrayString &n = sp.PortNickNames();
+  unsigned int i;
+  for (i=0; i<n.GetCount(); i++) {
+    std::cout << n[i] << std::endl;
+  }
 }
 
 void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
