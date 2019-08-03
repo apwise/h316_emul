@@ -20,6 +20,7 @@ public:
   ~wxSerialPort();
 
   const wxArrayString &PortNames();
+  const wxArrayString &PortNickNames();
 
 private:
   SerialPortData &m_serialPortData;

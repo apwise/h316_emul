@@ -18,11 +18,15 @@ public:
   SerialPortData();
   ~SerialPortData();
   const wxArrayString &PortNames();
+  const wxArrayString &PortNickNames();
   
 private:
   struct sp_port **m_ports;
   wxArrayString m_portNames;
+  wxArrayString m_portNickNames;
 
+  wxString NickName(const wxString &portName);
+  
   void ClearPorts();
   void ListPorts();
 };
@@ -65,7 +69,7 @@ const wxArrayString &wxSerialPort::SerialPortData::PortNames()
   if (pl) {
     p = *pl++;
     while (p) {
-
+      m_portNames.Add(sp_get_port_name(p));
       
       p = *pl++;
     }
@@ -74,6 +78,27 @@ const wxArrayString &wxSerialPort::SerialPortData::PortNames()
   return m_portNames;
 }
 
+wxString wxSerialPort::SerialPortData::NickName(const wxString &portName)
+{
+  const wxString devPrefix = "/dev/";
+  wxString nickName;
+  if (! portName.StartsWith(devPrefix, &nickName)) {
+    nickName = portName;
+  }
+  return nickName;
+}
+
+const wxArrayString &wxSerialPort::SerialPortData::PortNickNames()
+{
+  m_portNickNames.Clear();
+  const wxArrayString &pn = PortNames();
+  unsigned int i;
+  for (i=0; i<pn.GetCount(); i++) {
+    m_portNickNames.Add(NickName(pn[i]));
+  }
+  
+  return m_portNickNames;
+}
 
 wxSerialPort::wxSerialPort()
   : m_serialPortData(* new SerialPortData)
@@ -88,4 +113,9 @@ wxSerialPort::~wxSerialPort()
 const wxArrayString &wxSerialPort::PortNames()
 {
   return m_serialPortData.PortNames();
+}
+
+const wxArrayString &wxSerialPort::PortNickNames()
+{
+  return m_serialPortData.PortNickNames();
 }
