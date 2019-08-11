@@ -156,12 +156,14 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   SetSizerAndFit(top_sizer);
   Refresh();
 
+  #if 0
   wxSerialPort sp;
   const wxArrayString &n = sp.PortNickNames();
   unsigned int i;
   for (i=0; i<n.GetCount(); i++) {
     std::cout << n[i] << std::endl;
   }
+  #endif
 }
 
 void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
