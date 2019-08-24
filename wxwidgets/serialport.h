@@ -14,7 +14,28 @@
 
 class wxSerialPort;
 WX_DECLARE_OBJARRAY(wxSerialPort, wxSerialPortArray);
-                    
+
+class wxSerialPortEvent : public wxEvent
+{
+public:
+  wxSerialPortEvent(wxEventType eventType, int id) : wxEvent(id, eventType) {}
+  wxSerialPortEvent(const wxSerialPortEvent &e) : wxEvent(e) {}
+
+  // implement the base class pure virtual
+  virtual wxEvent *Clone() const { return new wxSerialPortEvent(*this); }
+
+private:
+  // No specific data
+};
+
+wxDECLARE_EVENT(wxSERIAL_PORT_SIGNAL, wxSerialPortEvent);
+
+typedef void (wxEvtHandler::*wxSerialPortEventFunction)(wxSerialPortEvent &);
+#define wxSerialPortEventHandler(func) wxEVENT_HANDLER_CAST(wxSerialPortEventFunction, func)
+
+#define wxEVT_SERIAL_PORT_WAIT(id, func) \
+    wx__DECLARE_EVT1(wxSERIAL_PORT_WAIT, id, wxSerialPortEventHandler(func))
+
 class wxSerialPort : public wxObject
 {
 public:
@@ -113,7 +134,7 @@ public:
   {
   public:
     class ConfigData;
-    static Return NewConfig(Config **config);
+    static Return New(Config **config);
     Config(Return &r);
     Config();
     ~Config();
@@ -155,17 +176,18 @@ public:
   {
   public:
     class EventSetData;
-    static Return NewEventSet(EventSet **eventSet);
+
+    static Return New(EventSet **eventSet);
     EventSet(Return &r);
     EventSet();
-    ~EventSet();
+    virtual ~EventSet();
     Return Allocated();
 
     EventSetData &GetEventSetData() {return m_eventSetData;}
 
     Return AddPortEvent(const wxSerialPort &p, Event mask);
     Return Wait(unsigned int timeout_ms);
-    
+
   private:
     // Copy construction not allowed
     EventSet(const EventSet &eventSet);
@@ -173,6 +195,37 @@ public:
     EventSet & operator=(const EventSet &eventSet);
 
     EventSetData &m_eventSetData;
+
+  };
+
+  class SignalEventSet : public wxThreadHelper, EventSet
+  {
+  public:
+    static Return New(SignalEventSet **signalEventSet, wxEvtHandler *handler, wxWindowID id);
+    SignalEventSet(Return &r, wxEvtHandler *handler, wxWindowID id);
+    SignalEventSet(wxEvtHandler *handler, wxWindowID id);
+    virtual ~SignalEventSet();
+
+    wxWindowID GetId() const { return m_id; }
+
+    static const int TIMEOUT_FOREVER = 0;
+    Return Signal(unsigned int timeout_ms = TIMEOUT_FOREVER);
+
+  private:
+    // Not default constructible
+    SignalEventSet();
+    // Copy construction not allowed
+    SignalEventSet(const SignalEventSet &signalEventSet);
+    // Assignment not allowed
+    SignalEventSet & operator=(const SignalEventSet &signalEventSet);
+
+    wxEvtHandler *m_handler;
+    wxWindowIDRef m_id;
+    unsigned int m_timeout_ms;
+
+    wxCriticalSection m_signalCS;
+
+    virtual wxThread::ExitCode Entry();
   };
   
   // Port enumeration
@@ -236,7 +289,7 @@ public:
   Return Flush(Buffer buffers);
   Return Drain();
 
-  // Waiting - see EventSet, above
+  // Waiting - see EventSet or SignalEventSet, above
 
   // Errors
   static int LastErrorCode();

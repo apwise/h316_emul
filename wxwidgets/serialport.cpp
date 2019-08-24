@@ -651,7 +651,7 @@ wxString wxSerialPort::GetLibVersionString()
 
 //------------------------------------------------------------------
 
-wxSerialPort::Return wxSerialPort::Config::NewConfig(Config **config)
+wxSerialPort::Return wxSerialPort::Config::New(Config **config)
 {
   Return r;
 
@@ -761,7 +761,7 @@ RFSPCF1(  SetFlowcontrol,        sp_set_config_flowcontrol,
 
 //------------------------------------------------------------------
 
-wxSerialPort::Return wxSerialPort::EventSet::NewEventSet(EventSet **eventSet)
+wxSerialPort::Return wxSerialPort::EventSet::New(EventSet **eventSet)
 {
   Return r;
 
@@ -813,4 +813,79 @@ wxSerialPort::Return wxSerialPort::EventSet::Wait(unsigned int timeout_ms)
 {
   return SerialPort::ReturnFromSP(sp_wait(GetEventSetData().GetEventSet(),
                                           timeout_ms));
+}
+
+//------------------------------------------------------------------
+wxDEFINE_EVENT(wxSERIAL_PORT_SIGNAL, wxSerialPortEvent);
+
+wxSerialPort::Return wxSerialPort::SignalEventSet::New(SignalEventSet **signalEventSet,
+                                                       wxEvtHandler *handler,
+                                                       wxWindowID id)
+{
+  Return r;
+
+  if (!signalEventSet) return ERR_ARG;
+
+  *signalEventSet = new SignalEventSet(r, handler, id);
+
+  return r;
+}
+
+wxSerialPort::SignalEventSet::SignalEventSet(Return &r, wxEvtHandler *handler, int id)
+  : EventSet(r)
+  , m_handler(handler)
+  , m_id((id == wxID_ANY) ? wxIdManager::ReserveId() : id)
+  , m_timeout_ms(0)
+{
+}
+
+wxSerialPort::SignalEventSet::SignalEventSet(wxEvtHandler *handler, wxWindowID id)
+  : m_handler(handler)
+  , m_id((id == wxID_ANY) ? wxIdManager::ReserveId() : id)
+  , m_timeout_ms(0)
+{
+}
+
+wxSerialPort::SignalEventSet::~SignalEventSet()
+{
+  wxCriticalSectionLocker locker(m_signalCS);
+  wxThread *thread = GetThread();
+
+  if (thread) {
+    thread->Kill();
+  }
+
+}
+
+wxSerialPort::Return wxSerialPort::SignalEventSet::Signal(unsigned int timeout_ms)
+{
+  m_timeout_ms = timeout_ms;
+
+  if (GetThread()) {
+    return ERR_FAIL;
+  } else {
+    if (CreateThread(wxTHREAD_DETACHED) != wxTHREAD_NO_ERROR) {
+      return ERR_FAIL;
+    }
+
+    if (GetThread()->Run() != wxTHREAD_NO_ERROR) {
+      return ERR_FAIL;
+    }
+  }
+  return OK;
+}
+
+wxThread::ExitCode wxSerialPort::SignalEventSet::Entry()
+{
+  enum sp_return spr = sp_wait(GetEventSetData().GetEventSet(),
+                               m_timeout_ms);
+  {
+    wxCriticalSectionLocker locker(m_signalCS);
+
+    if (spr == SP_OK) {
+      wxQueueEvent(m_handler, new wxSerialPortEvent(wxSERIAL_PORT_SIGNAL, m_id));
+    }
+
+    return static_cast<wxThread::ExitCode>( 0 );
+  }
 }
