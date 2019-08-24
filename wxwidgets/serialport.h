@@ -3,7 +3,7 @@
 // Purpose:     Wrapper for libserialport
 // Author:      Adrian Wise <adrian@adrianwise.co.uk>
 // Created:     2019-07-27
-// Copyright:   (c) 2019 wxWidgets development team
+// Copyright:   (c) 2019 Adrian Wise
 // Licence:     wxWindows licence
 /////////////////////////////////////////////////////////////////////////////
 #ifndef _SERIALPORT_H__
