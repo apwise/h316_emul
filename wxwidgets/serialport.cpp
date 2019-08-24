@@ -7,6 +7,15 @@
 // Licence:     wxWindows licence
 /////////////////////////////////////////////////////////////////////////////
 
+#include "wx/wxprec.h"
+
+#ifdef __BORLANDC__
+  #pragma hdrstop
+#endif
+
+#ifndef WX_PRECOMP
+#endif //WX_PRECOMP
+
 #include <libserialport.h>
 #include "serialport.h"
 
