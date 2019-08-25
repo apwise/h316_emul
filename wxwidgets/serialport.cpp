@@ -24,9 +24,11 @@ class wxSerialPort::SerialPort
 public:
   SerialPort() : m_port(NULL) {}
   
-  SerialPort(const SerialPort &spd) : m_port(NULL)
+  SerialPort(const SerialPort &sp) : m_port(NULL)
   {
-    (void) sp_copy_port(spd.m_port, &m_port);
+    if (sp.m_port) {
+      (void) sp_copy_port(sp.m_port, &m_port);
+    }
   }
   
   ~SerialPort() {if (m_port) sp_free_port(m_port);}
@@ -363,7 +365,8 @@ wxSerialPort::wxSerialPort()
 }
 
 wxSerialPort::wxSerialPort(const wxSerialPort &port)
-  : m_serialPort(port.m_serialPort)
+  : wxObject(port)
+  , m_serialPort(*new SerialPort(port.m_serialPort))
 {
 }
 
@@ -397,7 +400,7 @@ wxSerialPort::wxSerialPort(const wxString &portName)
 
 wxSerialPort::~wxSerialPort()
 {
-  m_serialPort.~SerialPort();
+  delete &m_serialPort;
 }
 
 wxSerialPort::Return wxSerialPort::Allocated()
@@ -692,7 +695,7 @@ wxSerialPort::Config::Config()
 
 wxSerialPort::Config::~Config()
 {
-  m_configData.~ConfigData();
+  delete &m_configData;
 }
 
 wxSerialPort::Return wxSerialPort::Config::Allocated()
@@ -802,7 +805,7 @@ wxSerialPort::EventSet::EventSet()
 
 wxSerialPort::EventSet::~EventSet()
 {
-  m_eventSetData.~EventSetData();
+  delete &m_eventSetData;
 }
 
 wxSerialPort::Return wxSerialPort::EventSet::Allocated()
@@ -863,7 +866,6 @@ wxSerialPort::SignalEventSet::~SignalEventSet()
   if (thread) {
     thread->Kill();
   }
-
 }
 
 wxSerialPort::Return wxSerialPort::SignalEventSet::Signal(unsigned int timeout_ms)
