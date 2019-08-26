@@ -41,6 +41,7 @@ public:
   void OnQuit(wxCommandEvent& event);
   void OnAbout(wxCommandEvent& event);
   void OnClose(wxCloseEvent &event);
+  void OnSerial(wxSerialPortEvent &event);
   
   void OnKeyDown(wxKeyEvent& event);
   void OnKeyUp(wxKeyEvent& event);
@@ -72,13 +73,15 @@ enum
   {
     ID_Quit = 1,
     ID_About,
-    ID_Read
+    ID_Read,
+    ID_Serial
   };
 
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 EVT_MENU(ID_Quit, MyFrame::OnQuit)
 EVT_MENU(ID_About, MyFrame::OnAbout)
 EVT_CLOSE(MyFrame::OnClose)
+EVT_SERIAL_PORT_WAIT(ID_Serial, MyFrame::OnSerial)
 END_EVENT_TABLE()
 
 
@@ -156,14 +159,52 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   SetSizerAndFit(top_sizer);
   Refresh();
 
-  #if 0
-  wxSerialPort sp;
-  const wxArrayString &n = sp.PortNickNames();
+#if 1
+  wxSerialPortArray portArray;
+  wxSerialPort::Return r = wxSerialPort::ListPorts(portArray);
+
+  std::cout << "ListPorts() returned " << static_cast<int>(r) << std::endl;
+
   unsigned int i;
-  for (i=0; i<n.GetCount(); i++) {
-    std::cout << n[i] << std::endl;
+  for (i=0; i<portArray.GetCount(); i++) {
+    std::cout << portArray[i].GetPortName() << std::endl;
   }
-  #endif
+
+  wxSerialPort::Config config(r);
+  std::cout << "Config() returned " << static_cast<int>(r) << std::endl;
+
+  wxSerialPort port(portArray[1]);
+  if (port.Allocated() != wxSerialPort::OK)
+    std::cerr << "port not allocated" << std::endl;
+
+  r = port.Open(wxSerialPort::MODE_READ_WRITE);
+  std::cout << "Open() returned " << static_cast<int>(r) << std::endl;
+
+  r = port.GetConfig(config);
+  std::cout << "GetConfig() returned " << static_cast<int>(r) << std::endl;
+
+  if (r == wxSerialPort::OK) r = config.SetBaudrate(110);
+  if (r == wxSerialPort::OK) r = config.SetBits(8);
+  if (r == wxSerialPort::OK) r = config.SetParity(wxSerialPort::PARITY_NONE);
+  if (r == wxSerialPort::OK) r = config.SetStopbits(2);
+  if (r == wxSerialPort::OK) r = config.SetFlowcontrol(wxSerialPort::FLOWCONTROL_NONE);
+
+  std::cout << "config setting calls returned " << static_cast<int>(r) << std::endl;
+
+  r = port.SetConfig(config);
+  std::cout << "SetConfig() returned " << static_cast<int>(r) << std::endl;
+
+  wxSerialPort::SignalEventSet *ses;
+  r = wxSerialPort::SignalEventSet::New(&ses, this, ID_Serial);
+  std::cout << "SignalEventSet::New() returned " << static_cast<int>(r) << std::endl;
+
+  r = ses->AddPortEvent(port, wxSerialPort::EVENT_RX_READY);
+  std::cout << "AddPortEvent() returned " << static_cast<int>(r) << std::endl;
+
+  r = ses->Signal();
+  std::cout << "Signal() returned " << static_cast<int>(r) << std::endl;
+
+#endif
 }
 
 void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
@@ -181,4 +222,9 @@ void MyFrame::Process(unsigned char ch, int source)
 {
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
   //asr_ptp->Punch(ch);
+}
+
+void MyFrame::OnSerial(wxSerialPortEvent &event)
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
 }
