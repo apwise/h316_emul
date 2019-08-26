@@ -33,8 +33,8 @@ wxDECLARE_EVENT(wxSERIAL_PORT_SIGNAL, wxSerialPortEvent);
 typedef void (wxEvtHandler::*wxSerialPortEventFunction)(wxSerialPortEvent &);
 #define wxSerialPortEventHandler(func) wxEVENT_HANDLER_CAST(wxSerialPortEventFunction, func)
 
-#define wxEVT_SERIAL_PORT_WAIT(id, func) \
-    wx__DECLARE_EVT1(wxSERIAL_PORT_WAIT, id, wxSerialPortEventHandler(func))
+#define EVT_SERIAL_PORT_WAIT(id, func) \
+    wx__DECLARE_EVT1(wxSERIAL_PORT_SIGNAL, id, wxSerialPortEventHandler(func))
 
 class wxSerialPort : public wxObject
 {
@@ -198,7 +198,7 @@ public:
 
   };
 
-  class SignalEventSet : public wxThreadHelper, EventSet
+  class SignalEventSet : public wxThreadHelper, public EventSet
   {
   public:
     static Return New(SignalEventSet **signalEventSet, wxEvtHandler *handler, wxWindowID id);
