@@ -140,6 +140,7 @@ static unsigned short keyin[] =
 
 // }}}
 
+#ifndef RTL_SIM
 /*
  * Dummy IODEV that can be used for non-device time events
  * (MFM = mainframe)
@@ -158,6 +159,7 @@ public:
     p->event(reason);
   }
 };
+#endif
 #define MFM_REASON_LIMIT 0
 
 // {{{ Proc::Proc(STDTTY *stdtty)
@@ -240,7 +242,11 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
   wrt_addr[0] = wrt_addr[1] = 0;
   wrt_data[0] = wrt_data[1] = 0;
 
+#ifdef RTL_SIM
+  mfm = 0;
+#else
   mfm = new MFM(this);
+#endif
 }
 
 // }}}
@@ -249,8 +255,8 @@ Proc::~Proc()
 {
 #ifndef RTL_SIM
   event_queue.discard_events();
-#endif
   delete mfm;
+#endif
 }
 
 void Proc::exit(int code)
@@ -262,7 +268,9 @@ void Proc::exit(int code)
 
 void Proc::set_limit(unsigned long long half_cycles)
 {
+#ifndef RTL_SIM
   event_queue.queue(this->half_cycles + half_cycles, mfm, MFM_REASON_LIMIT);
+#endif
 }
 
 void Proc::event(int reason)
@@ -821,14 +829,18 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       if (dmc_addr & 0x8000) {
         // Do an input
         signed short tmp;
+#ifndef RTL_SIM
         dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
+#endif
         //cout << "DMC " << dec << dmc_dev << " write " << oct << tmp << " to "
         //     << oct << break_addr << endl;
         write(break_addr, tmp);
       } else {
         // Do an output
         signed short tmp = read(break_addr);
+#ifndef RTL_SIM
         dmc_devices[dmc_dev]->dmc(tmp, dmc_erl);
+#endif
       }
       break_addr   = 000020 + (dmc_dev * 2);
       half_cycles += 2;
