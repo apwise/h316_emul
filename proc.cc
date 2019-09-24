@@ -1151,7 +1151,7 @@ void Proc::write(unsigned short addr, signed short data)
 
   unsigned short ma = addr & addr_mask;
 
-  if (((addr ^ j) & addr_mask) == 0) {
+  if (((addr ^ j) & ((extend) ? 0x7fff : 0x3fff)) == 0) {
     x = data;
   }
 
@@ -1400,7 +1400,7 @@ void Proc::do_LDA(unsigned short instr)
 
   addr = ea(instr);
 
-  if (dp) addr &= ((~0)<<1); // loose the LSB if double precision
+  if (dp) addr &= ((~0)<<1); // lose the LSB if double precision
 
   a = read(addr);
 
@@ -1466,8 +1466,6 @@ void Proc::do_STA(unsigned short instr)
 
   addr = ea(instr);
 
-  if (dp) addr &= ((~0L)<<1); // loose the LSB if double precision
-
   write(addr, a);
 
   // if addr is odd, then this write will be
@@ -1528,7 +1526,7 @@ void Proc::do_ADD(unsigned short instr)
 
       half_cycles += 2;
 
-      if (dp) addr &= ((~0)<<1); // loose the LSB
+      if (dp) addr &= ((~0)<<1); // lose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
         dm |= ((~0) << 31);
@@ -1576,7 +1574,7 @@ void Proc::do_SUB(unsigned short instr)
 
       half_cycles += 2;
 
-      if (dp) addr &= ((~0)<<1); // loose the LSB
+      if (dp) addr &= ((~0)<<1); // lose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
         dm |= ((~0) << 31);
