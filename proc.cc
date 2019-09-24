@@ -19,7 +19,7 @@
  * MA  02111-1307 USA
  *
  * This file constitutes the main simulation kernel of
- * the processor. 
+ * the processor.
  */
 
 // }}}
@@ -68,7 +68,7 @@ using namespace std;
  * Btrace; binary trace (because an earlier one that stored ASCII
  * strings was too slow).
  *
- * Store the main processor state in a circular buffer of 
+ * Store the main processor state in a circular buffer of
  * Btrace structures allowing debugging of the route taken to
  * the point the processor stopped
  *****************************************************************/
@@ -151,9 +151,9 @@ public:
   MFM(Proc *p)
     : IODEV(p)
   {}
-  
+
   ~MFM() {}
-  
+
   void event(int reason)
   {
     p->event(reason);
@@ -165,7 +165,8 @@ public:
 // {{{ Proc::Proc(STDTTY *stdtty)
 
 Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
-  : extend_allowed(HasEa)
+  : prt(64)
+  , extend_allowed(HasEa)
   , addr_mask((HasEa) ? 0x7fff : 0x3fff)
   , exit_code(0)
   , exit_called(false)
@@ -291,7 +292,7 @@ void Proc::dump_trace(const char *filename, int n)
 {
   int i;
   FILE *fp=stdout;
-  
+
   /*
    * If a filename is passed then open it.
    */
@@ -304,7 +305,7 @@ void Proc::dump_trace(const char *filename, int n)
           return;
         }
     }
-  
+
   i = (trace_ptr + TRACE_BUF - n) % TRACE_BUF;
 
   do
@@ -325,7 +326,7 @@ void Proc::dump_trace(const char *filename, int n)
         }
       i = (i+1) % TRACE_BUF;
     } while (trace_ptr != i);
-  
+
   if (fp != stdout)
     fclose(fp);
 }
@@ -341,7 +342,7 @@ void Proc::dump_disassemble(char *filename, int first, int last)
   int i;
   unsigned short instr;
   FILE *fp=stdout;
-  
+
   if (filename)
     {
       fp = fopen(filename, "w");
@@ -350,17 +351,17 @@ void Proc::dump_disassemble(char *filename, int first, int last)
         return;
       }
     }
-  
+
   for (i=first; i<=last; i++)
     {
       instr = core[i];
       if (instr_table.defined(instr))
-        fprintf(fp, "%s\n", 
+        fprintf(fp, "%s\n",
                 instr_table.disassemble(i, instr, false));
       else
-        fprintf(fp, "%06o  %06o    %s\n", i, instr, "???");       
+        fprintf(fp, "%06o  %06o    %s\n", i, instr, "???");
     }
-  
+
   if (fp != stdout)
     fclose(fp);
 }
@@ -388,7 +389,7 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
       return;
     }
   }
-  
+
   for (i=0; i<CORE_SIZE; i++) {
     instr = core[i];
     mod = modified[i];
@@ -420,13 +421,13 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
 
     if (mod) {
       if (dac)
-        sprintf(buf, "%06o  %06o    DAC  '%06o", i, instr, instr);       
+        sprintf(buf, "%06o  %06o    DAC  '%06o", i, instr, instr);
       else if (instr_table.defined(instr))
-        sprintf(buf, "%s", 
+        sprintf(buf, "%s",
                 instr_table.disassemble(i, instr, false));
       else
-        sprintf(buf, "%06o  %06o    %s", i, instr, "???");       
-      
+        sprintf(buf, "%06o  %06o    %s", i, instr, "???");
+
       if (octal)
         fprintf(fp, "%06o // %s\n", instr, buf);
       else
@@ -436,7 +437,7 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
     skip = !mod;
 
   }
-  
+
   if (fp != stdout)
     fclose(fp);
 }
@@ -448,7 +449,7 @@ void Proc::dump_coemem(char *filename, int exec_addr)
   int i, k, n, last_addr;
   unsigned short instr;
   FILE *fp=stdout;
-  
+
   //printf("dump_coemem(): %s %d\n", filename, exec_addr);
 
   if (filename) {
@@ -458,7 +459,7 @@ void Proc::dump_coemem(char *filename, int exec_addr)
       return;
     }
   }
-  
+
   last_addr = 0;
   for (i=CORE_SIZE-1; i>=0; i--) {
     if (modified[i]) {
@@ -470,14 +471,14 @@ void Proc::dump_coemem(char *filename, int exec_addr)
   n = 1024 * 12;
   if (last_addr >= n)
     last_addr = n-1;
-  
+
   fprintf(fp, "memory_initialization_radix=16;\n");
   fprintf(fp, "memory_initialization_vector=\n");
-   
+
   k = 0;
   for (i=0; i<=last_addr; i++) {
     instr = core[i];
-    
+
     if ((i == 0) && (exec_addr != 0)) {
       if ((exec_addr & (~0777)) != 0)
         // Not sector zero
@@ -498,7 +499,7 @@ void Proc::dump_coemem(char *filename, int exec_addr)
       fprintf(fp, " ");
     }
   }
-  
+
   if (fp != stdout)
     fclose(fp);
 }
@@ -531,9 +532,11 @@ void Proc::master_clear(void)
   p = 0;
   y = 0;
   j = 0;
-  
+
+  prt.assign(64, false);
+
   fetched = false;
-  
+
   pi = pi_pending = 0;
   interrupts = 0;
   dmc_req = 0;
@@ -541,19 +544,20 @@ void Proc::master_clear(void)
   start_button_interrupt = 0;
   rtclk = false;
   melov = false;
+  pending_melov = false;
   break_flag = false;
   break_intr = false;
   break_addr = 0;
 
   goto_monitor_flag = 0;
   last_jmp_self_minus_one = jmp_self_minus_one = false;
- 
+
   c = 0;
   dp = 0;
   extend = 0;
   disable_extend_pending = 0;
   restrict = false;
-  
+
   sc = 0x3f;
 #ifndef RTL_SIM
   IODEV::master_clear_devices(devices);
@@ -572,41 +576,41 @@ struct FP_INTF *Proc::fp_intf()
 {
   struct FP_INTF *intf;
   int i;
-  
+
   intf = new struct FP_INTF;
-  
+
   intf->reg_value[RB_X] = &x;
   intf->reg_value[RB_A] = &a;
   intf->reg_value[RB_B] = &b;
   intf->reg_value[RB_PY] = (short *)&y;
   intf->reg_value[RB_OP] = &op;
   intf->reg_value[RB_M] = &m;
-  
+
   for (i=0; i<4; i++)
     intf->ssw[i] = &ss[i];
-  
+
   intf->pfh_not_pfi = 0;
   intf->mode=FPM_RUN;
   intf->store=0;
   intf->p_not_pp1=0;
-  
+
   intf->running=run;
-  
+
   intf->start_button_interrupt_pending=0;
   intf->power_fail_interrupt_pending=0;
   intf->power_fail_interrupt_acknowledge=0;
-  
+
   /*
    * Call-back routines from the front-panel
    */
-  
+
   intf->run = NULL;
   intf->master_clear = NULL;
-  
+
   intf->cpu = CPU_H316;
-  
+
   intf->data = (void *) this;
-  
+
   return intf;
 }
 
@@ -628,7 +632,7 @@ static signed short short_add(signed short a, signed short m,
   aa = static_cast<signed long>(a);
   mm = static_cast<signed long>(m);
   rr = aa + mm;
-  
+
   r = static_cast<signed short>(rr);
 
   c = (rr != static_cast<signed long>(r));
@@ -648,7 +652,7 @@ static signed short short_sub(signed short a, signed short m,
   aa = static_cast<signed long>(a);
   mm = static_cast<signed long>(m);
   rr = aa - mm;
-  
+
   r = static_cast<signed short>(rr);
 
   c = (rr != static_cast<signed long>(r));
@@ -732,12 +736,12 @@ void Proc::mem_access(bool p_not_pp1, bool store)
   if (! p_not_pp1)
     y = y + 1;
   p = y;
-  
+
   if (store)
     write(y, m);
   else
     m = read(y);
-  
+
   fetched = false;
 }
 
@@ -756,17 +760,17 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
    * has already been fetched (into the M register)
    */
   if (fetched) {
-    
+
     /*
      * Yes, it has been fetched
      * Normal executions sequence...
      */
-    
+
     if (goto_monitor_flag) {
       monitor_flag = 1;
       goto_monitor_flag = 0;
     }
-    
+
     if (break_flag) {
       half_cycles -= 2; // Due to the fetch
       /*
@@ -805,7 +809,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
        * affect the upper bits of the resulting p.
        * So model that, but then the instruction gets
        * put (back) into the m register.
-       */ 
+       */
       m = 0;
       increment_p();
       m = instr;
@@ -813,7 +817,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
 
     if (dmc_cyc) {
       bool dmc_erl;
-      
+
       // DMC cycle 1
       dmc_addr     = read(break_addr);;
       break_addr   = break_addr + 1;
@@ -844,18 +848,19 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       }
       break_addr   = 000020 + (dmc_dev * 2);
       half_cycles += 2;
-      
+
       // DMC cycle 4
       write(break_addr, dmc_addr);
       dmc_cyc      = false;
       half_cycles += 2;
 
     } else {
-      
+
       last_jmp_self_minus_one = jmp_self_minus_one;
       jmp_self_minus_one = false;
-      melov = false;
-      
+      melov = pending_melov;
+      pending_melov = false;
+
       /*
        * Now simply jump to the routine that handles
        * this instruction.
@@ -868,9 +873,9 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
        */
       start_button_interrupt = 0;
     }
-    
+
     // binary trace ...
-    
+
     btrace_buf[trace_ptr].brk = break_flag;
     btrace_buf[trace_ptr].v = true;
     btrace_buf[trace_ptr].half_cycles = half_cycles;
@@ -881,7 +886,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     btrace_buf[trace_ptr].p = (break_flag) ? 0xffff : fetched_p;
     btrace_buf[trace_ptr].y = y;  // EA of MR instructions
     btrace_buf[trace_ptr].instr = instr;
-    
+
     trace_ptr = (trace_ptr + 1) % TRACE_BUF;
   } else {
     p = y; /* Front panel updates Y not P
@@ -889,7 +894,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
   }
 
   break_flag = false;
-    
+
   /*
    * Figure out what break, if any, to do.
    */
@@ -905,7 +910,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       if ((dmc_req & mask) != 0) {
         break_addr = 000020 + (2 * i);
         dmc_req &= (~mask);
-        dmc_dev = i; 
+        dmc_dev = i;
         break;
       }
     }
@@ -914,19 +919,22 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     break_flag = true;
     break_intr = true;
     break_addr = 063;
-      
+
     pi = pi_pending = 0; // disable interrupts
-    extend = extend_allowed; // force extended addressing    
+    extend = extend_allowed; // force extended addressing
+    melov = pending_melov = false; // Drop MLO violation
   } if (melov) {
     break_flag = true;
     break_intr = true;
     break_addr = 062;
+    melov = pending_melov = false;
+    restrict = false;
   } else {
     (void) read(p);   // Leaving the instruction in the m register
   }
 
   half_cycles += 2; // Due to fetch
-  
+
   if (fetched) {
     /*
      * Enable the interrupts
@@ -935,7 +943,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       pi = true;
       pi_pending = false;
     }
-    
+
 #ifndef RTL_SIM
     /*
      * If we're still running then service any
@@ -950,7 +958,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     }
 #endif
   }
-  
+
 #ifndef RTL_SIM
   /*
    * If there is TTY input then service it
@@ -958,7 +966,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
   if (STDTTY::get_tty_input())
     STDTTY::service_tty_input();
 #endif
-  
+
   fetched = true;
   x_run = run; // pass back the run status
   monitor_flag = goto_monitor_flag; // and the monitor flag
@@ -977,10 +985,10 @@ unsigned short Proc::ea(unsigned short instr)
 
   sec_zero = ((m & 0x0200) == 0);
   indexing = ((m & 0x4000) != 0);
-  
-  do {      
+
+  do {
     indirect = ((m & 0x8000) != 0);
-    
+
     if (sec_zero) {
       if ((extend) || (!extend_allowed))
         d = ((j & 0x7e00) | (m & 0x81ff));
@@ -994,24 +1002,24 @@ unsigned short Proc::ea(unsigned short instr)
           d = m;
         else
           d = (m & 0xbfff) | (fetched_p & 0x4000);
-      }        
+      }
     }
- 
+
     if ((indexing) &&  // Looks like indexing called for
         ((!extend) ||  // Can always do it in non-extended mode
          (!indirect))) // and when no more indirection
       d += x;
-      
+
     if ((extend) || (!extend_allowed))
       y = d;
     else
       y = (d & 0xbfff) | (y & 0x4000);
-    
+
     if (indirect) {
       half_cycles += 2;
-    
+
       (void) read(y & 0x7fff); /* sets m */
-    
+
       sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
       if (!extend)
         indexing = ((m & 0x4000) != 0);
@@ -1020,7 +1028,7 @@ unsigned short Proc::ea(unsigned short instr)
     first = false;
 
   } while (indirect);
-  
+
   //printf("ea() y = %06o\n", y);
   return y;
 }
@@ -1047,18 +1055,18 @@ bool Proc::optimize_io_poll(unsigned short instr)
        * and input from the ASR (where we are really waiting
        * for keyboard input).
        */
-      
+
       EventQueue::EventTime next_event_time;
-      
+
       if (event_queue.next_event_time(next_event_time))
         {
           // jump time forward to the next event
           half_cycles = next_event_time;
-    
+
           // call devices to actually change the state
           // of the devices
           event_queue.call_devices(half_cycles);
-    
+
           // rerun the IO command in the hope that
           // it will now skip the JMP *-1
           r = true;
@@ -1136,31 +1144,33 @@ void Proc::dump_memory()
 
 void Proc::write(unsigned short addr, signed short data)
 {
+  bool prot = false;
+
   m = data;
   y = addr;
 
   unsigned short ma = addr & addr_mask;
 
-  if (((addr ^ j) & ((extend) ? 0x7fff : 0x3fff)) == 0) {
-    core[ma] = x = data;
+  if (((addr ^ j) & addr_mask) == 0) {
+    x = data;
+  }
+
+  if (restrict) {
+    if (! prt[ma >> 9]) {
+      pending_melov = prot = true;
+    }
+  }
+
+  if (((ma == 0) || (ma >= 020)) && (!prot)) {
+    core[ma] = data;
     modified[ma] = 1;
     if (wrts < 2) {
       wrt_addr[wrts] = ma;
       wrt_data[wrts] = data;
       wrts++;
     }
-  } else {
-    if ((ma == 0) || (ma >= 020)) {
-      core[ma] = data;
-      modified[ma] = 1;
-      if (wrts < 2) {
-        wrt_addr[wrts] = ma;
-        wrt_data[wrts] = data;
-        wrts++;
-      }
-    }
   }
-  
+
   //if (((addr >= 03000) && (addr < 03010)) || (addr == 0107))
   //  printf("Write %06o @ %06o\n", data & 0xffff, addr&0xffff );
 }
@@ -1271,16 +1281,16 @@ void Proc::asr_ptr_on(char *filename UNUSED)
 bool Proc::special(char k UNUSED)
 {
   bool r = false;
-  
+
 #ifndef RTL_SIM
   r = ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->special(k);
-  
+
   if ( (k & 0x7f) == 'h' )
     {
       printf("ALT-m Go to the monitor\n");
       printf("ALT-s Start button interrupt\n");
     }
-  
+
   if (!r)
     {
       switch (k & 0x7f)
@@ -1320,7 +1330,7 @@ void Proc::unimplemented(unsigned short instr UNUSED)
 #ifndef RTL_SIM
   printf("%s\n", __PRETTY_FUNCTION__);
   printf("Instr = `%06o at `%06o\n", instr, p);
-  
+
   Proc::abort();
 #endif
 }
@@ -1354,7 +1364,7 @@ void Proc::do_IMA(unsigned short instr)
   unsigned short yy;
   signed short mm;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 4;
 
@@ -1362,12 +1372,15 @@ void Proc::do_IMA(unsigned short instr)
   mm = read(yy);
   write(yy, a);
   a = mm;
+  if (pending_melov) {
+    melov = true; // Occurs immediately
+  }
 }
 
 void Proc::do_INK(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ((c & 1) << 15) | ((dp & 1) << 14) |
     ((extend & 1) << 13) |
@@ -1381,7 +1394,7 @@ void Proc::do_LDA(unsigned short instr)
   signed short original_a = a;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
 
@@ -1391,42 +1404,55 @@ void Proc::do_LDA(unsigned short instr)
 
   a = read(addr);
 
-  if (dp)
-    {
-      half_cycles += 2;
-      addr |= 1;
-      sc = original_a & 0x3f;
-      b = read(addr);
-    }
+  if (dp) {
+    half_cycles += 2;
+    addr |= 1;
+    sc = original_a & 0x3f;
+    b = read(addr);
+  }
 }
 
 void Proc::do_LDX(unsigned short instr)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 4;
   write(((extend) ? j : ((j & 0x3fff) | (p & 0x4000))),
         read(ea(instr & 0xbfff)));
+  if (pending_melov) {
+    x = read(((extend) ? j : ((j & 0x3fff) | (p & 0x4000))));
+  }
 }
 
 void Proc::do_OTK(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
-  c = (a & 0x8000) != 0;
-  dp = (a & 0x4000) != 0;
-  if ( (a & 0x2000) != 0 )
-    {
+  if (restrict) {
+#ifdef RTL_SIM
+    if (drlin) {
+      increment_p();
+    }
+#else
+    if (devices[instr & 0x3f]->sks(instr)) {
+      increment_p();
+    }
+#endif
+    melov = true;
+  } else {
+    c = (a & 0x8000) != 0;
+    dp = (a & 0x4000) != 0;
+    if ( (a & 0x2000) != 0 ) {
       disable_extend_pending = 0;
       extend = extend_allowed;
+    } else {
+      disable_extend_pending = 1;
     }
-  else
-    disable_extend_pending = 1;
-      
-  sc = (a & 0x1f); /* Really is only 5 bits (schematics) */
+    sc = (a & 0x1f); /* Really is only 5 bits (schematics) */
+  }
 }
 
 void Proc::do_STA(unsigned short instr)
@@ -1434,7 +1460,7 @@ void Proc::do_STA(unsigned short instr)
   unsigned addr;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
 
@@ -1448,29 +1474,40 @@ void Proc::do_STA(unsigned short instr)
   // overwritten by the b register in the case
   // of double precision store (DST)
 
-  if (dp)
-    {
-      sc = a & 0x3f;
-      half_cycles += 2;
-      addr |= 1;
-      write(addr, b);
+  if (dp) {
+    sc = a & 0x3f;
+    half_cycles += 2;
+    addr |= 1;
+    write(addr, b);
+    if (pending_melov) {
+      melov = true; // Occurs immediately
     }
+  }
 }
 
 void Proc::do_STX(unsigned short instr)
 {
+  unsigned addr;
+
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
 
-  write(ea(instr & 0xbfff), x);
+  addr = ea(instr & 0xbfff);
+
+  write(addr, x);
+  if (pending_melov) {
+    // Violating STX loads [ea] into X
+    // (but doesn't change base sector location 0)
+    x = read(addr);
+  }
 }
 
 void Proc::do_ACA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = short_add(a, ((signed short)(c & 1)), c);
 }
@@ -1480,7 +1517,7 @@ void Proc::do_ADD(unsigned short instr)
   signed short original_a = a;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
 
@@ -1495,7 +1532,7 @@ void Proc::do_ADD(unsigned short instr)
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
         dm |= ((~0) << 31);
-      
+
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
         da |= ((~0) << 31);
@@ -1503,8 +1540,8 @@ void Proc::do_ADD(unsigned short instr)
       v = ~(da ^ dm);        // Bit 30 is signs same
       da += dm;
       v &= (da ^ dm);        // if signs were same and now differ
- 
-      //printf("%s da=0x%08x\n", __PRETTY_FUNCTION__, da);  
+
+      //printf("%s da=0x%08x\n", __PRETTY_FUNCTION__, da);
       a = (da >> 15) & 0xffff;
       b = da & 0x7fff;
       c = (v >> 30) & 1;
@@ -1518,7 +1555,7 @@ void Proc::do_ADD(unsigned short instr)
 void Proc::do_AOA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = short_add(a, ((signed short) 1), c);
 }
@@ -1528,7 +1565,7 @@ void Proc::do_SUB(unsigned short instr)
   signed short original_a = a;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
 
@@ -1543,7 +1580,7 @@ void Proc::do_SUB(unsigned short instr)
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
         dm |= ((~0) << 31);
-      
+
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
         da |= ((~0) << 31);
@@ -1567,7 +1604,7 @@ void Proc::do_SUB(unsigned short instr)
 void Proc::do_TCA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 1;
   // C remains unmodified
@@ -1578,7 +1615,7 @@ void Proc::do_TCA(unsigned short instr UNUSED)
 void Proc::do_ANA(unsigned short instr)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
   a &= read(ea(instr));
@@ -1587,7 +1624,7 @@ void Proc::do_ANA(unsigned short instr)
 void Proc::do_CSA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   c = (a & 0x8000) != 0;
   a &= 0x7fff;
@@ -1596,7 +1633,7 @@ void Proc::do_CSA(unsigned short instr UNUSED)
 void Proc::do_CHS(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a ^= 0x8000;
 }
@@ -1604,7 +1641,7 @@ void Proc::do_CHS(unsigned short instr UNUSED)
 void Proc::do_CMA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ~a;
 }
@@ -1612,7 +1649,7 @@ void Proc::do_CMA(unsigned short instr UNUSED)
 void Proc::do_ERA(unsigned short instr)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
   a ^= read(ea(instr));
@@ -1621,7 +1658,7 @@ void Proc::do_ERA(unsigned short instr)
 void Proc::do_SSM(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a |= 0x8000;
 }
@@ -1629,7 +1666,7 @@ void Proc::do_SSM(unsigned short instr UNUSED)
 void Proc::do_SSP(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a &= 0x7fff;
 }
@@ -1649,7 +1686,7 @@ void Proc::do_ALR(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   lsc = ex_sc(instr);
@@ -1670,7 +1707,7 @@ void Proc::do_ALS(unsigned short instr)
   unsigned short d;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   c = 0;
@@ -1691,7 +1728,7 @@ void Proc::do_ARR(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1709,7 +1746,7 @@ void Proc::do_ARS(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1727,7 +1764,7 @@ void Proc::do_LGL(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1745,7 +1782,7 @@ void Proc::do_LGR(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1763,7 +1800,7 @@ void Proc::do_LLL(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1782,7 +1819,7 @@ void Proc::do_LLR(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1801,7 +1838,7 @@ void Proc::do_LLS(unsigned short instr)
   signed short lsc;
   signed short d;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   c = 0;
@@ -1823,7 +1860,7 @@ void Proc::do_LRL(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1842,7 +1879,7 @@ void Proc::do_LRR(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1861,7 +1898,7 @@ void Proc::do_LRS(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   lsc = ex_sc(instr);
   while (lsc < 0)
@@ -1881,7 +1918,7 @@ void Proc::do_INA(unsigned short instr)
   signed short d;
 #endif
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
   bool rerun = false;
@@ -1893,6 +1930,9 @@ void Proc::do_INA(unsigned short instr)
       if (instr & 01000)
         a = 0;
       a |= inb;
+      if (restrict) {
+        a = ~0;
+      }
       rerun = false;
     }
 #else
@@ -1901,29 +1941,48 @@ void Proc::do_INA(unsigned short instr)
       if (instr & 01000)
         a = 0;
       a |= d;
+      if (restrict) {
+        a = ~0;
+      }
       rerun = false;
     } else
       rerun = optimize_io_poll(instr);
 #endif
   } while (rerun);
+  if (restrict) {
+    melov = true;
+  }
 }
 
 void Proc::do_OCP(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
-#ifndef RTL_SIM
-  devices[instr & 0x3f]->ocp(instr);
+  if (restrict) {
+#ifdef RTL_SIM
+    if (drlin) {
+      increment_p();
+    }
+#else
+    if (devices[instr & 0x3f]->sks(instr)) {
+      increment_p();
+    }
 #endif
+    melov = true;
+  } else {
+#ifndef RTL_SIM
+    devices[instr & 0x3f]->ocp(instr);
+#endif
+  }
 }
 
 void Proc::do_OTA(unsigned short instr UNUSED)
 {
   bool rerun = false;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
 
@@ -1934,31 +1993,70 @@ void Proc::do_OTA(unsigned short instr UNUSED)
       rerun = false;
     }
 #else
-    if (devices[instr & 0x3f]->ota(instr, a)) {
+    if ((restrict) ?
+        devices[instr & 0x3f]->sks(instr   ) :
+        devices[instr & 0x3f]->ota(instr, a)) {
       increment_p();
       rerun = false;
-    } else
+    } else {
       rerun = optimize_io_poll(instr);
+    }
 #endif
   } while (rerun);
+  if (restrict) {
+    melov = true;
+  }
 }
 
-void Proc::do_SMK(unsigned short instr UNUSED)
+void Proc::do_SMK(unsigned short instr)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
-#endif
-#ifndef RTL_SIM
-  IODEV::set_mask(devices, a);
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
+  if (restrict) {
+#ifdef RTL_SIM
+    if (drlin) {
+      increment_p();
+    }
+#else
+    if (devices[instr & 0x3f]->sks(instr)) {
+      increment_p();
+    }
+#endif
+    melov = true;
+  } else {
+    unsigned int function = (instr >> 6) & 0x0f;
+    if ((instr & 0x3f) == 020) {
+      switch (function) {
+      case 000: /* Standard interrupts      */
+#ifndef RTL_SIM
+        IODEV::set_mask(devices, a);
+#endif
+        break;
+      case 001: /* Priority Interrupt  1-16 */ break;
+      case 002: /* Priority Interrupt 17-32 */ break;
+      case 003: /* Priority Interrupt 33-48 */ break;
+      case 004: /* Single line controller   */ break;
+
+      case 013: j = a & 0x7e00;  break;
+      case 014: write_prt(0, a); break;
+      case 015: write_prt(1, a); break;
+      case 016: write_prt(2, a); break;
+      case 017: write_prt(3, a); break;
+      default: /* Do nothing */  break;
+      }
+    } else if ((instr & 0x3f) == 024) {
+
+    }
+  }
 }
 
 void Proc::do_SKS(unsigned short instr UNUSED)
 {
   bool rerun = 0;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 2;
 
@@ -1976,13 +2074,16 @@ void Proc::do_SKS(unsigned short instr UNUSED)
       rerun = optimize_io_poll(instr);
 #endif
   } while (rerun);
+  if (restrict) {
+    melov = true;
+  }
 }
 
 void Proc::do_CAS(unsigned short instr)
 {
   signed short mm;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 4;
   mm = read(ea(instr));
@@ -1995,7 +2096,7 @@ void Proc::do_CAS(unsigned short instr)
 void Proc::do_ENB(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   pi_pending = 1;
 }
@@ -2003,20 +2104,25 @@ void Proc::do_ENB(unsigned short instr UNUSED)
 void Proc::do_HLT(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (restrict) {
-    melov = true;
+    pending_melov = true;
   } else {
     run = false;
   }
+  ++half_cycles; // 1.5 cycle instruction
 }
 
 void Proc::do_INH(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
+  if (restrict) {
+    pending_melov = true;
+  }
+  // Even if restricted still treated as an inhibit
   pi_pending = pi = false;
 }
 
@@ -2025,14 +2131,20 @@ void Proc::do_IRS(unsigned short instr)
   unsigned short yy;
   signed short d;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 4;
   yy = ea(instr);
   d = read(yy) + 1;
   write(yy, d);
-  increment_p(((!break_flag) && (d==0)) ? 1 : 0);
-
+  if (break_flag) {
+    pending_melov = false; // Ignore restrict mode
+  } else {
+    increment_p((d==0) ? 1 : 0);
+    if (pending_melov) {
+      melov = true; // Occurs immediately
+    }
+  }
 #ifndef RTL_SIM
   if ((d == 0) && break_flag &&
       (break_addr = 061) && (devices[IODEV::RTC_DEVICE])) {
@@ -2045,14 +2157,14 @@ void Proc::do_JMP(unsigned short instr)
 {
   unsigned short new_p;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   new_p = ea(instr);
-  
+
   if ((new_p & addr_mask) == ((fetched_p-1) & addr_mask))
     jmp_self_minus_one = 1;
-  
+
   p = (((extend) || (!extend_allowed)) ? new_p :
        ((new_p & 0xbfff) | (fetched_p & 0x4000)));
 
@@ -2064,7 +2176,7 @@ void Proc::do_JST(unsigned short instr)
 {
   unsigned short yy, return_addr;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   half_cycles += 4;
   yy = ea(instr);
@@ -2082,19 +2194,26 @@ void Proc::do_JST(unsigned short instr)
 
   write(yy, return_addr);
   p = yy+1;
+  if (break_flag) {
+    pending_melov = false; // Ignore restrict mode
+  } else {
+    if (pending_melov) {
+      melov = true; // Occurs immediately
+    }
+  }
 }
 
 void Proc::do_NOP(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 }
 
 void Proc::do_RCB(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   c = 0;
 }
@@ -2102,7 +2221,7 @@ void Proc::do_RCB(unsigned short instr UNUSED)
 void Proc::do_SCB(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   c = 1;
 }
@@ -2110,7 +2229,7 @@ void Proc::do_SCB(unsigned short instr UNUSED)
 void Proc::do_SKP(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   increment_p();
 }
@@ -2118,7 +2237,7 @@ void Proc::do_SKP(unsigned short instr UNUSED)
 void Proc::do_SLN(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (a & 0x0001)
     increment_p();
@@ -2127,7 +2246,7 @@ void Proc::do_SLN(unsigned short instr UNUSED)
 void Proc::do_SLZ(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if ((a & 0x0001) == 0)
     increment_p();
@@ -2136,7 +2255,7 @@ void Proc::do_SLZ(unsigned short instr UNUSED)
 void Proc::do_SMI(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (a<0)
     increment_p();
@@ -2145,7 +2264,7 @@ void Proc::do_SMI(unsigned short instr UNUSED)
 void Proc::do_SNZ(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (a != 0)
     increment_p();
@@ -2154,7 +2273,7 @@ void Proc::do_SNZ(unsigned short instr UNUSED)
 void Proc::do_SPL(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (a >= 0)
     increment_p();
@@ -2163,7 +2282,7 @@ void Proc::do_SPL(unsigned short instr UNUSED)
 void Proc::do_SR1(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (!ss[0])
     increment_p();
@@ -2172,7 +2291,7 @@ void Proc::do_SR1(unsigned short instr UNUSED)
 void Proc::do_SR2(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (!ss[1])
     increment_p();
@@ -2181,7 +2300,7 @@ void Proc::do_SR2(unsigned short instr UNUSED)
 void Proc::do_SR3(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (!ss[2])
     increment_p();
@@ -2190,7 +2309,7 @@ void Proc::do_SR3(unsigned short instr UNUSED)
 void Proc::do_SR4(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (!ss[3])
     increment_p();
@@ -2199,7 +2318,7 @@ void Proc::do_SR4(unsigned short instr UNUSED)
 void Proc::do_SRC(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (!c)
     increment_p();
@@ -2208,7 +2327,7 @@ void Proc::do_SRC(unsigned short instr UNUSED)
 void Proc::do_SS1(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (ss[0])
     increment_p();
@@ -2217,7 +2336,7 @@ void Proc::do_SS1(unsigned short instr UNUSED)
 void Proc::do_SS2(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (ss[1])
     increment_p();
@@ -2226,7 +2345,7 @@ void Proc::do_SS2(unsigned short instr UNUSED)
 void Proc::do_SS3(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (ss[2])
     increment_p();
@@ -2235,7 +2354,7 @@ void Proc::do_SS3(unsigned short instr UNUSED)
 void Proc::do_SS4(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (ss[3])
     increment_p();
@@ -2244,7 +2363,7 @@ void Proc::do_SS4(unsigned short instr UNUSED)
 void Proc::do_SSC(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (c)
     increment_p();
@@ -2253,7 +2372,7 @@ void Proc::do_SSC(unsigned short instr UNUSED)
 void Proc::do_SSR(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if ((!ss[0]) && (!ss[1]) && (!ss[2]) && (!ss[3]))
     increment_p();
@@ -2262,7 +2381,7 @@ void Proc::do_SSR(unsigned short instr UNUSED)
 void Proc::do_SSS(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (ss[0] || ss[1] || ss[2] || ss[3])
     increment_p();
@@ -2271,7 +2390,7 @@ void Proc::do_SSS(unsigned short instr UNUSED)
 void Proc::do_SZE(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   if (a==0)
     increment_p();
@@ -2280,7 +2399,7 @@ void Proc::do_SZE(unsigned short instr UNUSED)
 void Proc::do_CAL(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a &= 0x00ff;
 }
@@ -2288,7 +2407,7 @@ void Proc::do_CAL(unsigned short instr UNUSED)
 void Proc::do_CAR(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a &= 0xff00;
 }
@@ -2296,7 +2415,7 @@ void Proc::do_CAR(unsigned short instr UNUSED)
 void Proc::do_ICA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ((a << 8) & 0xff00) | ((a >> 8) & 0x00ff);
 }
@@ -2304,7 +2423,7 @@ void Proc::do_ICA(unsigned short instr UNUSED)
 void Proc::do_ICL(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ((a >> 8) & 0x00ff);
 }
@@ -2312,7 +2431,7 @@ void Proc::do_ICL(unsigned short instr UNUSED)
 void Proc::do_ICR(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ((a << 8) & 0xff00);
 }
@@ -2325,7 +2444,7 @@ void Proc::do_ICR(unsigned short instr UNUSED)
 void Proc::do_ad1(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = a + 1;
@@ -2334,7 +2453,7 @@ void Proc::do_ad1(unsigned short instr UNUSED)
 void Proc::do_ad1_15(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = a + 1;
@@ -2344,7 +2463,7 @@ void Proc::do_ad1_15(unsigned short instr UNUSED)
 void Proc::do_adc(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = a + (c & 1);
@@ -2353,7 +2472,7 @@ void Proc::do_adc(unsigned short instr UNUSED)
 void Proc::do_adc_15(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = a + (c & 1);
@@ -2363,7 +2482,7 @@ void Proc::do_adc_15(unsigned short instr UNUSED)
 void Proc::do_cm1(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = (-1) + (c & 1);
@@ -2372,16 +2491,16 @@ void Proc::do_cm1(unsigned short instr UNUSED)
 void Proc::do_ltr(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
-  
+
   a = (a & 0xff00) | ((a >> 8) & 0xff);
 }
 
 void Proc::do_btr(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a |= ((a >> 8) & 0xff);
@@ -2390,7 +2509,7 @@ void Proc::do_btr(unsigned short instr UNUSED)
 void Proc::do_btl(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a |= ((a << 8) & 0xff00);
@@ -2399,7 +2518,7 @@ void Proc::do_btl(unsigned short instr UNUSED)
 void Proc::do_rtl(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = ((a << 8) & 0xff00) | (a & 0xff);
@@ -2408,7 +2527,7 @@ void Proc::do_rtl(unsigned short instr UNUSED)
 void Proc::do_rcb_ssp(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   c = 0;
   a &= 0x7fff;
@@ -2417,7 +2536,7 @@ void Proc::do_rcb_ssp(unsigned short instr UNUSED)
 void Proc::do_cpy(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   c = (a >> 15) & 1;
 }
@@ -2425,7 +2544,7 @@ void Proc::do_cpy(unsigned short instr UNUSED)
 void Proc::do_btb(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = ((a | (a << 8)) & 0xff00) | ((a | (a >> 8)) & 0xff);
@@ -2434,7 +2553,7 @@ void Proc::do_btb(unsigned short instr UNUSED)
 void Proc::do_bcl(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = (( a | (a >> 8)) & 0xff);
@@ -2443,7 +2562,7 @@ void Proc::do_bcl(unsigned short instr UNUSED)
 void Proc::do_bcr(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = (( a | (a << 8)) & 0xff00);
 }
@@ -2451,7 +2570,7 @@ void Proc::do_bcr(unsigned short instr UNUSED)
 void Proc::do_ld1(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = 1;
@@ -2461,7 +2580,7 @@ void Proc::do_ld1(unsigned short instr UNUSED)
 void Proc::do_isg(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = ((c & 1) << 1) - 1;
@@ -2471,7 +2590,7 @@ void Proc::do_isg(unsigned short instr UNUSED)
 void Proc::do_cma_aca(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = (~a) + (c & 1);
@@ -2481,7 +2600,7 @@ void Proc::do_cma_aca(unsigned short instr UNUSED)
 void Proc::do_cma_aca_c(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = (~a) + (c & 1);
@@ -2493,7 +2612,7 @@ void Proc::do_cma_aca_c(unsigned short instr UNUSED)
 void Proc::do_a2a(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = a + 2;
   half_cycles ++;
@@ -2502,7 +2621,7 @@ void Proc::do_a2a(unsigned short instr UNUSED)
 void Proc::do_a2c(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = a + ((c & 1) << 1);
   half_cycles++;
@@ -2511,7 +2630,7 @@ void Proc::do_a2c(unsigned short instr UNUSED)
 void Proc::do_ics(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = (a & 0x8000) | ((a >> 8) & 0xff);
 }
@@ -2519,7 +2638,7 @@ void Proc::do_ics(unsigned short instr UNUSED)
 void Proc::do_scb_a2a(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   c = 1;
   a = a + 2;
@@ -2529,7 +2648,7 @@ void Proc::do_scb_a2a(unsigned short instr UNUSED)
 void Proc::do_scb_aoa(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   c = 1;
   a = a + 1;
@@ -2539,7 +2658,7 @@ void Proc::do_scb_aoa(unsigned short instr UNUSED)
 void Proc::do_a2c_scb(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = a + ((c & 1) << 1);
   c = 1;
@@ -2549,7 +2668,7 @@ void Proc::do_a2c_scb(unsigned short instr UNUSED)
 void Proc::do_aca_scb(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = a + (c & 1);
   c = 1;
@@ -2559,7 +2678,7 @@ void Proc::do_aca_scb(unsigned short instr UNUSED)
 void Proc::do_icr_scb(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ((a << 8) & 0xff00);
   c = 1;
@@ -2568,7 +2687,7 @@ void Proc::do_icr_scb(unsigned short instr UNUSED)
 void Proc::do_rtl_scb(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ((a << 8) & 0xff00) | (a & 0xff);
   c = 1;
@@ -2577,7 +2696,7 @@ void Proc::do_rtl_scb(unsigned short instr UNUSED)
 void Proc::do_btb_scb(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   a = ((a | (a << 8)) & 0xff00) | ((a | (a >> 8)) & 0xff);
   c = 1;
@@ -2586,7 +2705,7 @@ void Proc::do_btb_scb(unsigned short instr UNUSED)
 void Proc::do_noa(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   /* Do Nothing */
 }
@@ -2600,7 +2719,7 @@ void Proc::do_noa(unsigned short instr UNUSED)
 void Proc::do_DXA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   disable_extend_pending = 1;
 }
@@ -2608,7 +2727,7 @@ void Proc::do_DXA(unsigned short instr UNUSED)
 void Proc::do_EXA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   disable_extend_pending = 0;
   extend = extend_allowed;
@@ -2617,7 +2736,7 @@ void Proc::do_EXA(unsigned short instr UNUSED)
 void Proc::do_ERM(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   pi_pending = true;
   restrict = true;
@@ -2629,7 +2748,7 @@ void Proc::do_ERM(unsigned short instr UNUSED)
 void Proc::do_RMP(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 }
 
@@ -2640,7 +2759,7 @@ void Proc::do_RMP(unsigned short instr UNUSED)
 void Proc::do_DBL(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   dp = 1;
@@ -2686,7 +2805,7 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
       // Essentially nothing happens
     } else if (lsc < -1) {
 
-      if ((lsc == -16) && 
+      if ((lsc == -16) &&
           (d01ff != azzzz))
         c = false;
 
@@ -2732,7 +2851,7 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
         if ((a >> 15) & 1)
           a |= (-1 << 16);
         b = d & 0xffff;
-        if ((b >> 15) & 1)        
+        if ((b >> 15) & 1)
           b |= (-1 << 16);
         madff = true;
         dogff = true;
@@ -2766,7 +2885,7 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
     }
     e = b;
 
-    /* 
+    /*
        printf("   d = %06d:%07o e = %06d:%06o\n",
        d, (d & 0x1ffff),
        e, (e & 0xffff));
@@ -2784,7 +2903,7 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
   a = d & 0xffff;
   if ((a >> 15) & 1)
     a |= (-1 << 16);
-        
+
   /*
     printf("T4\n");
     printf("  a = %06d:%06o b = %06d:%06o a0=%d c=%d\n",
@@ -2792,7 +2911,7 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
     b, (b & 0xffff),
     a00ff, c);
   */
-  
+
   ra = a;
   rb = b;
   cbitf = c;
@@ -2808,7 +2927,7 @@ static int divide(short &ra, short &rb, const short &rm, short &sc, bool &cbitf)
 void Proc::do_DIV(unsigned short instr)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   const short rm = (signed short) read(ea(instr));
@@ -2826,10 +2945,10 @@ static long multiply(short &ra, short &rb, const short &rm, short &sc)
   int g, h;
   int d, e;
   long p, q;
-  
+
   if (m & 0x8000) m |= ((~0) << 16);
   if (a & 0x8000) a |= ((~0) << 16);
-  
+
   q = a * m;
 
   b = a;
@@ -2851,7 +2970,7 @@ static long multiply(short &ra, short &rb, const short &rm, short &sc)
         b = ((((d & 2) != 0) ? ((~0) << 15) : 0) |
              ((d & 1) << 14) |
              ((e >> 2) & 0x3fff));
-        b17 = ((e & 2) != 0);        
+        b17 = ((e & 2) != 0);
         a = d >> 2;
       }
     }
@@ -2917,7 +3036,7 @@ static long multiply(short &ra, short &rb, const short &rm, short &sc)
 void Proc::do_MPY(unsigned short instr)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   const short rm = (signed short) read(ea(instr));
@@ -2932,7 +3051,7 @@ void Proc::do_NRM(unsigned short instr UNUSED)
   signed short d;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   sc = 0;
@@ -2954,7 +3073,7 @@ void Proc::do_NRM(unsigned short instr UNUSED)
 void Proc::do_SCA(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   a = sc & 0x3f;
@@ -2963,7 +3082,7 @@ void Proc::do_SCA(unsigned short instr UNUSED)
 void Proc::do_SGL(unsigned short instr UNUSED)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   dp = 0;
@@ -2973,7 +3092,7 @@ void Proc::do_iab_sca(unsigned short instr UNUSED)
 {
   signed short d;
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   d = sc;
@@ -3012,7 +3131,7 @@ void Proc::generic_shift(unsigned short instr)
   signed short lsc;
 
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
 
   // XXXXX - this was missing XXXXXXXXXX
@@ -3078,7 +3197,7 @@ void Proc::generic_skip(unsigned short instr)
 
   int cond = 1;
 
-  /*  
+  /*
    * R  - reverse condition
    * P  - accumulator positive
    * M  - memory parity error
@@ -3090,7 +3209,7 @@ void Proc::generic_skip(unsigned short instr)
    * S4 - sense switch 4 reset
    * C  - C-bit zero.
    */
- 
+
   if (instr & 0x001) cond &= ((~((int) c)) & 1);
   if (instr & 0x002) cond &= ((~ss[3]) & 1);
   if (instr & 0x004) cond &= ((~ss[2]) & 1);
@@ -3146,7 +3265,7 @@ void Proc::test_generic_skip()
 void Proc::generic_group_A(unsigned short instr)
 {
 #if (DEBUG)
-  printf("%s\n", __PRETTY_FUNCTION__);  
+  printf("%s\n", __PRETTY_FUNCTION__);
 #endif
   // first break the instruction into bits
   bool M[17];
@@ -3235,7 +3354,7 @@ void Proc::generic_group_A(unsigned short instr)
 
   if (EDA1R) // enable D1 to A1 register
     a = (a & 0x7fff) | ((a | d) & 0x8000);
-  
+
   if (overflow_to_c)
     c = false;
 
@@ -3311,3 +3430,12 @@ void Proc::test_generic_group_A()
 }
 
 #endif
+
+void Proc::write_prt(unsigned int n, uint16_t v)
+{
+  int i;
+
+  for (i=15; i>0; --i) {
+    prt[(16*n)+i] = (v >> i) & 1;
+  }
+}

@@ -18,6 +18,7 @@
  *
  */
 
+#include <vector>
 #include "instr.hh" // To get GENERIC_GROUP_A
 #include "event_queue.hh"
 
@@ -154,7 +155,8 @@ private:
   unsigned short p;
   unsigned short y; // Address register
   unsigned short j; // base sector relocation
-
+  std::vector<bool> prt;
+  
   // sampled I/O values
   bool drlin;
   unsigned short inb;
@@ -177,6 +179,7 @@ private:
   bool start_button_interrupt;
   bool rtclk;
   bool melov; // Memory Lockout Violation
+  bool pending_melov;
   bool break_flag;
   bool break_intr;
   unsigned int break_addr;
@@ -234,6 +237,7 @@ private:
   struct Btrace *btrace_buf;
 
   void increment_p(unsigned short n = 1);
+  void write_prt(unsigned int n, uint16_t v);
 
   /* These routines are public in order that the instruction
      tables can refer to them. */
