@@ -53,6 +53,7 @@ using namespace std;
 #define DEBUG 0
 #define CORE_SIZE 32768
 #define TRACE_BUF (1024*1024)
+#define START_BUTTON_DOWN_TIME 1000
 
 #ifdef __GNUC__
 #define UNUSED __attribute__ ((unused))
@@ -161,6 +162,8 @@ public:
 };
 #endif
 #define MFM_REASON_LIMIT 0
+#define MFM_REASON_START_DOWN 1 // Start-button interrupt
+#define MFM_REASON_START_UP   2 // Start-button interrupt
 
 // {{{ Proc::Proc(STDTTY *stdtty)
 
@@ -274,12 +277,33 @@ void Proc::set_limit(unsigned long long half_cycles)
 #endif
 }
 
+void Proc::set_sbi(unsigned long long half_cycles)
+{
+#ifndef RTL_SIM
+  event_queue.queue(this->half_cycles + half_cycles, mfm, MFM_REASON_START_DOWN);
+#endif
+}
+
 void Proc::event(int reason)
 {
   switch (reason) {
   case MFM_REASON_LIMIT:
     printf("\n%010lu: limit reached\n", half_cycles);
     goto_monitor();
+    break;
+
+  case MFM_REASON_START_DOWN:
+    if (run) {
+      start_button();
+    }
+    break;
+
+  case MFM_REASON_START_UP:
+    start_button_interrupt = false;
+    // If a HLT occurred after start went down (causing the start-button
+    // interrupt) then as the start button goes up the processor starts
+    // again.
+    run = true;
     break;
 
   default:
@@ -532,6 +556,7 @@ void Proc::master_clear(void)
   p = 0;
   y = 0;
   j = 0;
+  op = 0;
 
   prt.assign(64, false);
 
@@ -866,12 +891,6 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
        * this instruction.
        */
       (this->*instr_table.dispatch(instr))(instr);
-
-      /*
-       * We either interrupted, or interrupts weren't
-       * enabled. Either way clear this flag.
-       */
-      start_button_interrupt = 0;
     }
 
     // binary trace ...
@@ -892,6 +911,8 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     p = y; /* Front panel updates Y not P
             * So copy Y into P before fetching */
   }
+
+  op = (c << 8) | (pi << 7) | (restrict << 5) | (extend << 4) | (dp << 3);
 
   break_flag = false;
 
@@ -955,6 +976,7 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       (void) event_queue.call_devices(half_cycles);
     } else {
       event_queue.flush_events(half_cycles);
+      start_button_interrupt = 0;
     }
 #endif
   }
@@ -1190,18 +1212,26 @@ int Proc::get_wrt_info(unsigned short addr[2], unsigned short data[2])
 /*
  * start button routines
  */
-/*
-  void Proc::set_start_button_interrupt()
-  {
-  start_button_interrupt = 1;
-  }
-*/
 
 void Proc::start_button()
 {
   //printf("%s\n", __PRETTY_FUNCTION__);
-  start_button_interrupt = 1;
-  //strt->queue_start();
+
+  // What the real hardware does is assert the interrupt line while
+  // the start button is depressed. If during this time the interrupts
+  // are enabled then an interrupt occurs (the program can't tell it
+  // was caused by the start button and can't acknowledge that particular
+  // interrupt source).
+  //
+  // This is a bit of a kludge, but works from the monitor as well as
+  // the graphical front-panel (for scripted runs) - pretend the button
+  // was depressed for a fixed period of time.
+
+  start_button_interrupt = true;
+
+#ifndef RTL_SIM
+  event_queue.queue(this->half_cycles + START_BUTTON_DOWN_TIME, mfm, MFM_REASON_START_UP);
+#endif
 }
 
 void Proc::goto_monitor()
@@ -2104,10 +2134,12 @@ void Proc::do_HLT(unsigned short instr UNUSED)
 #if (DEBUG)
   printf("%s\n", __PRETTY_FUNCTION__);
 #endif
+
   if (restrict) {
     pending_melov = true;
   } else {
     run = false;
+    goto_monitor();
   }
   ++half_cycles; // 1.5 cycle instruction
 }

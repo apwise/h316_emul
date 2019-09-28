@@ -105,6 +105,7 @@ public:
   void start_button();
   void goto_monitor();
   void set_limit(unsigned long long half_cycles);
+  void set_sbi(unsigned long long half_cycles);
   
   const char *dis();
   void flush_events();
@@ -151,7 +152,7 @@ private:
   signed short b;
   signed short x;
   signed short m;
-  signed short op; // doesn't do anything!
+  signed short op;
   unsigned short p;
   unsigned short y; // Address register
   unsigned short j; // base sector relocation

@@ -56,6 +56,7 @@ private:
   bool stop(bool &run, int words, char **cmd);
   bool go(bool &run, int words, char **cmd);
   bool limit(bool &run, int words, char **cmd);
+  bool sbi(bool &run, int words, char **cmd);
   bool ss(bool &run, int words, char **cmd);
   bool ptr(bool &run, int words, char **cmd);
   bool ptp(bool &run, int words, char **cmd);

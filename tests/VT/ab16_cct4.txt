@@ -1,30 +1,39 @@
 ptr ../../tapes/VT/AB16-CCT4_slst.ptp
 g'1
 cl
+sbi 1000000
 g'1000
 a
 ss1 1
-g
+sbi 1000
+cont
 a
 ss2 1
-g
+sbi 1000
+cont
 a
 ss3 1
-g
+sbi 1000
+cont
 a
 ss4 1
-g
+sbi 1000
+cont
 a
 ss1 0
-g
+sbi 1000
+cont
 a
 ss2 0
-g
+sbi 1000
+cont
 a
 ss3 0
-g
+sbi 1000
+cont
 a
 ss4 0
-limit 681760454
-g
+limit 680832202
+cont
 q
+
