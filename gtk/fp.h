@@ -55,6 +55,7 @@ struct FP_INTF
    * buttons is depressed
    */
   short *reg_value[RB_NUM+1];
+  short addr_mask;
 
   /*
    * (Boolean) sense switch values
