@@ -610,7 +610,8 @@ struct FP_INTF *Proc::fp_intf()
   intf->reg_value[RB_PY] = (short *)&y;
   intf->reg_value[RB_OP] = &op;
   intf->reg_value[RB_M] = &m;
-
+  intf->addr_mask = addr_mask;
+  
   for (i=0; i<4; i++)
     intf->ssw[i] = &ss[i];
 
@@ -948,6 +949,9 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
     break_flag = true;
     break_intr = true;
     break_addr = 062;
+    
+    pi = pi_pending = 0; // disable interrupts
+    extend = extend_allowed; // force extended addressing
     melov = pending_melov = false;
     restrict = false;
   } else {
@@ -1001,7 +1005,8 @@ unsigned short Proc::ea(unsigned short instr)
   bool indirect;
   bool indexing;
   bool first = true;
-
+  unsigned int indirect_count = 8;
+  
   m = instr;
   y = fetched_p; // Address of instr (i.e. before increment)
 
@@ -1038,13 +1043,22 @@ unsigned short Proc::ea(unsigned short instr)
       y = (d & 0xbfff) | (y & 0x4000);
 
     if (indirect) {
-      half_cycles += 2;
-
-      (void) read(y & 0x7fff); /* sets m */
-
-      sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
-      if (!extend)
-        indexing = ((m & 0x4000) != 0);
+      if (indirect_count > 0) {
+        half_cycles += 2;
+        
+        (void) read(y & 0x7fff); /* sets m */
+        
+        sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
+        if (!extend) {
+          indexing = ((m & 0x4000) != 0);
+        }
+        if (restrict) {
+          --indirect_count;
+        }
+      } else {
+        melov = true;
+        indirect = false;
+      }
     }
 
     first = false;
@@ -1973,8 +1987,9 @@ void Proc::do_INA(unsigned short instr)
         a = ~0;
       }
       rerun = false;
-    } else
+    } else {
       rerun = optimize_io_poll(instr);
+    }
 #endif
   } while (rerun);
   if (restrict) {
@@ -2043,15 +2058,13 @@ void Proc::do_SMK(unsigned short instr)
 #endif
   half_cycles += 2;
   if (restrict) {
-#ifdef RTL_SIM
-    if (drlin) {
-      increment_p();
-    }
-#else
-    if (devices[instr & 0x3f]->sks(instr)) {
-      increment_p();
-    }
-#endif
+    /*
+     * The PRM claims that in restrict mode all I/O instructions
+     * (including SMK) behave like SKS. However, this is incorrect since
+     * the prevention of the skip based on decoding the device address
+     * is not affected by being in restrict mode. SMK therefore behaves
+     * like a NOP.
+     */
     melov = true;
   } else {
     unsigned int function = (instr >> 6) & 0x0f;
@@ -3465,7 +3478,7 @@ void Proc::write_prt(unsigned int n, uint16_t v)
 {
   int i;
 
-  for (i=15; i>0; --i) {
-    prt[(16*n)+i] = (v >> i) & 1;
+  for (i=0; i<16; i++) {
+    prt[(16*n)+i] = (v >> (15-i)) & 1;
   }
 }
