@@ -1,0 +1,22 @@
+
+MON> ptr ../../tapes/VT/X16-08T1_slst.ptp
+MON> g'1
+
+MON> cl
+MON> # Load A with 4 (32K of memory)
+MON> m'1001,'005777
+MON> m'1777,4
+MON> # Make end of pass jump to the TYPO routine
+MON> m'2040,'003066
+MON> # Run continously (don't halt each pass)
+MON> m'2060,'140040
+MON> #
+MON> cl
+MON> limit 120000
+MON> g'1000
+
+X16-08T1 PASS 000000001      
+X16-08T1 PASS 000000002      
+0003939443: limit reached
+
+MON> q

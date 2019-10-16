@@ -1,0 +1,15 @@
+ptr ../../tapes/VT/X16-08T1_slst.ptp
+g'1
+cl
+# Load A with 4 (32K of memory)
+m'1001,'005777
+m'1777,4
+# Make end of pass jump to the TYPO routine
+m'2040,'003066
+# Run continously (don't halt each pass)
+m'2060,'140040
+#
+cl
+limit 120000
+g'1000
+q
