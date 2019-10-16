@@ -1016,6 +1016,11 @@ unsigned short Proc::ea(unsigned short instr)
   do {
     indirect = ((m & 0x8000) != 0);
 
+    if ((restrict) && (indirect_count == 0)) {
+      melov = true;
+      indirect = false;
+    }
+    
     if (sec_zero) {
       if ((extend) || (!extend_allowed))
         d = ((j & 0x7e00) | (m & 0x81ff));
@@ -1043,21 +1048,17 @@ unsigned short Proc::ea(unsigned short instr)
       y = (d & 0xbfff) | (y & 0x4000);
 
     if (indirect) {
+      half_cycles += 2;
+
+      (void) read(y & 0x7fff); /* sets m */
+      
+      sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
+      if (!extend) {
+        indexing = ((m & 0x4000) != 0);
+      }
+      
       if (indirect_count > 0) {
-        half_cycles += 2;
-        
-        (void) read(y & 0x7fff); /* sets m */
-        
-        sec_zero = ((m & ((extend) ? 0x7e00 : 0x3e00) ) == 0);
-        if (!extend) {
-          indexing = ((m & 0x4000) != 0);
-        }
-        if (restrict) {
-          --indirect_count;
-        }
-      } else {
-        melov = true;
-        indirect = false;
+        --indirect_count;
       }
     }
 
