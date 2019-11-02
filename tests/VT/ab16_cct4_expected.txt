@@ -3,6 +3,7 @@ MON> ptr ../../tapes/VT/AB16-CCT4_slst.ptp
 MON> g'1
 
 MON> cl
+MON> sbi 1000000
 MON> g'1000
 
 
@@ -11,49 +12,56 @@ SENS SW TO A REG 8 TIMES
 MON> a
 A: 0x0000 '000000 0.000.000.000.000.000
 MON> ss1 1
-MON> g
+MON> sbi 1000
+MON> cont
 
 MON> a
 A: 0x8000 '100000 1.000.000.000.000.000
 MON> ss2 1
-MON> g
+MON> sbi 1000
+MON> cont
 
 MON> a
 A: 0xc000 '140000 1.100.000.000.000.000
 MON> ss3 1
-MON> g
+MON> sbi 1000
+MON> cont
 
 MON> a
 A: 0xe000 '160000 1.110.000.000.000.000
 MON> ss4 1
-MON> g
+MON> sbi 1000
+MON> cont
 
 MON> a
 A: 0xf000 '170000 1.111.000.000.000.000
 MON> ss1 0
-MON> g
+MON> sbi 1000
+MON> cont
 
 MON> a
 A: 0x7000 '070000 0.111.000.000.000.000
 MON> ss2 0
-MON> g
+MON> sbi 1000
+MON> cont
 
 MON> a
 A: 0x3000 '030000 0.011.000.000.000.000
 MON> ss3 0
-MON> g
+MON> sbi 1000
+MON> cont
 
 MON> a
 A: 0x1000 '010000 0.001.000.000.000.000
 MON> ss4 0
-MON> limit 681760454
-MON> g
+MON> limit 680832202
+MON> cont
 
 DONE
 CP IS  316   MMSZ 32K 
 
 PS  0001
 PS  0002
-0700000000: limit reached
+0700000003: limit reached
 
 MON> q
