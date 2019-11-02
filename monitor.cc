@@ -61,7 +61,8 @@ struct CmdTab Monitor::commands[] =
     {"quit",       1, 0, 0, "Quit emulation",                               &Monitor::quit},
     {"continue",   1, 0, 0, "Continue",                                     &Monitor::cont},
     {"stop",       1, 0, 0, "Stop",                                         &Monitor::cont},
-    {"limit",      0, 1, 1, "half_cycles : Set limit on simulated time",    &Monitor::limit},
+    {"limit",      1, 1, 1, "half_cycles : Set limit on simulated time",    &Monitor::limit},
+    {"sbi",        1, 1, 1, "half_cycles : Schedule startbutton interrupt", &Monitor::sbi},
     {"go",         0, 0, 1, "[addr] Start execution",                       &Monitor::go},
     {"ss",         1, 1, 2, "num [0/1] Get/Set Sense Switch",               &Monitor::ss},
     {"ptr",        1, 1, 1, "filename : Set Papertape Reader filename",     &Monitor::ptr},
@@ -445,12 +446,28 @@ bool Monitor::limit(bool &run, int words, char **cmd)
   bool ok=1;
 
   uint_least64_t half_cycles;
-  
+
   if (words > 1)
     {
       half_cycles = parse_number(cmd[1], ok);
       if (ok)
         p->set_limit(half_cycles);
+    }
+
+  return ok;
+}
+
+bool Monitor::sbi(bool &run, int words, char **cmd)
+{
+  bool ok=1;
+
+  uint_least64_t half_cycles;
+  
+  if (words > 1)
+    {
+      half_cycles = parse_number(cmd[1], ok);
+      if (ok)
+        p->set_sbi(half_cycles);
     }
 
   return ok;

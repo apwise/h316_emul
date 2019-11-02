@@ -269,11 +269,14 @@ static GtkWidget *sixteen(struct FRONT_PANEL *fp)
 static void set_sixteen(struct FRONT_PANEL *fp)
 {
   int i;
+  short v = (((fp->current_reg == RB_PY) ? fp->intf->addr_mask : ~0) &
+             (*fp->intf->reg_value[fp->current_reg]));
 
-  for (i=0; i<16; i++)
+  for (i=0; i<16; i++) {
+    int bit = ((v & (1<<i)) != 0);
     gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON (fp->bit[i]->widget),
-                                 ((*fp->intf->reg_value[fp->current_reg]) &
-                                  (1<<i)) ? 1 : 0);
+                                 bit );
+  }
 }
 
 /**********************************************************************
@@ -636,6 +639,7 @@ static void start_callback (GtkWidget *widget, gpointer data)
       if ((fp->intf->mode == FPM_RUN) && (fp->power))
         {
           fp->intf->running = 1;
+          fp->intf->start_button_interrupt_pending = 1;
           fp->run_idle_tag = gtk_idle_add( (GtkFunction) run_idle_function,
                                            (gpointer) fp );
         }
