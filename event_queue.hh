@@ -23,10 +23,14 @@
 
 class IODEV;
 
+class Proc;
+
 class EventQueue
 {
 public:
   typedef uint_least64_t EventTime;
+
+  EventQueue(Proc *p);
 
   void queue(EventTime event_time, IODEV *device = 0, int reason = 0);
   bool call_devices(EventTime event_time);
@@ -35,7 +39,8 @@ public:
   bool next_event_time(EventTime &event_time);
   
 private:
-
+  Proc *p;
+  
   typedef std::pair<IODEV *, int> Event;
   typedef std::multimap<EventTime, Event> event_queue_t;
   event_queue_t event_queue;

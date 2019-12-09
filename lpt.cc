@@ -70,7 +70,7 @@ void LPT::master_clear()
 LPT::STATUS LPT::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "%s Input from line printer\n", __PRETTY_FUNCTION__);
-  exit(1);
+  p->abort();
   return STATUS_READY;
 }
 
@@ -96,7 +96,7 @@ void LPT::open_file()
           fprintf(((pending_filename) ? stderr : stdout),
                   "Could not open <%s> for writing\n", cp);
           if (pending_filename)
-            exit(1);
+            p->abort();
         }
       line_number = 0;
 
@@ -146,7 +146,7 @@ LPT::STATUS LPT::ota(unsigned short instr, signed short data)
 
     default:
       fprintf(stderr, "LPT: OTA '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   
   return status(r);
@@ -226,7 +226,7 @@ LPT::STATUS LPT::ocp(unsigned short instr)
 
     default:
       fprintf(stderr, "LPT: OCP '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
 
   return STATUS_READY;
@@ -260,7 +260,7 @@ LPT::STATUS LPT::sks(unsigned short instr)
 
     default:
       fprintf(stderr, "LPT: SKS '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   
   return status(r);
@@ -290,7 +290,7 @@ void LPT::event(int reason)
       
     default:
       fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      exit(1);
+      p->abort();
       break;
     }
 }

@@ -171,7 +171,7 @@ void PTR::open_file(void)
           fprintf(((pending_filename) ? stderr : stdout),
                   "Could not open <%s> for reading\n", cp);
           if (pending_filename)
-            exit(1);
+            p->abort();
         }
       
       if (pending_filename)
@@ -226,7 +226,7 @@ PTR::STATUS PTR::ocp(unsigned short instr)
       
     default:
       fprintf(stderr, "PTR: OCP '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   return STATUS_READY;
 }
@@ -242,7 +242,7 @@ PTR::STATUS PTR::sks(unsigned short instr)
 
     default:
       fprintf(stderr, "PTR: SKS '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
 
   return status(r);
@@ -251,7 +251,7 @@ PTR::STATUS PTR::sks(unsigned short instr)
 PTR::STATUS PTR::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-  exit(1);
+  p->abort();
 
   return STATUS_READY;
 }
@@ -329,7 +329,7 @@ void PTR::event(int reason)
 
     default:
       fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      exit(1);
+      p->abort();
       break;
     }
 }

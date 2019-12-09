@@ -82,7 +82,7 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
         case 0204: data = data_buf & 0x3f; break;
         default:
           fprintf(stderr, "ASR_INTF: INA '%04o\n", instr&0x3ff);
-          exit(1);
+          p->abort();
         }
                         
       output_pending = 0;
@@ -133,7 +133,7 @@ ASR_INTF::STATUS ASR_INTF::ocp(unsigned short instr)
                         
     default:
       fprintf(stderr, "ASR_INTF: OCP '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   return STATUS_READY;
 }
@@ -151,7 +151,7 @@ ASR_INTF::STATUS ASR_INTF::sks(unsigned short instr)
                     ((data_buf & 0x7f) == STOP_CODE)); break;
     default:
       fprintf(stderr, "ASR_INTF: SKS '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
 
   //if (( (instr & 0x03ff) == 0004) && r)
@@ -176,7 +176,7 @@ ASR_INTF::STATUS ASR_INTF::ota(unsigned short instr, signed short data)
           break;
         default:
           fprintf(stderr, "ASR_INTF: OTA '%04o\n", instr&0x3ff);
-          exit(1);
+          p->abort();
         }
                         
       ready = 0;
@@ -252,7 +252,7 @@ void ASR_INTF::event(int reason)
 
     default:
       fprintf(stderr, "Unexpected reason: %d\n", reason);
-      exit(1);
+      p->abort();
     }
 
 }

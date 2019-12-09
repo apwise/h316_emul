@@ -72,7 +72,7 @@ void PTP::master_clear()
 PTP::STATUS PTP::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "%s Input from punch\n", __PRETTY_FUNCTION__);
-  exit(1);
+  p->abort();
   return STATUS_READY;
 }
 
@@ -115,7 +115,7 @@ PTP::STATUS PTP::ota(unsigned short instr, signed short data)
       
     default:
       fprintf(stderr, "PTP: OTA '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   
   return status(r);
@@ -148,7 +148,7 @@ void PTP::turn_power_on()
               fprintf(((pending_filename) ? stderr : stdout),
                       "Could not open <%s> for writing\n", cp);
               if (pending_filename)
-                exit(1);
+                p->abort();
             }
           
           if (pending_filename)
@@ -191,7 +191,7 @@ PTP::STATUS PTP::ocp(unsigned short instr)
       
     default:
       fprintf(stderr, "PTP: OCP '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   return STATUS_READY;
 }
@@ -208,7 +208,7 @@ PTP::STATUS PTP::sks(unsigned short instr)
       
     default:
       fprintf(stderr, "PTP: SKS '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   
   return status(r);
@@ -240,7 +240,7 @@ void PTP::event(int reason)
                         
     default:
       fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      exit(1);
+      p->abort();
       break;
     }
 }

@@ -81,7 +81,7 @@ RTC::STATUS RTC::ocp(unsigned short instr)
     
   default:
     fprintf(stderr, "RTC: OCP '%04o\n", instr&0x3ff);
-    exit(1);
+    p->abort();
   }
   return STATUS_READY;
 }
@@ -95,7 +95,7 @@ RTC::STATUS RTC::sks(unsigned short instr)
     
   default:
     fprintf(stderr, "RTC: SKS '%04o\n", instr&0x3ff);
-    exit(1);
+    p->abort();
   }
   
   return status(r);
@@ -104,7 +104,7 @@ RTC::STATUS RTC::sks(unsigned short instr)
 RTC::STATUS RTC::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-  exit(1);
+  p->abort();
 
   return STATUS_READY;
 }
@@ -139,7 +139,7 @@ void RTC::event(int reason)
     
   default:
     fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-    exit(1);
+    p->abort();
     break;
   }
 }
