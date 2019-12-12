@@ -24,6 +24,11 @@
 #include "proc.hh"
 #include "iodev.hh"
 
+EventQueue::EventQueue(Proc *p)
+  : p(p)
+{
+}
+
 void EventQueue::queue(EventTime event_time,
                        IODEV *device,
                        int reason)
@@ -55,7 +60,7 @@ bool EventQueue::call_devices(EventTime event_time)
     if (++event_count > MAXIMUM_EVENTS) {
       std::cerr << "More than " << MAXIMUM_EVENTS << " events at time " << event_time
                 << ", infinite loop?" << std::endl;
-      std::exit(1);
+      p->abort();
     }
   }
   
