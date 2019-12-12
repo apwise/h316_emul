@@ -175,6 +175,7 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
   , exit_code(0)
   , exit_called(false)
   , instr_table()
+  , event_queue(this)
 {
   long i;
 
@@ -309,7 +310,7 @@ void Proc::event(int reason)
 
   default:
     fprintf(stderr, "Bad event reason <%d>\n", reason);
-    exit(1);
+    abort();
   }
 }
 

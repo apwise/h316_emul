@@ -276,7 +276,7 @@ void VDMC::event(int reason)
       
     default:
       fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      exit(1);
+      p->abort();
       break;
     }
   }
