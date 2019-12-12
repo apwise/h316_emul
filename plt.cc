@@ -108,14 +108,14 @@ void PLT::master_clear()
 PLT::STATUS PLT::ina(unsigned short instr, signed short &data)
 {
   fprintf(stderr, "%s Input from plotter\n", __PRETTY_FUNCTION__);
-  exit(1);
+  p->abort();
   return STATUS_READY;
 }
 
 PLT::STATUS PLT::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "%s Output to plotter\n", __PRETTY_FUNCTION__);
-  exit(1);
+  p->abort();
   return STATUS_READY;
 }
 
@@ -141,7 +141,7 @@ void PLT::ensure_file_open()
         fprintf(((pending_filename) ? stderr : stdout),
                 "Could not open <%s> for writing\n", cp);
         if (pending_filename)
-          exit(1);
+          p->abort();
       }
         
       if (pending_filename)
@@ -258,7 +258,7 @@ PLT::STATUS PLT::ocp(unsigned short instr)
     p->queue(microseconds, this, PLT_REASON_NOT_BUSY );
   } else {
     fprintf(stderr, "PLT: OCP '%04o\n", instr & 0x3ff);
-    exit(1);
+    p->abort();
   }
   return STATUS_READY;
 }
@@ -275,7 +275,7 @@ PLT::STATUS PLT::sks(unsigned short instr)
       
     default:
       fprintf(stderr, "PLT: SKS '%04o\n", instr&0x3ff);
-      exit(1);
+      p->abort();
     }
   
   return status(r);
@@ -309,7 +309,7 @@ void PLT::event(int reason)
                         
     default:
       fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      exit(1);
+      p->abort();
       break;
     }
 }
