@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1998, 2001, 2012  Adrian Wise
+ * Copyright (C) 1998, 2001, 2012, 2020  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,11 +47,8 @@ static char *instructions_text[] =
 };
 
 static void popup_about_notebook(enum ABOUT_SECTIONS default_section);
-static void widget_popup_about_notebook(GtkWidget *widget,
-                                        enum ABOUT_SECTIONS default_section);
 
 #define COPYRIGHT_TIMEOUT 3000
-
 
 struct COPYRIGHT_STRUCT 
 {
@@ -63,113 +60,92 @@ static gint copyright_timeout( gpointer data)
 {
   struct COPYRIGHT_STRUCT *cs = (struct COPYRIGHT_STRUCT *) data;
 
-  gtk_widget_destroy(cs->window);
-  
+  gtk_widget_destroy(GTK_WIDGET(cs->window));
   g_free(cs);
+  
   return FALSE;
 }
 
-static void copyright_close( GtkWidget *widget, gpointer data )
+static void copyright_close (GtkDialog *dialog,
+                             gpointer   user_data)
 {
-  struct COPYRIGHT_STRUCT *cs = (struct COPYRIGHT_STRUCT *) data;
+  struct COPYRIGHT_STRUCT *cs = (struct COPYRIGHT_STRUCT *) user_data;
 
-  gtk_timeout_remove(cs->timeout_tag);
+  g_source_remove(cs->timeout_tag);
+  (void) copyright_timeout(user_data);
+}
+
+static void copyright_response (GtkDialog *dialog,
+                                gint       response_id,
+                                gpointer   user_data)
+{
+  struct COPYRIGHT_STRUCT *cs = (struct COPYRIGHT_STRUCT *) user_data;
   
-  gtk_widget_destroy(cs->window);
+  switch (response_id) {
+    
+  case GTK_RESPONSE_CLOSE: case GTK_RESPONSE_DELETE_EVENT:
+    g_source_remove(cs->timeout_tag);
+    (void) copyright_timeout(user_data);
+    break;
+  case AB_WARRANTY: case AB_COPYING:
+    popup_about_notebook(response_id);
+    break;
 
-  g_free(cs);
+  }
 }
 
 void copyright()
 {
   GtkWidget *window;
-  GtkWidget *hbox, *text, *vscrollbar;
-  GtkWidget *button;
+  GtkWidget *page;
+  GtkWidget *text;
+  GtkTextBuffer *buffer;
   int i;
-  struct COPYRIGHT_STRUCT *cs;
+  struct COPYRIGHT_STRUCT *cs = NULL;
 
-  window = gtk_dialog_new ();
+  window = gtk_dialog_new_with_buttons("Copyright", NULL, 0,
+                                       "Warranty",  AB_WARRANTY,
+                                       "Copying",   AB_COPYING,
+                                       "_Close",    GTK_RESPONSE_CLOSE,
+                                       NULL);
 
-  gtk_window_set_title (GTK_WINDOW (window), "Copyright");
-  gtk_container_border_width (GTK_CONTAINER (window), 0);
-  gtk_widget_set_usize(window, 500, 200);
+  gtk_widget_set_size_request(window, 500, 250);
 
-  hbox = gtk_hbox_new (0, 0); 
-
-  text = gtk_text_new( NULL, NULL );
-  gtk_text_set_editable (GTK_TEXT (text), FALSE);
-  gtk_text_set_word_wrap(GTK_TEXT (text), TRUE);
-
-  gtk_box_pack_start(GTK_BOX(hbox), text, TRUE, TRUE, 0);
+  page = gtk_scrolled_window_new(NULL, NULL);
+  text  = gtk_text_view_new( );;
+  buffer = gtk_text_view_get_buffer( GTK_TEXT_VIEW(text) );;
+ 
+  gtk_text_view_set_editable (GTK_TEXT_VIEW (text), FALSE);
+  gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW (text), GTK_WRAP_WORD);
   gtk_widget_show (text); 
 
-  vscrollbar = gtk_vscrollbar_new (GTK_TEXT(text)->vadj);
-  gtk_box_pack_start(GTK_BOX(hbox), vscrollbar, FALSE, FALSE, 0);
-  gtk_widget_show (vscrollbar); 
+  gtk_container_add( GTK_CONTAINER(page), text);
+  gtk_widget_show (page); 
 
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG(window)->vbox), hbox, 
-                      TRUE, TRUE, 0);
-  gtk_widget_show (hbox); 
+  gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(window))),
+                     page, TRUE, TRUE, 0);
 
-  gtk_widget_realize (text);
-  gtk_text_freeze (GTK_TEXT (text));
+  for (i=0; copyright_text[i]; i++) {
+    gtk_text_buffer_insert_at_cursor( buffer,
+                                      copyright_text[i], -1);
+  }
+  for (i=0; instructions_text[i]; i++) {
+    gtk_text_buffer_insert_at_cursor( buffer,
+                                      instructions_text[i], -1);
+  }
 
-  for (i=0; copyright_text[i]; i++)
-    gtk_text_insert( GTK_TEXT(text),
-                     NULL, &text->style->black, NULL,
-                     copyright_text[i],
-                     -1);
-  for (i=0; instructions_text[i]; i++)
-    gtk_text_insert( GTK_TEXT(text),
-                     NULL, &text->style->black, NULL,
-                     instructions_text[i],
-                     -1);
-
-  gtk_text_thaw (GTK_TEXT (text));
-  
   cs = g_malloc(sizeof(struct COPYRIGHT_STRUCT));
-
-  cs->timeout_tag = gtk_timeout_add( COPYRIGHT_TIMEOUT,
-                                     copyright_timeout,
-                                     cs);
+  
   cs->window = window;
+  cs->timeout_tag = g_timeout_add( COPYRIGHT_TIMEOUT,
+                                   copyright_timeout,
+                                   cs);
 
-  hbox = gtk_hbox_new (TRUE, 10); 
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (window)->action_area),
-                      hbox, TRUE, TRUE, 0);
-
-  button = gtk_button_new_with_label ("Warranty");
-  gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, TRUE, 0);
-  gtk_signal_connect(GTK_OBJECT (button), "clicked",
-                     (GtkSignalFunc) widget_popup_about_notebook,
-                     (gpointer) AB_WARRANTY);
-  gtk_widget_show(button);
-
-  button = gtk_button_new_with_label ("Copying");
-  gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, TRUE, 0);
-  gtk_signal_connect(GTK_OBJECT (button), "clicked",
-                     (GtkSignalFunc) widget_popup_about_notebook,
-                     (gpointer) AB_COPYING);
-  gtk_widget_show(button);
-
-  
-  /* Add a "close" button to the bottom of the dialog */
-  button = gtk_button_new_with_label ("close");
-  gtk_signal_connect(GTK_OBJECT (button), "clicked",
-                     (GtkSignalFunc) copyright_close,
-                     cs);
-  gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, TRUE, 0);
-  gtk_widget_show(button);
-  gtk_widget_show(hbox);
+  g_signal_connect(window, "response",
+                   G_CALLBACK(copyright_response), cs);
+  g_signal_connect(window, "close",
+                   G_CALLBACK(copyright_close), cs);
     
-  /* this makes it so the button is the default. */
-  
-  GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
-  
-  /* This grabs this button to be the default button. Simply hitting
-   * the "Enter" key will cause this button to activate. */
-  gtk_widget_grab_default (button);
-  
   gtk_widget_show (window);
 }
 
@@ -193,11 +169,11 @@ static GtkWidget *make_file_menu()
   quit_item = gtk_menu_item_new_with_label("Quit");
 
   /* Add them to the menu */
-  gtk_menu_append( GTK_MENU(file_menu), quit_item);
+  gtk_menu_shell_append( GTK_MENU_SHELL(file_menu), quit_item);
 
   /* We can attach the Quit menu item to our exit function */
-  gtk_signal_connect( GTK_OBJECT(quit_item), "activate",
-                      GTK_SIGNAL_FUNC(file_menu_quit), NULL);
+  g_signal_connect( quit_item, "activate",
+                    G_CALLBACK(file_menu_quit), NULL);
 
   /* We do need to show menu items */
   gtk_widget_show( quit_item );
@@ -235,20 +211,20 @@ static GtkWidget *make_help_menu()
   warranty_item = gtk_menu_item_new_with_label("Warranty");
 
   /* Add them to the menu */
-  gtk_menu_append( GTK_MENU(help_menu), about_item);
-  gtk_menu_append( GTK_MENU(help_menu), full_license_item);
-  gtk_menu_append( GTK_MENU(help_menu), copying_item);
-  gtk_menu_append( GTK_MENU(help_menu), warranty_item);
+  gtk_menu_shell_append( GTK_MENU_SHELL(help_menu), about_item);
+  gtk_menu_shell_append( GTK_MENU_SHELL(help_menu), full_license_item);
+  gtk_menu_shell_append( GTK_MENU_SHELL(help_menu), copying_item);
+  gtk_menu_shell_append( GTK_MENU_SHELL(help_menu), warranty_item);
 
   /* We can attach the Quit menu item to our exit function */
-  gtk_signal_connect( GTK_OBJECT(about_item), "activate",
-                      GTK_SIGNAL_FUNC(help_menu_about), (gpointer) AB_ABOUT);
-  gtk_signal_connect( GTK_OBJECT(full_license_item), "activate",
-                      GTK_SIGNAL_FUNC(help_menu_about), (gpointer) AB_FULL);
-  gtk_signal_connect( GTK_OBJECT(copying_item), "activate",
-                      GTK_SIGNAL_FUNC(help_menu_about), (gpointer) AB_COPYING);
-  gtk_signal_connect( GTK_OBJECT(warranty_item), "activate",
-                      GTK_SIGNAL_FUNC(help_menu_about), (gpointer) AB_WARRANTY);
+  g_signal_connect( about_item, "activate",
+                    G_CALLBACK(help_menu_about), (gpointer) AB_ABOUT);
+  g_signal_connect( full_license_item, "activate",
+                    G_CALLBACK(help_menu_about), (gpointer) AB_FULL);
+  g_signal_connect( copying_item, "activate",
+                    G_CALLBACK(help_menu_about), (gpointer) AB_COPYING);
+  g_signal_connect( warranty_item, "activate",
+                    G_CALLBACK(help_menu_about), (gpointer) AB_WARRANTY);
 
   /* We do need to show menu items */
   gtk_widget_show( about_item );
@@ -278,11 +254,10 @@ GtkWidget *make_menu_bar()
   gtk_widget_show( menu_bar );
 
   file_item = make_file_menu();
-  gtk_menu_bar_append( GTK_MENU_BAR (menu_bar), file_item );
+  gtk_menu_shell_append( GTK_MENU_SHELL(menu_bar), file_item );
 
   help_item = make_help_menu();
-  gtk_menu_item_right_justify( GTK_MENU_ITEM(help_item) );
-  gtk_menu_bar_append( GTK_MENU_BAR (menu_bar), help_item );
+  gtk_menu_shell_append( GTK_MENU_SHELL(menu_bar), help_item );
 
   return menu_bar;
 }
@@ -292,19 +267,22 @@ GtkWidget *make_menu_bar()
  * Pop-up, about notebook
  *
  **********************************************************************/
-
+static void about_response (GtkDialog *dialog,
+                            gint       response_id,
+                            gpointer   user_data)
+{
+  if (response_id == GTK_RESPONSE_CLOSE) {
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+  }
+}
+  
 static void about_notebook(char *prognam, char *about_text[],
                            enum ABOUT_SECTIONS default_section)
 {
   GtkWidget *window;
   GtkWidget *notebook;
-  GtkWidget *button;
-  GtkWidget *hbox;
-  GtkWidget *text;
-  GtkWidget *label;
-  GtkWidget *vscrollbar;
-  char str[1024];
   char **ptr = about_text;
+  char str[1024];
   static char *tags[] = {"About",
                          "Full License", "Preamble",
                          "Copying", "Warranty", "Howto",
@@ -314,92 +292,65 @@ static void about_notebook(char *prognam, char *about_text[],
   int sp = 0;
   char **last=NULL;
 
-  window = gtk_dialog_new ();
-
   sprintf(str, "About %s", prognam);
-  gtk_window_set_title (GTK_WINDOW (window), str);
-  gtk_container_border_width (GTK_CONTAINER (window), 0);
-  gtk_widget_set_usize(window, 600, 200);
+
+  window = gtk_dialog_new_with_buttons(str, NULL, 0,
+                                       "_Close", GTK_RESPONSE_CLOSE,
+                                       NULL);
 
   notebook = gtk_notebook_new();
+  gtk_widget_set_size_request(notebook, 600, 200);
 
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG(window)->vbox), notebook, 
-                      TRUE, TRUE, 0);
-
+  gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(window))), notebook, TRUE, TRUE, 0);
+ 
   do
     {
-      hbox = gtk_hbox_new (0, 0); 
+      GtkWidget *page  = gtk_scrolled_window_new(NULL, NULL);
+      GtkWidget *label = gtk_label_new(tags[tp]);;
+      GtkWidget *text  = gtk_text_view_new( );;
+      GtkTextBuffer *buffer = gtk_text_view_get_buffer( GTK_TEXT_VIEW(text) );;
+      
+      gtk_text_view_set_editable (GTK_TEXT_VIEW (text), FALSE);
+      gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW (text), GTK_WRAP_WORD);
+      gtk_widget_show (text); 
 
-      label = gtk_label_new(tags[tp]);
+      gtk_container_add( GTK_CONTAINER(page), text);
+      gtk_widget_show (page); 
 
       gtk_notebook_append_page( GTK_NOTEBOOK(notebook),
-                                GTK_WIDGET(hbox),
+                                GTK_WIDGET(/*vbox*/page),
                                 label );
-      
-      text = gtk_text_new( NULL, NULL );
-      gtk_text_set_editable (GTK_TEXT (text), FALSE);
-      gtk_text_set_word_wrap(GTK_TEXT (text), TRUE);
-      
-      gtk_box_pack_start(GTK_BOX(hbox), text, TRUE, TRUE, 0);
-      gtk_widget_show (text); 
-      
-      vscrollbar = gtk_vscrollbar_new (GTK_TEXT(text)->vadj);
-      gtk_box_pack_start(GTK_BOX(hbox), vscrollbar, FALSE, FALSE, 0);
-      gtk_widget_show (vscrollbar); 
-      
 
-      gtk_widget_show (hbox); 
-      
-      gtk_widget_realize (text);
-      gtk_text_freeze (GTK_TEXT (text));
-      for (i=0; ptr[i] && ((!last) || (&ptr[i]<last)); i++)
-        {
-          sprintf(str, "%s\n", ptr[i]);
-          gtk_text_insert( GTK_TEXT(text),
-                           NULL, NULL, NULL,
-                           str,
-                           -1);
-        }
-      gtk_text_thaw (GTK_TEXT (text));
+      for (i=0; ptr[i] && ((!last) || (&ptr[i]<last)); i++) {
+        sprintf(str, "%s\n", ptr[i]);
+        gtk_text_buffer_insert_at_cursor(buffer, str, -1);
+      }
       
       tp++; /* Next tag */
 
       ptr = NULL;
-      if (sp == 0)
-        {
-          ptr = full_license_text;
-          last = NULL;
-        }
-      else if (license_sections[sp]>=0)
-        {
-          ptr = &full_license_text[license_sections[sp-1]];
-          last = &full_license_text[license_sections[sp]];
-        }
-      else
-        {
-          ptr = NULL;
-          last = NULL;
-        }
+      if (sp == 0) {
+        ptr = full_license_text;
+        last = NULL;
+      } else if (license_sections[sp]>=0) {
+        ptr = &full_license_text[license_sections[sp-1]];
+        last = &full_license_text[license_sections[sp]];
+      } else {
+        ptr = NULL;
+        last = NULL;
+      }
 
       sp++;
 
-    } while( (ptr) && tags[tp] );
+   } while( (ptr) && tags[tp] );
 
-  gtk_notebook_set_page( GTK_NOTEBOOK(notebook), default_section );
+  gtk_notebook_set_current_page( GTK_NOTEBOOK(notebook), default_section );
   gtk_widget_show (notebook); 
 
-  /* Add a "close" button to the bottom of the dialog */
-  button = gtk_button_new_with_label ("close");
-  gtk_signal_connect_object(GTK_OBJECT (button), "clicked",
-                            (GtkSignalFunc) gtk_widget_destroy,
-                            GTK_OBJECT (window));
-     
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (window)->action_area),
-                      button, TRUE, TRUE, 0);
-  gtk_widget_show (button);
+  g_signal_connect(window, "response",
+                   G_CALLBACK(about_response), NULL);
   
   gtk_widget_show (window);
-  
 }
 
 static void popup_about_notebook(enum ABOUT_SECTIONS default_section)
@@ -417,10 +368,4 @@ static void popup_about_notebook(enum ABOUT_SECTIONS default_section)
   };
 
   about_notebook(NAME, about_text, default_section);
-}
-
-static void widget_popup_about_notebook(GtkWidget *widget,
-                                        enum ABOUT_SECTIONS default_section)
-{
-  popup_about_notebook(default_section);
 }

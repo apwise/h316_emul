@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.59])
-AC_INIT([h16], [1.6.0], [apw@adrianwise.co.uk])
+AC_INIT([h16], [1.7.0], [apw@adrianwise.co.uk])
 
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2018 Adrian Wise])
+AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2020 Adrian Wise])
 AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADER([config.h])
 
@@ -22,7 +22,7 @@ AC_ARG_ENABLE([gui],
 AM_CONDITIONAL([ENABLE_GUI], [test x$enable_gui = xyes])
 if test x$enable_gui = xyes; then
   AC_DEFINE_UNQUOTED([ENABLE_GUI], [1], [Define to 1 to compile with the GUI])
-  PKG_CHECK_MODULES(GTK, gtk+-2.0)
+  PKG_CHECK_MODULES(GTK, gtk+-3.0)
 fi
 
 # Checks for libraries.
