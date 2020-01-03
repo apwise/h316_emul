@@ -375,8 +375,10 @@ char *copyright_text[] =
   {
     NAME " " VERSION " " DATE "\n",
     COPYRIGHT "\n",
-    NAME " is free software, covered by the GNU General\n",
-    "Public License, and you are welcome to change it and/or\n",
-    "distribute copies of it under certain conditions.\n",
+    NAME " is free software; you can redistribute it and/or modify\n",
+    "it under the terms of the GNU General Public License as published by\n",
+    "the Free Software Foundation; either version 2 of the License, or\n",
+    "(at your option) any later version.\n",
+    "\n",
     NULL
   };

@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1998  Adrian Wise
+ * Copyright (C) 1998, 2019, 2020  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -93,19 +93,20 @@ static GtkWidget *labelled_button(char *label_text, char *lower_text,
   GtkWidget *label;
   GtkWidget *button;
 
-  box = gtk_vbox_new (0, 0);    
+  box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);    
+  gtk_box_set_homogeneous( GTK_BOX(box), 0);
 
   label = gtk_label_new( label_text );
   gtk_box_pack_start (GTK_BOX (box), label, 0, 0, 0);
   gtk_widget_show (label);
 
   if (toggle)
-    button = gtk_toggle_button_new_with_label("   ");
+    button = gtk_toggle_button_new();
   else
-    button = gtk_button_new_with_label("   ");
+    button = gtk_button_new();
 
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-                      GTK_SIGNAL_FUNC (callback), data);
+  g_signal_connect (button, "clicked",
+                    G_CALLBACK(callback), data);
                 
   gtk_box_pack_start (GTK_BOX (box), button, 0, 0, 0);
   gtk_widget_show (button);
@@ -173,13 +174,13 @@ static void sixteen_callback (GtkWidget *widget, gpointer data)
     {
       if (read_only)
         {
-          gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON (widget),
+          gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON (widget),
                                        ((*fp->intf->reg_value[fp->current_reg])
                                         & (1<<bs->n)) ? 1 : 0);
         }
       else
         {
-          if (GTK_TOGGLE_BUTTON (widget)->active)
+          if (gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON (widget) ))
             (*fp->intf->reg_value[fp->current_reg]) |= (1<<bs->n);
           else
             (*fp->intf->reg_value[fp->current_reg]) &= (~(1<<bs->n));
@@ -191,7 +192,7 @@ static void sixteen_callback (GtkWidget *widget, gpointer data)
  
       if (!read_only)
         for (i=0; i<16; i++)
-          gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON (fp->bit[i]->widget), 0);
+          gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON (fp->bit[i]->widget), 0);
     }
 
   /*printf("value[%d]=0x%04x\n", fp->current_reg, *fp->intf->reg_value[fp->current_reg] );*/
@@ -204,7 +205,8 @@ static GtkWidget *tripple(int left, int num, struct FRONT_PANEL *fp)
   int i;
   char str[20];
 
-  box = gtk_hbox_new (0, 10);   
+  box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);   
+  gtk_box_set_homogeneous( GTK_BOX(box), 0);
 
   for (i=left; i>(left-num); i--)
     {
@@ -246,7 +248,8 @@ static GtkWidget *sixteen(struct FRONT_PANEL *fp)
       fp->bit[i] = bs;
     }
         
-  box = gtk_hbox_new (0, 20);   
+  box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 20);   
+  gtk_box_set_homogeneous( GTK_BOX(box), 0);
 
   b=tripple(15, 1, fp);
   gtk_box_pack_start (GTK_BOX (box), b, 1, 0, 0);
@@ -274,8 +277,8 @@ static void set_sixteen(struct FRONT_PANEL *fp)
 
   for (i=0; i<16; i++) {
     int bit = ((v & (1<<i)) != 0);
-    gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON (fp->bit[i]->widget),
-                                 bit );
+    gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON (fp->bit[i]->widget),
+                                  bit );
   }
 }
 
@@ -304,22 +307,22 @@ static void reg_button_callback (GtkWidget *widget, gpointer data)
   fp = rb->fp;
   first = (fp->intf->cpu == CPU_DDP516) ? RB_X : RB_A;
 
-  if (GTK_TOGGLE_BUTTON (widget)->active)
+  if (gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON (widget) ) )
     {
       for (i=first; i<RB_NUM; i++)
         {
           if ((i != rb->n) || (!fp->power))
-            gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON
+            gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON
                                          (fp->reg[i]->widget), 0);
         }
     }
   n = RB_NUM;
   for (i=first; i<RB_NUM; i++)
-    if (GTK_TOGGLE_BUTTON (fp->reg[i]->widget)->active)
+    if (gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON (fp->reg[i]->widget )))
       n = i;
         
   if ((n == RB_NUM) && (fp->power) && (fp->current_reg<RB_NUM))
-    gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON
+    gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON
                                  (fp->reg[fp->current_reg]->widget), 1);
   else
     {
@@ -356,17 +359,20 @@ static GtkWidget *reg_buttons(struct FRONT_PANEL *fp)
       fp->reg[i] = rb;
     }
 
-  hbox1 = gtk_hbox_new (0, 0);
+  hbox1 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_set_homogeneous( GTK_BOX(hbox1), 0);
   label = gtk_label_new( "REGISTER" );
   gtk_box_pack_end (GTK_BOX (hbox1), label, 0, 0, 0);
   gtk_widget_show (label);
 
-  vbox = gtk_vbox_new (0, 0);
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, 0, 0, 0);
   gtk_widget_show (hbox1);
 
-  hbox2 = gtk_hbox_new (1, 10); 
-
+  hbox2 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10); 
+  gtk_box_set_homogeneous( GTK_BOX(hbox2), 1);
+  
   first = (fp->intf->cpu == CPU_DDP516) ? RB_X : RB_A;
 
   for (i=first; i<RB_NUM; i++)
@@ -379,7 +385,7 @@ static GtkWidget *reg_buttons(struct FRONT_PANEL *fp)
       gtk_widget_show (b);
     }
         
-  gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON (fp->reg[RB_PY]->widget), 1);
+  gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON (fp->reg[RB_PY]->widget), 1);
 
   gtk_box_pack_start (GTK_BOX (vbox), hbox2, 0, 0, 0);
   gtk_widget_show (hbox2);
@@ -418,7 +424,7 @@ struct RADIO_BUTTON
 
 static gint radio_bias_callback (gpointer data)
 {
-  gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON(data), 1);
+  gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(data), 1);
   return FALSE;
 }
 
@@ -430,7 +436,7 @@ static void radio_callback (GtkWidget *widget, gpointer data)
   rb = (struct RADIO_BUTTON *) data;
   rg = rb->rg;
 
-  if (GTK_TOGGLE_BUTTON (widget)->active)
+  if (gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON (widget) ))
     {
       rg->value = rb->n;
       if (rg->callback)
@@ -442,9 +448,9 @@ static void radio_callback (GtkWidget *widget, gpointer data)
   /*printf("value=%d\n", rg->value );*/
 
   if (rg->biased)
-    gtk_timeout_add( 250,
-                     radio_bias_callback,
-                     (gpointer) rg->buttons[rg->default_button].button);
+    g_timeout_add( 250,
+                   radio_bias_callback,
+                   (gpointer) rg->buttons[rg->default_button].button);
 }
 
 static void destroy_radio_group (GtkWidget *widget, gpointer data)
@@ -489,7 +495,8 @@ static GtkWidget *labelled_radio_group(char *label_text, int num_buttons,
   rg->callback = callback;
   rg->data = data;
 
-  box = gtk_vbox_new (0, 0);    
+  box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);    
+  gtk_box_set_homogeneous( GTK_BOX(box), 0);
 
   if (label_text)
     {
@@ -500,30 +507,34 @@ static GtkWidget *labelled_radio_group(char *label_text, int num_buttons,
 
   for (i=0; i<num_buttons; i++)
     {
-      if ((button_text) && (button_text[i]))
+      int space = 0;
+      
+      if ((button_text) && (button_text[i])) {
         button = gtk_radio_button_new_with_label(group, button_text[i]);
-      else
+      } else {
+        space = 3;
         button = gtk_radio_button_new(group);
-
+      }
+      
       rg->buttons[i].button = button;
 
-      group = gtk_radio_button_group (GTK_RADIO_BUTTON (button));
+      group = gtk_radio_button_get_group (GTK_RADIO_BUTTON (button));
 
-      gtk_signal_connect (GTK_OBJECT (button), "clicked",
-                          GTK_SIGNAL_FUNC (radio_callback), &rg->buttons[i]);
+      g_signal_connect (button, "clicked",
+                        G_CALLBACK (radio_callback), &rg->buttons[i]);
 
-      gtk_box_pack_start (GTK_BOX (box), button, 0, 0, 0);
+      gtk_box_pack_start (GTK_BOX (box), button, 0, 0, space);
       gtk_widget_show (button);
     }
 
   rg->group = group;
 
-  gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON
+  gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON
                                (rg->buttons[default_button].button), 1);
   rg->value = default_button;
 
-  gtk_signal_connect (GTK_OBJECT (box), "destroy",
-                      GTK_SIGNAL_FUNC (destroy_radio_group), rg);
+  g_signal_connect(box, "destroy",
+                   G_CALLBACK (destroy_radio_group), rg);
 
   return box;
 }
@@ -541,16 +552,19 @@ static GtkWidget *sense_switches(struct FRONT_PANEL *fp)
   int i;
   char str[20];
 
-  hbox1 = gtk_hbox_new (0, 0);
+  hbox1 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_set_homogeneous( GTK_BOX(hbox1), 0);
   label = gtk_label_new( "SENSE" );
   gtk_box_pack_end (GTK_BOX (hbox1), label, 0, 0, 0);
   gtk_widget_show (label);
 
-  vbox = gtk_vbox_new (0, 0);
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, 0, 0, 0);
   gtk_widget_show (hbox1);
 
-  hbox2 = gtk_hbox_new (0, 10); 
+  hbox2 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10); 
+  gtk_box_set_homogeneous( GTK_BOX(hbox2), 0);
 
   for (i=0; i<4; i++)
     {
@@ -597,7 +611,7 @@ static int run_idle_function (gpointer data)
   if ((fp->intf->mode == FPM_RUN) && (!fp->intf->running))
     {
       fp->intf->mode = FPM_SI; /* fool the start_callback() routine */
-      gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON(fp->start_button), 0);
+      gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(fp->start_button), 0);
       fp->intf->mode = FPM_RUN;
                         
       if (fp->intf->power_fail_interrupt_acknowledge)
@@ -630,9 +644,9 @@ static void start_callback (GtkWidget *widget, gpointer data)
       /* Since the computer is still running, set the
          button back to 'on', over-riding the toggle-button
          behaviour */
-      gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON(fp->start_button), 1);
+      gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(fp->start_button), 1);
     }
-  else if (GTK_TOGGLE_BUTTON (widget)->active)
+  else if (gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON (widget) ))
     {
       //printf("%s active\n", __PRETTY_FUNCTION__);
 
@@ -640,15 +654,15 @@ static void start_callback (GtkWidget *widget, gpointer data)
         {
           fp->intf->running = 1;
           fp->intf->start_button_interrupt_pending = 1;
-          fp->run_idle_tag = gtk_idle_add( (GtkFunction) run_idle_function,
-                                           (gpointer) fp );
+          fp->run_idle_tag = g_idle_add( (GSourceFunc) run_idle_function,
+                                         (gpointer) fp );
         }
       else
         {
           if (fp->power)
             (void) (*fp->intf->run)(fp->intf);
           set_sixteen(fp);
-          gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON(fp->start_button), 0);
+          gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(fp->start_button), 0);
         }
     }
   //else
@@ -665,8 +679,8 @@ static void mode_callback (GtkWidget *widget, gpointer data, int n)
   if ((fp->intf->running) && (fp->intf->mode != FPM_RUN))
     {
       fp->intf->running = 0;
-      gtk_idle_remove( fp->run_idle_tag );
-      gtk_toggle_button_set_state( GTK_TOGGLE_BUTTON(fp->start_button), 0);
+      g_source_remove( fp->run_idle_tag );
+      gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(fp->start_button), 0);
     }
 }
 
@@ -738,13 +752,15 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
   static char *p_labels[] = {"P+1", "P"};
   static char *mode_labels[] = {"MA", "SI", "RUN"};
 
-  box = gtk_hbox_new (0, 10);   
+  box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);   
+  gtk_box_set_homogeneous( GTK_BOX(box), 0);
 
   fp->power = 1;
   fp->saved_reg = fp->current_reg = RB_PY;
   reg_b = reg_buttons(fp); /* need this before the power button */
 
-  vbox = gtk_vbox_new (0, 0);
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   b = labelled_radio_group(NULL, 2,
                            1, 0, power_labels,
                            power_callback,
@@ -754,20 +770,23 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
   gtk_box_pack_start (GTK_BOX (box), vbox, 1, 0, 0);
   gtk_widget_show (vbox);
 
-  vbox = gtk_vbox_new (0, 0);   
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);   
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   b = sense_switches(fp);
   gtk_box_pack_end (GTK_BOX (vbox), b, 0, 0, 0);
   gtk_widget_show (b);
   gtk_box_pack_start (GTK_BOX (box), vbox, 1, 0, 0);
   gtk_widget_show (vbox);
 
-  vbox = gtk_vbox_new (0, 0);   
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);   
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   gtk_box_pack_end (GTK_BOX (vbox), reg_b, 0, 0, 0);
   gtk_widget_show (reg_b);
   gtk_box_pack_start (GTK_BOX (box), vbox, 1, 0, 0);
   gtk_widget_show (vbox);
 
-  vbox = gtk_vbox_new (0, 0);   
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);   
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   b = labelled_radio_group("MSTR", 2,
                            0, 1, NULL,
                            master_clear_callback,
@@ -781,7 +800,8 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
 
   if (fp->intf->cpu == CPU_DDP516)
     {
-      vbox = gtk_vbox_new (0, 0);       
+      vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);       
+      gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
       b = labelled_radio_group(NULL, 2,
                                0, 0, pfi_labels,
                                NULL,
@@ -792,7 +812,8 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
       gtk_widget_show (vbox);
     }
 
-  vbox = gtk_vbox_new (0, 0);   
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);   
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   b = labelled_radio_group(NULL, 2,
                            0, 0, fetch_labels,
                            NULL,
@@ -802,7 +823,8 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
   gtk_box_pack_start (GTK_BOX (box), vbox, 1, 0, 0);
   gtk_widget_show (vbox);
 
-  vbox = gtk_vbox_new (0, 0);   
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);   
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   b = labelled_radio_group(NULL, 2,
                            1, 0, p_labels,
                            NULL,
@@ -812,7 +834,8 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
   gtk_box_pack_start (GTK_BOX (box), vbox, 1, 0, 0);
   gtk_widget_show (vbox);
 
-  vbox = gtk_vbox_new (0, 0);   
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);   
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   b = labelled_radio_group(NULL, 3,
                            2, 0, mode_labels,
                            mode_callback,
@@ -822,7 +845,8 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
   gtk_box_pack_start (GTK_BOX (box), vbox, 1, 0, 0);
   gtk_widget_show (vbox);
 
-  vbox = gtk_vbox_new (0, 0);   
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);   
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   b = labelled_button("START", NULL, 1,
                       start_callback, fp, &fp->start_button);
   gtk_box_pack_end (GTK_BOX (vbox), b, 0, 0, 0);
@@ -872,13 +896,14 @@ static GtkWidget *front_panel(struct FP_INTF *intf)
       fp->saved_pointers[i] = fp->intf->reg_value[i];
     }
 
-  box = gtk_vbox_new (0, 10);   
+  box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 10);   
+  gtk_box_set_homogeneous( GTK_BOX(box), 0);
 
   b = sixteen(fp);
   gtk_box_pack_start (GTK_BOX (box), b, 1, 0, 0);
   gtk_widget_show (b);
 
-  b = gtk_hseparator_new ();
+  b = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
   gtk_box_pack_start (GTK_BOX (box), b, 1, 0, 0);
   gtk_widget_show (b);
 
@@ -886,8 +911,8 @@ static GtkWidget *front_panel(struct FP_INTF *intf)
   gtk_box_pack_start (GTK_BOX (box), b, 1, 0, 0);
   gtk_widget_show (b);
         
-  gtk_signal_connect (GTK_OBJECT (box), "destroy",
-                      GTK_SIGNAL_FUNC (destroy_front_panel), fp);
+  g_signal_connect (box, "destroy",
+                    G_CALLBACK (destroy_front_panel), fp);
 
   /*
    * Now everything is setup
@@ -920,19 +945,20 @@ extern void setup_fp(struct FP_INTF *intf)
    * titlebar), we ask it to call the delete_event () function
    * as defined above.  The data passed to the callback
    * function is NULL and is ignored in the callback. */
-  gtk_signal_connect (GTK_OBJECT (window), "delete_event",
-                      GTK_SIGNAL_FUNC (delete_event), NULL);
+  g_signal_connect (window, "delete_event",
+                    G_CALLBACK (delete_event), NULL);
         
   /* here we connect the "destroy" event to a signal handler.
    * This event occurs when we call gtk_widget_destroy() on the window,
    * or if we return 'FALSE' in the "delete_event" callback. */
-  gtk_signal_connect (GTK_OBJECT (window), "destroy",
-                      GTK_SIGNAL_FUNC (destroy), NULL);
+  g_signal_connect (window, "destroy",
+                    G_CALLBACK (destroy), NULL);
         
   /* sets the border width of the window. */
-  gtk_container_border_width (GTK_CONTAINER (window), 10);
+  gtk_container_set_border_width (GTK_CONTAINER (window), 10);
         
-  vbox = gtk_vbox_new (0, 5);
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
+  gtk_box_set_homogeneous( GTK_BOX(vbox), 0);
   gtk_container_add (GTK_CONTAINER (window), vbox);
 
   menu_bar = make_menu_bar();
