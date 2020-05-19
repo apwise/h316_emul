@@ -22,8 +22,11 @@
 #include <cmath>
 #include <iostream>
 #include <chrono>
+#include <wx/rawbmp.h>
 
 #include "printedpaper.hh"
+
+#define WXWIDGET3_KLUDGE for (int i = 0; i<8; i++)
 
 /*
  * ASR-33
@@ -173,7 +176,7 @@ void PrintedPaper::DrawPaper(int width, int height)
     paper->SetPen(pen);
     
     for (y=0; y<height; y++) {
-      paper->DrawPoint(x, y);
+      WXWIDGET3_KLUDGE paper->DrawPoint(x, y);
     }
   }
   
@@ -773,7 +776,6 @@ void PrintedPaper::OnChar(wxKeyEvent& event)
   
   if (ch <= 127) {
     skip = false;
-    Print(ch); // For now
     Send(ch);
   }
 
@@ -799,6 +801,8 @@ void PrintedPaper::OnKeyUp(wxKeyEvent& event)
 
 void PrintedPaper::InvertCursor()
 {
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
+  
   wxClientDC dc(this);
   unsigned int view_start_x, view_start_y;
   
@@ -810,14 +814,39 @@ void PrintedPaper::InvertCursor()
   current_line  += top_offset                - view_start_y;
   cursor_column += left_offset + left_margin - view_start_x;
 
-  dc.Blit(cursor_column * font_width,
-          current_line  * font_height,
-          font_width,
-          font_height,
-          &dc, // No Source, but have to pass something...
-          0,
-          0,
-          wxINVERT);
+  int cX = cursor_column * font_width;
+  int cY = current_line  * font_height;
+
+  wxBitmap bitmap(font_width, font_height);
+  wxMemoryDC cdc;
+  
+  cdc.SelectObject(bitmap);
+  cdc.Blit(0, 0, font_width, font_height,
+           &dc, cX, cY);
+  cdc.SelectObject(wxNullBitmap);
+
+  wxNativePixelData data(bitmap);
+  wxNativePixelData::Iterator p(data);
+  
+  if (p.IsOk()) {
+    int x, y;
+    for (y=0; y<font_height; ++y) {
+      wxNativePixelData::Iterator rowStart = p;
+      for (x=0; x<font_width; ++x) {
+        p.Red()   = 255-p.Red();
+        p.Green() = 255-p.Green();
+        p.Blue()  = 255-p.Blue();
+       ++p;
+      }
+      p = rowStart;
+      p.OffsetY(data, 1);
+    }
+  }
+  
+  cdc.SelectObject(bitmap);
+  dc.Blit(cX, cY, font_width, font_height,
+          &cdc, 0, 0);
+  cdc.SelectObject(wxNullBitmap);
   
   inverted_cursor = !inverted_cursor;
 }
@@ -857,6 +886,8 @@ void PrintedPaper::Send(unsigned char ch, bool special)
   
 void PrintedPaper::OnTimer(wxTimerEvent &event)
 {
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
+  
   if (have_focus &&
       ((TickCounter == 0) ||
        (TickCounter == (CHARACTERS_PER_SECOND/2)))) {

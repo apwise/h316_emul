@@ -3,7 +3,7 @@
 // Purpose:     Wrapper for libserialport
 // Author:      Adrian Wise <adrian@adrianwise.co.uk>
 // Created:     2019-07-27
-// Copyright:   (c) 2019 Adrian Wise
+// Copyright:   (c) 2019, 2020 Adrian Wise
 // Licence:     wxWindows licence
 /////////////////////////////////////////////////////////////////////////////
 #ifndef _SERIALPORT_H__
@@ -12,8 +12,13 @@
 #include <wx/wx.h>
 #include <wx/dynarray.h>
 
+#include <deque>
+#include <queue>
+
+// TODO: Replace Allocated() by IsOK() - more wxWidgets-like?
+
 class wxSerialPort;
-WX_DECLARE_OBJARRAY(wxSerialPort, wxSerialPortArray);
+//WX_DECLARE_OBJARRAY(wxSerialPort, wxSerialPortArray);
 
 class wxSerialPortEvent : public wxEvent
 {
@@ -198,6 +203,7 @@ public:
 
   };
 
+  /*
   class SignalEventSet : public wxThreadHelper, public EventSet
   {
   public:
@@ -227,9 +233,100 @@ public:
 
     virtual wxThread::ExitCode Entry();
   };
+  */
+  
+  class AsyncIO
+  {
+  public:
+    static const int DEFAULT_TIMEOUT = 337;
+    
+    enum StartAction
+      {
+       START_CLEAR_QUEUE,
+       START_KEEP_QUEUED
+      };
+    
+    enum StopAction
+      {
+       STOP_WAIT,
+       STOP_REQUEST_ONLY
+      };
+    
+    AsyncIO(EventSet     &eventSet,
+            unsigned int  timeout_ms = DEFAULT_TIMEOUT);
+    virtual ~AsyncIO();
+
+    virtual wxThreadError Start(StartAction startAction = START_CLEAR_QUEUE);
+    virtual wxThreadError Stop(StopAction stopAction = STOP_WAIT);
+
+  protected:
+    enum OnEventStatus
+      {
+       ON_EVENT_EXIT,
+       ON_EVENT_CONTINUE
+      };
+     
+  private:
+    class AsyncIOThread : public wxThread
+    {
+    public:
+      AsyncIOThread(AsyncIO &asyncIO, EventSet &eventSet, unsigned int timeout_ms);
+      ~AsyncIOThread();
+      
+    private:
+      AsyncIO      &m_AsyncIO;
+      EventSet     &m_EventSet;
+      unsigned int  m_timeout_ms;
+
+      virtual ExitCode Entry();
+    };
+    
+    EventSet            &m_EventSet;
+    unsigned int const   m_timeout_ms;
+    AsyncIOThread       *m_pAsyncIOThread;
+    wxCriticalSection    m_pAsyncIOThreadCS;
+
+    virtual OnEventStatus OnEvent() = 0;
+    void OnExit();
+  };
+
+  class AsyncInput : public AsyncIO
+  {
+  public:
+    AsyncInput(wxEvtHandler  *handler,
+               wxWindowID    id,
+               wxSerialPort &port,
+               unsigned int  timeout_ms = DEFAULT_TIMEOUT);
+    virtual ~AsyncInput();
+
+    virtual wxThreadError Start(StartAction startAction = START_CLEAR_QUEUE);
+
+    const uint8_t &front() const;
+    void           pop();
+    bool           empty() const;
+    size_t         size()  const;
+    uint8_t        read(bool &ok);
+    uint8_t        read();
+            
+  private:
+    wxEvtHandler * const       m_pHandler;
+    wxWindowID const           m_id;
+
+    wxSerialPort              &m_Port;
+    EventSet                   m_EventSet;
+    
+    mutable wxCriticalSection  m_SendEventQueueCS;
+    std::queue<uint8_t>        m_Queue;
+    bool                       m_SendEvent;
+    Return                     m_Error;
+    
+    virtual OnEventStatus OnEvent();
+  };
   
   // Port enumeration
-  static Return ListPorts(wxSerialPortArray &portArray);
+  //static Return ListPorts(wxSerialPortArray &portArray);
+  typedef std::deque<wxSerialPort> portArray_t;
+  static Return ListPorts(portArray_t &portArray);
   static Return PortByName(const wxString &portName, wxSerialPort **port);
   
   // Copy construction allows a port to be copied from a wxSerialPortArray
