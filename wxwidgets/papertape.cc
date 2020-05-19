@@ -24,6 +24,8 @@
 
 #define TIMER_PERIOD 100 // update every tenth of a second
 
+#define WXWIDGET3_KLUDGE for (int i = 0; i<8; i++)
+
 BEGIN_EVENT_TABLE(PaperTape, wxScrolledCanvas)
 EVT_SIZE(     PaperTape::OnSize)
 EVT_PAINT(    PaperTape::OnPaint)
@@ -567,8 +569,8 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
   wxMemoryDC dc;
   dc.SelectObject(*bitmaps[bm]);
 
-  wxColour hole_colour(0,0,0);
-  wxBrush hole_brush(hole_colour, wxSOLID);
+  wxColour hole_colour(0,0,0, wxALPHA_OPAQUE);
+  wxBrush hole_brush(hole_colour, wxBRUSHSTYLE_SOLID);
 
   if (type == PT_no_tape) {
     dc.SetBackground(hole_brush);
@@ -714,8 +716,8 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
    * across the centre of the dots
    */
   if (type == PT_light) {
-    hole_colour.Set(0, 0, 0);
-    wxPen pen(hole_colour, 1, wxSOLID);
+    hole_colour.Set(0, 0, 0, wxALPHA_OPAQUE);
+    wxPen pen(hole_colour, 1, wxPENSTYLE_SOLID);
     dc.SetPen(pen);
     if (orient == wxVERTICAL) {
       dc.DrawLine(0, row_spacing/2, current_tape_width, row_spacing/2);
@@ -1118,7 +1120,7 @@ void PaperTape::DrawCircle(wxDC &dc,
   long f_red, f_green, f_blue;
   long red, green, blue;
   wxColour colour;
-  wxPen pen(background, 1, wxSOLID);
+  wxPen pen(background, 1, wxPENSTYLE_SOLID);
 
   b_red = background.Red();
   b_green = background.Green();
@@ -1181,7 +1183,7 @@ void PaperTape::DrawCircle(wxDC &dc,
       pen.SetColour(colour);
       
       dc.SetPen(pen);
-      dc.DrawPoint(xx, yy);
+      WXWIDGET3_KLUDGE dc.DrawPoint(xx, yy);
     }
   }
 }
@@ -1262,11 +1264,11 @@ void PaperTape::FillLine(wxDC &dc,
   long f_red, f_green, f_blue;
   long red, green, blue;
   wxColour colour;
-  wxPen pen(background, 1, wxSOLID);
+  wxPen pen(background, 1, wxPENSTYLE_SOLID);
   
-  f_red = foreground.Red();
+  f_red   = foreground.Red();
   f_green = foreground.Green();
-  f_blue = foreground.Blue();
+  f_blue  = foreground.Blue();
   
   int i, j;
 
@@ -1331,13 +1333,13 @@ void PaperTape::FillLine(wxDC &dc,
           blue = ((area * f_blue) + (n_area * b_blue)) / 512;
           colour.Set(red, green, blue);
         } else {
-          colour.Set(f_red, f_green, f_blue);
+          colour.Set(f_red, f_green, f_blue, wxALPHA_OPAQUE);
         }
         pen.SetColour(colour);
         
         dc.SetPen(pen);
-        dc.DrawPoint(xx, yy);
-      }
+        WXWIDGET3_KLUDGE dc.DrawPoint(xx, yy);
+     }
     }
   }
 }

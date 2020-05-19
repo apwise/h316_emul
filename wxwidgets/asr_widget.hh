@@ -31,15 +31,17 @@
 class AsrWidget: public wxPanel, public SimplePort
 {
 public:
-  enum class Sources {
-    Keyboard,
-    SpecialFunctionKey,
-    TapeReader,
-    AnswerBack,
-    Line
-  };
-
+  enum class Sources
+    {
+     Line = 0, // Default 
+     Keyboard,
+     SpecialFunctionKey,
+     TapeReader,
+     AnswerBack
+    };
+  
   AsrWidget( wxWindow *parent,
+             SimplePort *Line,
              wxWindowID id = wxID_ANY,
              const wxPoint& pos = wxDefaultPosition,
              const wxSize& size = wxDefaultSize,
@@ -48,11 +50,13 @@ public:
   ~AsrWidget( );
 
   bool Unsaved(wxString &message);
-  void Process(unsigned char ch, int source);
+  void Process(unsigned char ch, int source=0);
 
 private:
   static const int timerPeriod = 100;
 
+  SimplePort *Line;
+  
   wxBoxSizer   *top_sizer;
   wxBoxSizer   *tape_sizer;
   PrintedPaper *printer;

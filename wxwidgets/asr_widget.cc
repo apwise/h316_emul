@@ -26,12 +26,14 @@ EVT_TIMER(wxID_ANY, AsrWidget::OnTimer)
 END_EVENT_TABLE()
 
 AsrWidget::AsrWidget( wxWindow      *parent,
+                      SimplePort    *Line,
                       wxWindowID     id,
                       const wxPoint &pos,
                       const wxSize  &size,
                       long           style,
                       const wxString &name)
   : wxPanel(parent, id, pos, size, style, name)
+  , Line(Line)
   , top_sizer(new wxBoxSizer(wxHORIZONTAL))
   , tape_sizer(new wxBoxSizer(wxVERTICAL))
   , printer(new PrintedPaper(this, static_cast<int>(Sources::Keyboard), static_cast<int>(Sources::SpecialFunctionKey)))
@@ -72,8 +74,18 @@ bool AsrWidget::Unsaved(wxString &message)
 
 void AsrWidget::Process(unsigned char ch, int source)
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
+  bool bell = false;
+
+  printer->Print(ch);
   asr_ptp->Punch(ch);
+
+  if ((ch & 0x7f) == '\a') {
+    bell = true;
+  }
+
+  if (bell) {
+    wxBell();
+  }
 }
 
 void AsrWidget::OnTimer(wxTimerEvent& WXUNUSED(event))
@@ -108,9 +120,14 @@ void AsrWidget::CharacterPoll()
   }
 
   if (have_ch) {
+    // Test on local echo needed...
     printer->Print(ch);
     asr_ptp->Punch(ch);
 
+    if (Line) {
+      Line->Process(ch);
+    }
+    
     if ((ch & 0x7f) == '\a') {
       bell = true;
     }
