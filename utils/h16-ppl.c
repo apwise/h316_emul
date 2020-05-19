@@ -381,12 +381,12 @@ static void exit_procedure()
           (procedure_name[i-1] == '_')) {
         char *tmp = malloc(i);
         // GCC 9.2.1 being pssimistic in checking for string overflow...
-#if ((__GNUC__ == 9) && (__GNUC_MINOR__ < 3))
+#if (__GNUC__ == 9)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
         strncpy(tmp, procedure_name, i-1);
-#if ((__GNUC__ == 9) && (__GNUC_MINOR__ < 3))
+#if (__GNUC__ == 9)
 #pragma GCC diagnostic pop
 #endif
         tmp[i-1] = '\0';

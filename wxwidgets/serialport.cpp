@@ -1,5 +1,5 @@
 /////////////////////////////////////////////////////////////////////////////
-// Name:        serialport.h
+// Name:        serialport.cpp
 // Purpose:     Implementation of wrapper for libserialport
 // Author:      Adrian Wise <adrian@adrianwise.co.uk>
 // Created:     2019-07-27
@@ -356,8 +356,8 @@ private:
 
 wxIMPLEMENT_DYNAMIC_CLASS(wxSerialPort, wxObject);
 
-#include <wx/arrimpl.cpp>
-WX_DEFINE_OBJARRAY(wxSerialPortArray);
+//#include <wx/arrimpl.cpp>
+//WX_DEFINE_OBJARRAY(wxSerialPortArray);
 
 wxSerialPort::wxSerialPort()
   : m_serialPort(* new SerialPort)
@@ -407,7 +407,8 @@ wxSerialPort::Return wxSerialPort::Allocated()
 {
   return (m_serialPort.GetPort()) ? OK : ERR_ARG;
 }
-  
+
+#if 0
 wxSerialPort::Return wxSerialPort::ListPorts(wxSerialPortArray &portArray)
 {
   enum sp_return r;
@@ -443,6 +444,47 @@ wxSerialPort::Return wxSerialPort::ListPorts(wxSerialPortArray &portArray)
   
   if (r != SP_OK) {
     portArray.Clear();
+  }
+
+  return SerialPort::ReturnFromSP(r);
+}
+#endif
+
+wxSerialPort::Return wxSerialPort::ListPorts(std::deque<wxSerialPort> &portArray)
+{
+  enum sp_return r;
+  struct sp_port **ports;
+  
+  portArray.clear();
+
+  r = sp_list_ports(&ports);
+  
+  if ( r == SP_OK ) {
+    struct sp_port **pl;
+    struct sp_port *p;
+
+    pl = ports;
+    if (pl) {
+      p = *pl++;
+      while ((p) && ( r == SP_OK )) {
+        struct sp_port *q;
+
+        r = sp_copy_port(p, &q);
+        if ( r == SP_OK ) {
+          wxSerialPort *sp = new wxSerialPort;
+          sp->m_serialPort.SetPort(q);
+          portArray.push_back(*sp);
+        }
+        
+        p = *pl++;
+      }
+    }
+  }
+
+  sp_free_port_list(ports);
+  
+  if (r != SP_OK) {
+    portArray.clear();
   }
 
   return SerialPort::ReturnFromSP(r);
@@ -691,6 +733,14 @@ wxSerialPort::Config::Config(Return &r)
 wxSerialPort::Config::Config()
   : m_configData(* new ConfigData)
 {
+  enum sp_return spr;
+  struct sp_port_config *pc;
+  
+  spr = sp_new_config(&pc);
+
+  if (spr == SP_OK) {
+    m_configData.SetConfig(pc);
+  }
 }
 
 wxSerialPort::Config::~Config()
@@ -830,6 +880,7 @@ wxSerialPort::Return wxSerialPort::EventSet::Wait(unsigned int timeout_ms)
 //------------------------------------------------------------------
 wxDEFINE_EVENT(wxSERIAL_PORT_SIGNAL, wxSerialPortEvent);
 
+/*
 wxSerialPort::Return wxSerialPort::SignalEventSet::New(SignalEventSet **signalEventSet,
                                                        wxEvtHandler *handler,
                                                        wxWindowID id)
@@ -864,6 +915,7 @@ wxSerialPort::SignalEventSet::~SignalEventSet()
   wxThread *thread = GetThread();
 
   if (thread) {
+    std::cout << "Attempt to kill thread" << std::endl;
     thread->Kill();
   }
 }
@@ -900,3 +952,237 @@ wxThread::ExitCode wxSerialPort::SignalEventSet::Entry()
     return static_cast<wxThread::ExitCode>( 0 );
   }
 }
+*/
+
+wxSerialPort::AsyncIO::AsyncIOThread::AsyncIOThread(wxSerialPort::AsyncIO &asyncIO,
+                                                    wxSerialPort::EventSet &eventSet,
+                                                    unsigned int timeout_ms)
+  : m_AsyncIO(asyncIO)
+  , m_EventSet(eventSet)
+  , m_timeout_ms(timeout_ms)
+{
+}
+
+wxSerialPort::AsyncIO::AsyncIOThread::~AsyncIOThread()
+{
+}
+
+wxThread::ExitCode wxSerialPort::AsyncIO::AsyncIOThread::Entry()
+{
+  while (!TestDestroy()) {
+    m_EventSet.Wait(m_timeout_ms);
+    if (m_AsyncIO.OnEvent() != ON_EVENT_CONTINUE) {
+      break;
+    }
+  }
+  m_AsyncIO.OnExit();
+  return 0;
+}
+
+wxSerialPort::AsyncIO::AsyncIO(EventSet     &eventSet,
+                               unsigned int  timeout_ms)
+  : m_EventSet(eventSet)
+  , m_timeout_ms(timeout_ms)
+  , m_pAsyncIOThread(0)
+{
+}
+
+wxSerialPort::AsyncIO::~AsyncIO()
+{
+  wxCriticalSectionLocker locker(m_pAsyncIOThreadCS);
+  if (m_pAsyncIOThread) {
+    m_pAsyncIOThread->Kill();
+  }
+}
+
+wxThreadError wxSerialPort::AsyncIO::Start(StartAction startAction)
+{
+  wxThreadError r = wxTHREAD_MISC_ERROR;
+  wxCriticalSectionLocker locker(m_pAsyncIOThreadCS);
+
+  if (m_EventSet.Allocated()) {
+    if (m_pAsyncIOThread) {
+      r = wxTHREAD_RUNNING;
+    } else {
+      m_pAsyncIOThread = new AsyncIOThread(*this, m_EventSet, m_timeout_ms);
+      r = m_pAsyncIOThread->Run();
+    }
+  }
+  return r;
+}
+
+wxThreadError wxSerialPort::AsyncIO::Stop(StopAction stopAction)
+{
+  wxThreadError r = wxTHREAD_MISC_ERROR;
+
+  {
+    // Lock the pointer and request the thread to exit
+    wxCriticalSectionLocker locker(m_pAsyncIOThreadCS);
+    if (m_pAsyncIOThread) {
+      r = m_pAsyncIOThread->Delete();
+    } else {
+      r = wxTHREAD_NOT_RUNNING;
+    }
+  }
+
+  if ((stopAction != STOP_REQUEST_ONLY) && (r == wxTHREAD_NO_ERROR)) {
+
+    // Wait for the thread to exit
+    unsigned int count = 20;
+    unsigned long delay = m_timeout_ms / 10;
+    if (delay == 0) delay = 1;
+
+    r = wxTHREAD_MISC_ERROR;
+    while ((count > 0) && (r == wxTHREAD_MISC_ERROR)) {
+      wxMilliSleep(delay);
+      {
+        // Lock the pointer
+        wxCriticalSectionLocker locker(m_pAsyncIOThreadCS);
+        if (m_pAsyncIOThread) {
+          if (--count == 0) {
+            // It's not getting the hint...
+            r = m_pAsyncIOThread->Kill();
+          }
+        } else {
+          // The thread has exited
+          r = wxTHREAD_NO_ERROR;
+        }
+      }
+    }
+  }
+
+  return r;
+}
+
+void wxSerialPort::AsyncIO::OnExit()
+{
+  wxCriticalSectionLocker locker(m_pAsyncIOThreadCS);
+  m_pAsyncIOThread = 0;
+}
+
+wxSerialPort::AsyncInput::AsyncInput(wxEvtHandler  *handler,
+                                     wxWindowID    id,
+                                     wxSerialPort &port,
+                                     unsigned int  timeout_ms)
+  : AsyncIO(m_EventSet, timeout_ms)
+  , m_pHandler(handler)
+  , m_id(id)
+  , m_Port(port)
+  , m_SendEvent(true)
+  , m_Error(OK)
+{
+  if (m_EventSet.Allocated()) {
+    m_EventSet.AddPortEvent(port, static_cast<Event>(EVENT_RX_READY | EVENT_ERROR));
+  }
+}
+
+wxSerialPort::AsyncInput::~AsyncInput()
+{
+}
+
+wxThreadError wxSerialPort::AsyncInput::Start(StartAction startAction)
+{
+  m_SendEvent = true;
+  m_Error = OK;
+  if (startAction == START_CLEAR_QUEUE) {
+    std::queue<uint8_t> empty;
+    {
+      wxCriticalSectionLocker locker(m_SendEventQueueCS);
+      std::swap(m_Queue, empty);
+    }
+  }
+  return AsyncIO::Start();
+}
+
+const uint8_t &wxSerialPort::AsyncInput::front() const
+{
+  wxCriticalSectionLocker locker(m_SendEventQueueCS);
+  return m_Queue.front();
+}
+
+void wxSerialPort::AsyncInput::pop()
+{
+  wxCriticalSectionLocker locker(m_SendEventQueueCS);
+  m_Queue.pop();
+  if (m_Queue.size() == 0) {
+    m_SendEvent = true;
+  }
+}
+
+bool wxSerialPort::AsyncInput::empty() const
+{
+  wxCriticalSectionLocker locker(m_SendEventQueueCS);
+  return m_Queue.empty();
+}
+
+size_t wxSerialPort::AsyncInput::size() const
+{
+  wxCriticalSectionLocker locker(m_SendEventQueueCS);
+  return m_Queue.size();
+}
+
+uint8_t wxSerialPort::AsyncInput::read(bool &ok)
+{
+  uint8_t r=0;
+  wxCriticalSectionLocker locker(m_SendEventQueueCS);
+  size_t s = m_Queue.size();
+  if (s > 0) {
+    ok = true;
+    r = m_Queue.front();
+    m_Queue.pop();
+    if (s == 1) {
+      m_SendEvent = true;
+    }
+  } else {
+    ok = false;
+  }
+  return r;
+}
+
+uint8_t wxSerialPort::AsyncInput::read()
+{
+  uint8_t r = 0;
+  bool ok;
+  r = read(ok);
+  wxCHECK_MSG(ok, 1, "read() called on empty queue");
+  return r;
+}
+
+#define INPUT_CHUNK_SIZE 20
+
+wxSerialPort::AsyncIO::OnEventStatus wxSerialPort::AsyncInput::OnEvent()
+{
+  OnEventStatus status = ON_EVENT_EXIT;
+  Return ret = m_Port.InputWaiting();
+  
+  while (ret > 0) {
+    uint8_t c[INPUT_CHUNK_SIZE];
+    size_t n = (ret > INPUT_CHUNK_SIZE) ? INPUT_CHUNK_SIZE : static_cast<size_t>(ret);
+    
+    ret = m_Port.NonblockingRead(c, n);
+    if (ret > 0) {
+      size_t i;
+      n = static_cast<size_t>(ret);
+      wxCriticalSectionLocker locker(m_SendEventQueueCS);
+      for (i=0; i<n; i++) {
+        m_Queue.push(c[i]);
+      }
+      if (m_SendEvent) {
+        wxQueueEvent(m_pHandler, new wxSerialPortEvent(wxSERIAL_PORT_SIGNAL, m_id));
+        m_SendEvent = false;
+      }
+      ret = m_Port.InputWaiting();
+    }
+  }
+
+  if (ret >= 0) {
+    status = ON_EVENT_CONTINUE;
+  } else {
+    // An error occurred
+    m_Error = ret;
+    wxQueueEvent(m_pHandler, new wxSerialPortEvent(wxSERIAL_PORT_SIGNAL, m_id));
+  }
+
+  return status;
+}
+
