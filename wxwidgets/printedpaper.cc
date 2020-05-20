@@ -26,8 +26,6 @@
 
 #include "printedpaper.hh"
 
-#define WXWIDGET3_KLUDGE for (int i = 0; i<8; i++)
-
 /*
  * ASR-33
  *
@@ -80,7 +78,6 @@ PrintedPaper::PrintedPaper( wxWindow *parent,
   , pending_special(false)
   , pending_keyboard(false)
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   FontMetrics();
   DecideScrollbars();
 
@@ -131,11 +128,8 @@ bool PrintedPaper::PollPrinter(unsigned char &ch)
 
 void PrintedPaper::DrawPaper(int width, int height)
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   int x, y;
   
-  //wxBitmap bitmap(width, height);
-
   if (paper) {
     paper->SelectObject(wxNullBitmap);
     delete paper;
@@ -146,20 +140,23 @@ void PrintedPaper::DrawPaper(int width, int height)
   }
   
   paper_bitmap = new wxBitmap(width, height);
-  paper = new wxMemoryDC();
+  wxNativePixelData data(*paper_bitmap);
+  wxNativePixelData::Iterator p(data);
 
-  paper->SelectObject(*paper_bitmap);
 
-  wxColour EdgeColour(0xe6, 0xc7, 0x9b);
-  wxColour CentreColour(0xf7, 0xe7, 0xcd);
+  const wxColour EdgeColour(0xe6, 0xc7, 0x9b);
+  const wxColour CentreColour(0xf7, 0xe7, 0xcd);
+  const wxColour BorderColour(0, 0, 0);
   
   for (x=0; x<width; x++) {
+    wxNativePixelData::Iterator colStart = p;
+    
     // Which text character is this pixel in?
     const unsigned int c = x / font_width;
     wxColour colour;
     
     if ((c < left_offset) || (c >= (left_offset + paper_width))) {
-      colour.Set(0,0,0);
+      colour = BorderColour;
     } else {
 
       int p = x-(left_offset * font_width);
@@ -172,19 +169,22 @@ void PrintedPaper::DrawPaper(int width, int height)
                  ((EdgeColour.Blue()  * scale) + (CentreColour.Blue()  * iscale)));
     }
     
-    wxPen pen(colour);
-    paper->SetPen(pen);
-    
     for (y=0; y<height; y++) {
-      WXWIDGET3_KLUDGE paper->DrawPoint(x, y);
+      p.Red()   = colour.Red();
+      p.Green() = colour.Green();
+      p.Blue()  = colour.Blue();
+      p.OffsetY(data, 1);
     }
+    p = colStart;
+    ++p;
   }
-  
+
+  paper = new wxMemoryDC();
+  paper->SelectObject(*paper_bitmap); 
 }
   
 void PrintedPaper::FontMetrics()
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   wxClientDC dc(this);
   PrepareDC(dc);
   dc.SetFont(font);
@@ -195,8 +195,6 @@ void PrintedPaper::FontMetrics()
 
 void PrintedPaper::DecideScrollbars()
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
-  
   wxClientDC dc(this);
   PrepareDC(dc);
   dc.SetFont(font);
@@ -213,7 +211,6 @@ void PrintedPaper::DecideScrollbars()
   left_offset = (fc_width >= paper_width) ? ((fc_width-paper_width)/2) : 0;
 
   unsigned int lines = text.size();
-  //unsigned int cols  = CursorColumn();
 
   // At the very start, when nothing has been typed, pretend there is
   // one line (so that the cursor is visible)
@@ -227,16 +224,6 @@ void PrintedPaper::DecideScrollbars()
   SetScrollRate(font_width, font_height);
   SetVirtualSize(paper_width * font_width,
                  lines       * font_height);
-  /*
-  set parameters except the actual position...
-    
-  SetScrollbars(font_width, font_height, paper_width, lines,
-                ((cols  < fc_width)  ? 0 : (cols  - fc_width)),
-                ((lines < fc_height) ? 0 : (lines - fc_height)));
-  
-  ShowScrollbars(((fc_width  < paper_width) ? wxSHOW_SB_ALWAYS : wxSHOW_SB_NEVER),
-                 ((fc_height < lines      ) ? wxSHOW_SB_ALWAYS : wxSHOW_SB_NEVER));
-  */
   
   DrawPaper(((pc_width < paper_width) ? paper_width : pc_width) * font_width, font_height);
   Refresh();
@@ -244,7 +231,6 @@ void PrintedPaper::DecideScrollbars()
 
 void PrintedPaper::OnSize(wxSizeEvent &WXUNUSED(event))
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   DecideScrollbars();
 }
 
@@ -348,8 +334,6 @@ const PrintedPaper::CacheLine_t *PrintedPaper::Cached(unsigned int line)
 {
   Cache_t::iterator it;
   
-  //std::cout << "Cached("<<line<<")"<<std::endl;
-  
   it = cache.find(line);
 
   if (it != cache.end()) {
@@ -410,10 +394,6 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, unsigned int l, unsigned int c,
     w = carriage_width - c;
   }
   
-  
-  //std::cout << "DrawTextLine(.., " << l << ", " << c << ", " << w
-  //          << ", " << x << ", " << y << ")" << std::endl;
-  
   dc.SetBackgroundMode(wxTRANSPARENT);
   for (z=0; z<overstrikes; z++) {
     const Printable &p((*cl)[z]);
@@ -440,8 +420,6 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, unsigned int l, unsigned int c,
     
       wxString ws(wxString::FromAscii(cs));
     
-      //std::cout << "DrawTextLine() ws=<" << ws << ">" << std::endl;
-
       dc.SetTextForeground((AltColour) ? *wxRED : *wxBLACK);
       dc.DrawText(ws, cx, y);
       cx += (k * font_width);
@@ -468,21 +446,11 @@ void PrintedPaper::DrawTextLine(wxPaintDC &dc, unsigned int l, unsigned int c,
 
 void PrintedPaper::OnPaint(wxPaintEvent &WXUNUSED(event))
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
-
   int view_start_x, view_start_y;
   GetViewStart(&view_start_x, &view_start_y);
 
   unsigned int lines = text.size();
   
-  /*
-    std::cout << "view_start_x = " << view_start_x
-    << " view_start_y = " << view_start_y << std::endl
-    << "left_offset = " << left_offset
-    << " left_margin = " << left_margin << std::endl;
-  */
-  //std::cout << "font_width = " << font_width << std::endl;
-
   unsigned int vX,vY,vW,vH; // Dimensions of client area in characters
   wxRegionIterator upd(GetUpdateRegion()); // get the update rect list
   while (upd) {
@@ -497,15 +465,6 @@ void PrintedPaper::OnPaint(wxPaintEvent &WXUNUSED(event))
     vW -= vX;
     vH -= vY;
 
-    /*
-    std::cout << "GetX = " << upd.GetX()
-              << " GetW = " << upd.GetW() << std::endl;
-    std::cout << "vX = " << vX
-              << " vY = " << vY
-              << " vW = " << vW
-              << " vH = " << vH << std::endl;
-    */
-    
     wxPaintDC dc(this);
     PrepareDC(dc);
     dc.SetFont(font);
@@ -521,28 +480,13 @@ void PrintedPaper::OnPaint(wxPaintEvent &WXUNUSED(event))
               paper, vX * font_width, 0);
       
       if ((l >= top_offset) && ((l-top_offset) < lines)) {
-        /*
-        std::cout << "l = " << l
-                  << "vX = " << vX
-                  << " vY = " << vY
-                  << " vW = " << vW
-                  << " vH = " << vH << std::endl;
-        
-        std::cout << "left_margin = " << left_margin
-                  << " left_offset = " << left_offset << std::endl;
-        */
         int text_start = vX - left_margin - left_offset;
         int text_width = vW;
         
-        //std::cout << "text_start = " << text_start
-        //          << " text_width = " << text_width << std::endl;
         if (text_start < 0) {
           text_width += text_start;
           text_start = 0;
         }
-        
-        //std::cout << "text_start = " << text_start
-        //          << " text_width = " << text_width << std::endl;
         
         if (text_width > 0) {
           DrawTextLine(dc, l-top_offset, text_start, text_width,
@@ -588,9 +532,6 @@ void PrintedPaper::DisplayLast()
   unsigned int cursor_column = CursorColumn();
   unsigned int current_column = cursor_column;
 
-  //std::cout << "cursor_column = " << cursor_column
-  //          << " current_column = " << current_column << std::endl;
-  
   if (current_column > 0) {
     current_column--;
   }
@@ -754,7 +695,6 @@ void PrintedPaper::OnChar(wxKeyEvent& event)
 {
   bool skip = true;
   
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   wxChar ch = event.GetUnicodeKey();
 
   if (ch == WXK_NONE) {
@@ -771,8 +711,6 @@ void PrintedPaper::OnChar(wxKeyEvent& event)
       ch = '\n';
     }
   }
-  
-  //std::cout << "ch = " << ch << std::endl;
   
   if (ch <= 127) {
     skip = false;
@@ -801,8 +739,6 @@ void PrintedPaper::OnKeyUp(wxKeyEvent& event)
 
 void PrintedPaper::InvertCursor()
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
-  
   wxClientDC dc(this);
   unsigned int view_start_x, view_start_y;
   
@@ -886,8 +822,6 @@ void PrintedPaper::Send(unsigned char ch, bool special)
   
 void PrintedPaper::OnTimer(wxTimerEvent &event)
 {
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
-  
   if (have_focus &&
       ((TickCounter == 0) ||
        (TickCounter == (CHARACTERS_PER_SECOND/2)))) {
@@ -929,13 +863,11 @@ void PrintedPaper::OnTimer(wxTimerEvent &event)
 
 void PrintedPaper::OnSetFocus(wxFocusEvent &event)
 {
-  //std::cout<<__PRETTY_FUNCTION__<<std::endl;
   have_focus = true;
 }
 
 void PrintedPaper::OnKillFocus(wxFocusEvent &event)
 {
-  //std::cout<<__PRETTY_FUNCTION__<<std::endl;
   if (have_focus) {
     if (inverted_cursor) {
       InvertCursor();

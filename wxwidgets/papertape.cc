@@ -19,12 +19,11 @@
  *
  */
 #include <cmath>
+#include <wx/rawbmp.h>
 
 #include "papertape.hh"
 
 #define TIMER_PERIOD 100 // update every tenth of a second
-
-#define WXWIDGET3_KLUDGE for (int i = 0; i<8; i++)
 
 BEGIN_EVENT_TABLE(PaperTape, wxScrolledCanvas)
 EVT_SIZE(     PaperTape::OnSize)
@@ -1106,31 +1105,36 @@ void PaperTape::DrawCircle(wxDC &dc,
   long y_min = static_cast<long>(floor(yc-r));
   long x_max = static_cast<long>(ceil(xc+r));
   long y_max = static_cast<long>(ceil(yc+r));
+
+  long width  = 1 + x_max - x_min; 
+  long height = 1 + y_max - y_min;
   
   long xx, yy;
   
   double dxx;
   double dyy;
-  double d = 1.0 / 16.0;
+  const double d = 1.0 / 16.0;
 
   int area, n_area;
   int i, j;
 
   long b_red, b_green, b_blue;
   long f_red, f_green, f_blue;
-  long red, green, blue;
-  wxColour colour;
-  wxPen pen(background, 1, wxPENSTYLE_SOLID);
 
-  b_red = background.Red();
+  b_red   = background.Red();
   b_green = background.Green();
-  b_blue = background.Blue();
-  f_red = foreground.Red();
+  b_blue  = background.Blue();
+  f_red   = foreground.Red();
   f_green = foreground.Green();
-  f_blue = foreground.Blue();
+  f_blue  = foreground.Blue();
 
-  for (yy = y_min; yy < y_max; yy++) {
-    for (xx = x_min; xx < x_max; xx++) {
+  wxBitmap bitmap(width, height);
+  wxNativePixelData data(bitmap);
+  wxNativePixelData::Iterator p(data);
+
+  for (yy = y_min; yy <= y_max; yy++) {
+    wxNativePixelData::Iterator rowStart = p;
+    for (xx = x_min; xx <= x_max; xx++) {
       area = InsideCircle(xc, yc, r,
                           static_cast<double>(xx), static_cast<double>(yy), 1.0);
       
@@ -1175,17 +1179,20 @@ void PaperTape::DrawCircle(wxDC &dc,
        */
       n_area = 512 - area;
       
-      red = ((area * f_red) + (n_area * b_red)) / 512;
-      green = ((area * f_green) + (n_area * b_green)) / 512;
-      blue = ((area * f_blue) + (n_area * b_blue)) / 512;
-      
-      colour.Set(red, green, blue);
-      pen.SetColour(colour);
-      
-      dc.SetPen(pen);
-      WXWIDGET3_KLUDGE dc.DrawPoint(xx, yy);
+      p.Red()   = ((area * f_red)   + (n_area * b_red)  ) / 512;
+      p.Green() = ((area * f_green) + (n_area * b_green)) / 512;
+      p.Blue()  = ((area * f_blue)  + (n_area * b_blue) ) / 512;
+      ++p;
     }
+    p = rowStart;
+    p.OffsetY(data, 1);
   }
+
+  wxMemoryDC cdc;
+  cdc.SelectObject(bitmap);
+  dc.Blit(x_min, y_min, width, height,
+          &cdc, 0, 0);
+  cdc.SelectObject(wxNullBitmap);
 }
 
 int PaperTape::InsideCircle(double xc, double yc, double r,
@@ -1252,28 +1259,57 @@ void PaperTape::FillLine(wxDC &dc,
                          wxColour &foreground)
 {
   long xx, yy;
+
+  long x_min, x_max, width;
+  long y_min, y_max, height;
   
   double dxx;
   double dyy;
-  double d = 1.0 / 16.0;
+  const double d = 1.0 / 16.0;
   
   int area, n_area;
   
   wxColour background;
-  long b_red, b_green, b_blue;
-  long f_red, f_green, f_blue;
-  long red, green, blue;
-  wxColour colour;
-  wxPen pen(background, 1, wxPENSTYLE_SOLID);
+  uint8_t f_red, f_green, f_blue;
+
+  int i, j;
+
+  if (xc[0] < xc[1]) {
+    x_min = xc[0];
+    x_max = xc[1];
+  } else {
+    x_min = xc[1];
+    x_max = xc[0];
+  }
+  
+  if (yc[0] < yc[1]) {
+    y_min = yc[0];
+    y_max = yc[1];
+  } else {
+    y_min = yc[1];
+    y_max = yc[0];
+  }
+
+  width  = x_max - x_min;
+  height = y_max - y_min;
   
   f_red   = foreground.Red();
   f_green = foreground.Green();
-  f_blue  = foreground.Blue();
-  
-  int i, j;
+  f_blue  = foreground.Blue();  
 
-  for (yy = yc[0]; yy < yc[1]; yy++) {
-    for (xx = xc[0]; xx < xc[1]; xx++) {
+  wxBitmap bitmap(width, height);
+  wxMemoryDC cdc;
+
+  cdc.SelectObject(bitmap);
+  cdc.Blit(0, 0, width, height, &dc, x_min, y_min);
+  cdc.SelectObject(wxNullBitmap);
+
+  wxNativePixelData data(bitmap);
+  wxNativePixelData::Iterator p(data);
+
+  for (yy = y_min; yy < y_max; yy++) {
+    wxNativePixelData::Iterator rowStart = p;
+    for (xx = x_min; xx < x_max; xx++) {
       area = LeftOfLine(m, c, static_cast<double>(xx), static_cast<double>(yy), 1.0);
       
       switch (area) {
@@ -1316,32 +1352,30 @@ void PaperTape::FillLine(wxDC &dc,
       /*
        * Form appropriate colour
        */
-      
+
       n_area = 512 - area;
       
       if (area != 0) {
         if (n_area != 0) {
-          dc.GetPixel(xx, yy, &background);
-          
-          b_red = background.Red();
-          b_green = background.Green();
-          b_blue = background.Blue();
-          
-          
-          red = ((area * f_red) + (n_area * b_red)) / 512;
-          green = ((area * f_green) + (n_area * b_green)) / 512;
-          blue = ((area * f_blue) + (n_area * b_blue)) / 512;
-          colour.Set(red, green, blue);
+          p.Red()   = ((area * f_red)   + (n_area * p.Red())  ) / 512;
+          p.Green() = ((area * f_green) + (n_area * p.Green())) / 512;
+          p.Blue()  = ((area * f_blue)  + (n_area * p.Blue()) ) / 512;
         } else {
-          colour.Set(f_red, f_green, f_blue, wxALPHA_OPAQUE);
+          p.Red()   = f_red;
+          p.Green() = f_green;
+          p.Blue()  = f_blue;
         }
-        pen.SetColour(colour);
-        
-        dc.SetPen(pen);
-        WXWIDGET3_KLUDGE dc.DrawPoint(xx, yy);
-     }
+      }
+      ++p;
     }
+  
+    p = rowStart;
+    p.OffsetY(data, 1);
   }
+
+  cdc.SelectObject(bitmap);
+  dc.Blit(x_min, y_min, width, height, &cdc, 0, 0);
+  cdc.SelectObject(wxNullBitmap);
 }
 
 int PaperTape::LeftOfLine(double m, double c,
