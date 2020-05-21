@@ -130,9 +130,8 @@ private:
 
   std::list<TapeChunk> chunks;
   
-  void DrawCircle(wxDC &dc,
-                  double xc, double yc, double r,
-                  wxColour &background, wxColour &foreground);
+  void DrawCircle(wxDC &dc, double xc, double yc,
+                  double r, wxColour &foreground);
   int InsideCircle(double xc, double yc, double r,
                    double x, double y, double d);
   

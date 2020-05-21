@@ -601,17 +601,24 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
       (type == PT_tail_triangle)) {
     i = 0;
   }
-  
-  switch(i) {
-  case 0x00:
-  case 0x01:
-  case 0x02:
-  case 0x04:
-  case 0x08:
-  case 0x10:
-  case 0x20:
-  case 0x40:
-  case 0x80:
+
+  if (current_tape_width >= 40) {
+    switch(i) {
+    case 0x00:
+    case 0x01:
+    case 0x02:
+    case 0x04:
+    case 0x08:
+    case 0x10:
+    case 0x20:
+    case 0x40:
+    case 0x80:
+    drawcircles = true;
+    }
+  } else {
+    // A narrow tape starts to have no entirely paper-coloured
+    // pixels between the holes so that the bit-blit optimization
+    // below doesn't work properly
     drawcircles = true;
   }
   
@@ -654,7 +661,7 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
                    (orient == wxVERTICAL) ? xx : yy,
                    (orient == wxVERTICAL) ? yy : xx,
                    (shift[k] < 0) ? feed_hole : data_hole,
-                   paper_colour, hole_colour);
+                   hole_colour);
       }
       xx += spacing;
     }
@@ -1029,23 +1036,13 @@ void PaperTape::OnPaint(wxPaintEvent &WXUNUSED(event))
   GetClientSize(&width, &height);
   GetViewStart(&view_start_x, &view_start_y);
   
-  //int paper_tape_visible_length = (orient == wxVERTICAL) ? height :  width;
-  //int paper_tape_visible_rows = (paper_tape_visible_length + row_spacing - 1) / row_spacing;
-  //int paper_tape_full_rows    =  paper_tape_visible_length                    / row_spacing;
   int paper_tape_first_visible = (orient == wxVERTICAL) ? view_start_y : view_start_x;
-  //int offset = 0;
+
   if ((paper_tape_offset > 0) && (paper_tape_first_visible > 0)) {
     paper_tape_first_visible--;
   }
   wxMemoryDC src_dc;
 
-  //if (direction == PT_BottomToTop) {
-  //  std::cout << "paper_tape_visible_length = " << paper_tape_visible_length << std::endl;
-  //  std::cout << "row_spacing = " << row_spacing << std::endl;
-  //  offset = paper_tape_visible_length - (paper_tape_full_rows * row_spacing);
-  //  std::cout << "offset = " << offset << std::endl;
-  //}
-  
   int i;
   for (i=0; i < paper_tape_visible_rows; i++) {
     unsigned long pos = i + paper_tape_first_visible;
@@ -1095,7 +1092,7 @@ void PaperTape::OnPaint(wxPaintEvent &WXUNUSED(event))
 
 void PaperTape::DrawCircle(wxDC &dc,
                            double xc, double yc, double r,
-                           wxColour &background, wxColour &foreground)
+                           wxColour &foreground)
 {
   /*
    * Calculate the bounding coordinates of the pixels to be visited
@@ -1118,17 +1115,19 @@ void PaperTape::DrawCircle(wxDC &dc,
   int area, n_area;
   int i, j;
 
-  long b_red, b_green, b_blue;
   long f_red, f_green, f_blue;
 
-  b_red   = background.Red();
-  b_green = background.Green();
-  b_blue  = background.Blue();
   f_red   = foreground.Red();
   f_green = foreground.Green();
   f_blue  = foreground.Blue();
 
   wxBitmap bitmap(width, height);
+  wxMemoryDC cdc;
+
+  cdc.SelectObject(bitmap);
+  cdc.Blit(0, 0, width, height, &dc, x_min, y_min);
+  cdc.SelectObject(wxNullBitmap);
+
   wxNativePixelData data(bitmap);
   wxNativePixelData::Iterator p(data);
 
@@ -1172,23 +1171,20 @@ void PaperTape::DrawCircle(wxDC &dc,
         abort();
       }
       
-      //std::cout << "(" << xx << "," << yy << ") area = " << static_cast<double>(area)/512.0 << std::endl;
-      
       /*
        * Form appropriate colour
        */
       n_area = 512 - area;
       
-      p.Red()   = ((area * f_red)   + (n_area * b_red)  ) / 512;
-      p.Green() = ((area * f_green) + (n_area * b_green)) / 512;
-      p.Blue()  = ((area * f_blue)  + (n_area * b_blue) ) / 512;
+      p.Red()   = ((area * f_red)   + (n_area * p.Red())  ) / 512;
+      p.Green() = ((area * f_green) + (n_area * p.Green())) / 512;
+      p.Blue()  = ((area * f_blue)  + (n_area * p.Blue()) ) / 512;
       ++p;
     }
     p = rowStart;
     p.OffsetY(data, 1);
   }
 
-  wxMemoryDC cdc;
   cdc.SelectObject(bitmap);
   dc.Blit(x_min, y_min, width, height,
           &cdc, 0, 0);
@@ -1242,7 +1238,15 @@ int PaperTape::InsideCircle(double xc, double yc, double r,
       }
     }
   }
-  
+
+  // For a (small) circle with its centre inside the square,
+  // if the square's corners all lie outside the circle the
+  // square isn't outside the circle
+  if (((xc >= x) && (xc <= (x+1.0))) &&
+      ((yc >= y) && (yc <= (y+1.0)))) {
+    all_outside = false;
+  }
+      
   if (all_inside) {
     return 2;
   } else if (all_outside) {
