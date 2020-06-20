@@ -17,6 +17,11 @@
  * MA  02111-1307 USA
  *
  */
+#ifndef _ASR_HH_
+#define _ASR_HH_
+
+#include "tty_file.hh"
+
 class STDTTY;
 
 #define ASR_PTR 0
@@ -37,7 +42,7 @@ public:
 private:
   STDTTY *stdtty;
 
-  FILE *fp[2];
+  TTY_file tty_file[2];
   char *filename[2];
   bool pending_filename[2];
   bool running[2];
@@ -62,3 +67,4 @@ private:
 
 };
 
+#endif // _ASR_HH_

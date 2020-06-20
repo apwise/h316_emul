@@ -49,8 +49,6 @@ PTP::PTP(Proc *p, STDTTY *stdtty)
   this->p = p;
   this->stdtty = stdtty;
 
-  fp = NULL;
-
   master_clear();
 }
 
@@ -58,12 +56,8 @@ void PTP::master_clear()
 {
   mask = 0;
 
-  if (fp)
-    fclose(fp);
-  fp = NULL;
+  tty_file.close();
   pending_filename = 0;
-
-  ascii_file = 0;
 
   power_on = false;
   ready = false;
@@ -79,44 +73,27 @@ PTP::STATUS PTP::ina(unsigned short instr, signed short &data)
 PTP::STATUS PTP::ota(unsigned short instr, signed short data)
 {
   bool r = false;
-  int c;
   
-  switch(instr & 0700)
-    {
-    case 0000:
-      if (!power_on)
-        turn_power_on();
+  switch(instr & 0700) {
+  case 0000:
+    if (!power_on)
+      turn_power_on();
+    
+    r = ready;
+    
+    if (ready) {
+      tty_file.putc(data & 0xff);
       
-      r = ready;
+      ready = false;
       
-      if (ready)
-        {
-          c = data & 0xff;
-          
-          if (ascii_file)
-            {
-              c &= 0x7f;
-
-              if (c != 015) // ignore Carriage Return
-                {
-                  if (c == 012) // LF is newline
-                    c = '\n';
-                  putc(c, fp); // loose the top bit
-                }
-            }
-          else
-            putc(c, fp);
-          
-          ready = false;
-          
-          p->queue((1000000 / SPEED), this, PTP_REASON_CHARACTER );
-        }
-      break;
-      
-    default:
-      fprintf(stderr, "PTP: OTA '%04o\n", instr&0x3ff);
-      p->abort();
+      p->queue((1000000 / SPEED), this, PTP_REASON_CHARACTER );
     }
+    break;
+    
+  default:
+    fprintf(stderr, "PTP: OTA '%04o\n", instr&0x3ff);
+    p->abort();
+  }
   
   return status(r);
 }
@@ -125,74 +102,68 @@ void PTP::turn_power_on()
 {
   char buf[256];
   char *cp;
+  bool ascii_file = false;
   
-  if (!fp)
-    {
-      while (!fp)
-        {
-          if (pending_filename)
-            strcpy(buf, filename);
-          else
-            stdtty->get_input("PTP: Filename>", buf, 256, 0);
-          
-          cp = buf;
-          if (buf[0]=='&')
-            {
-              ascii_file = 1;
-              cp++;
-            }
-          
-          fp = fopen(cp, "wb");
-          if (!fp)
-            {
-              fprintf(((pending_filename) ? stderr : stdout),
-                      "Could not open <%s> for writing\n", cp);
-              if (pending_filename)
-                p->abort();
-            }
-          
-          if (pending_filename)
-            delete filename;
-          
-          pending_filename = 0;
-        }
+  while (!tty_file.is_open()) {
+    
+    if (pending_filename)
+      strcpy(buf, filename);
+    else
+      stdtty->get_input("PTP: Filename>", buf, 256, 0);
+    
+    cp = buf;
+    if (buf[0]=='&') {
+      ascii_file = 1;
+      cp++;
     }
-  
-  if (!power_on)
-    {
-      // 5 second turn-on delay
-      p->queue(5000000, this, PTP_REASON_CHARACTER );
-      power_on = true;
-    }   
+
+    tty_file.open(cp, (ascii_file ? TTY_file::WRITE_ASCII :
+                       TTY_file::WRITE_BINARY));
+
+    if (!tty_file.is_open()) {
+      fprintf(((pending_filename) ? stderr : stdout),
+              "Could not open <%s> for writing\n", cp);
+      if (pending_filename)
+        p->abort();
+    }
+    
+    if (pending_filename)
+      delete filename;
+    
+    pending_filename = 0;
+  }
+
+  if (!power_on) {
+    // 5 second turn-on delay
+    p->queue(5000000, this, PTP_REASON_CHARACTER );
+    power_on = true;
+  }   
 }
 
 PTP::STATUS PTP::ocp(unsigned short instr)
 {
-  
-  switch(instr & 0700)
-    {
-    case 0000:
-      turn_power_on();
-      break;
-      
-    case 0100:
-      power_on = false;
-      
-      /*
-       * Don't close the file; some programs (like the
-       * assembler) stop the punch, and then restart
-       * it. However, fflush() it to disk.
-       */
+  switch(instr & 0700) {
+  case 0000:
+    turn_power_on();
+    break;
+    
+  case 0100:
+    power_on = false;
+    
+    /*
+     * Don't close the file; some programs (like the
+     * assembler) stop the punch, and then restart
+     * it. However, fflush() it to disk.
+     */
 
-      if (fp)
-        fflush(fp);
-      
-      break;
-      
-    default:
-      fprintf(stderr, "PTP: OCP '%04o\n", instr&0x3ff);
-      p->abort();
-    }
+    tty_file.flush();
+    
+    break;
+    
+  default:
+    fprintf(stderr, "PTP: OCP '%04o\n", instr&0x3ff);
+    p->abort();
+  }
   return STATUS_READY;
 }
 
@@ -200,16 +171,15 @@ PTP::STATUS PTP::sks(unsigned short instr)
 {
   bool r = 0;
   
-  switch(instr & 0700)
-    {
-    case 0000: r = ready; break;
-    case 0100: r = power_on; break;
-    case 0400: r = !(ready && mask); break;
-      
-    default:
-      fprintf(stderr, "PTP: SKS '%04o\n", instr&0x3ff);
-      p->abort();
-    }
+  switch(instr & 0700) {
+  case 0000: r = ready; break;
+  case 0100: r = power_on; break;
+  case 0400: r = !(ready && mask); break;
+    
+  default:
+    fprintf(stderr, "PTP: SKS '%04o\n", instr&0x3ff);
+    p->abort();
+  }
   
   return status(r);
 }
@@ -228,21 +198,20 @@ PTP::STATUS PTP::smk(unsigned short mask)
 
 void PTP::event(int reason)
 {
-  switch(reason)
-    {
-    case REASON_MASTER_CLEAR:
-      master_clear();
-      break;
-      
+  switch(reason) {
+  case REASON_MASTER_CLEAR:
+    master_clear();
+    break;
+    
     case PTP_REASON_CHARACTER:
       ready = true;
       break;
-                        
-    default:
-      fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      p->abort();
-      break;
-    }
+      
+  default:
+    fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
+    p->abort();
+    break;
+  }
 }
 
 void PTP::set_filename(char *filename)

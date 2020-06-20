@@ -17,9 +17,13 @@
  * MA  02111-1307 USA
  *
  */
+#ifndef _PTR_HH_
+#define _PTR_HH_
 
 class Proc;
 class STDTTY;
+
+#include "tty_file.hh"
 
 class PTR : public IODEV
 {
@@ -35,6 +39,7 @@ public:
   void set_filename(char *filename);
 
 private:
+  
   void master_clear(void);
   void open_file(void);
   void start_reader(void);
@@ -42,14 +47,11 @@ private:
   Proc *p;
   STDTTY *stdtty;
 
-  FILE *fp;
+  TTY_file tty_file;
   bool pending_filename;
   char *filename;
 
-  bool ascii_file;
-  bool insert_lf;
-
-  bool eot;
+  bool eot; // End Of Tape
   unsigned int eot_counter;
 
   unsigned short mask;
@@ -63,3 +65,5 @@ private:
 
   int data_count;
 };
+
+#endif // _PTR_HH_

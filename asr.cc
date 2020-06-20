@@ -41,16 +41,14 @@ ASR::ASR(STDTTY *stdtty)
 
   stdtty->set_non_cannonical();
 
-  for (i=0; i<2; i++)
-    {
-      pending_filename[i] = false;
-      fp[i] = NULL;
-      running[i] = false;
-      ascii_file[i] = false;
-      silent_file[i] = false;
-      char_count[i] = 0;
-    }
-
+  for (i=0; i<2; i++) {
+    pending_filename[i] = false;
+    running[i] = false;
+    ascii_file[i] = false;
+    silent_file[i] = false;
+    char_count[i] = 0;
+  }
+  
   clear_ptr_flags();
   clear_ptp_flags();
 }
@@ -72,95 +70,48 @@ bool ASR::get_asrch(char &c, bool local_echo)
 {
   char k;
   bool r = false;
-  int ch;
 
   //cout << __PRETTY_FUNCTION__ << "\n";
 
-  if (running[ASR_PTR])
-    {
-      stdtty->service_tty_input();
+  if (running[ASR_PTR]) {
+    stdtty->service_tty_input();
 
-      if (insert_lf)
-        {
-          c = 0212;
-          insert_lf = false;
-          r = true;
-        }
-      else
-        {
-          ch = getc(fp[ASR_PTR]);
-          char_count[ASR_PTR]++;
-          if (ch == EOF)
-            {
-              fclose(fp[ASR_PTR]);
-              fp[ASR_PTR] = NULL;
-              printf("\nASRPTR: EOF\n");
-              running[ASR_PTR] = false;
-            }
-          else
-            {
-              c = ch;
-              r = true;
-              
-              if (ascii_file[ASR_PTR])
-                {
-                  if (c=='\n')
-                    {
-                      c = 0215;
-                      insert_lf = true;
-                    }
-                  else if (c != 0 )
-                    c |= 0x80;
-                }
-            }
-        }
-
-      if (stop_after_next)
-        {
-          running[ASR_PTR] = false;
-          //Printf("ASRPTR: Stopped\n");
-        }
-      else if (xoff_read)
-        {
-          //Printf("ASRPTR: About to stop\n");
-          xoff_read = false;
-          if ((c&0xff) == RUBOUT)
-            {
-              running[ASR_PTR] = false;
-              //Printf("ASRPTR: Stopped\n");
-            }
-          else
-            stop_after_next = true;
-        }
-      else if ((c&0x7f) == XOFF)
-        {
-          xoff_read = true;
-          //Printf("ASRPTR: XOFF read\n");
-        }
-    }
-  else
-    {
-      if (stdtty->got_char(k))
-        {
-          k &= 0x7f;
-          if ( (k == 012) || (k == 015) || (k == 007) )
-            r = 1;
-          else if (k >= 040)
-            {
-              if ((k >= 0140) && (k < 0177))
-                k -= 040;
-              r = 1;
-            }
-        }
+    c = tty_file[ASR_PTR].getc();
+    
+    if (stop_after_next) {
+      running[ASR_PTR] = false;      
+    } else if (xoff_read) {
       
-      if (r)
-        c = k | ((k != 0) ? 0x80 : 0);
+      xoff_read = false;
+      if (c == RUBOUT) {
+        running[ASR_PTR] = false;
+      } else {
+        stop_after_next = true;
+      }
+      
+    } else if ((c & 0x7f) == XOFF) {
+      xoff_read = true;
     }
+  } else {
+    if (stdtty->got_char(k)) {
+      k &= 0x7f;
+      if ( (k == 012) || (k == 015) || (k == 007) )
+        r = 1;
+      else if (k >= 040) {
+        if ((k >= 0140) && (k < 0177))
+          k -= 040;
+        r = 1;
+      }
+    }
+    
+    if (r)
+      c = k | ((k != 0) ? 0x80 : 0);
+  }
   
   if ((r) && (local_echo) &&
       ((!running[ASR_PTR]) || (!silent_file[ASR_PTR])))
     echo_asrch(c, false);
-
+  
   return r;
 }
 
@@ -173,73 +124,47 @@ void ASR::echo_asrch(char c, bool from_serial)
 {
   int k;
 
-  if (from_serial)
-    {
-      if (tape_char_received)
-        {
-          tape_char_received = false;
-          //open_punch_file();
-          if ((c & 0xff) == RUBOUT)
-            return; // RUBOUT is not punched
-        }
-      else if ( (c&0x7f) == TAPE )
-        tape_char_received = true;
+  if (from_serial) {
+    if (tape_char_received) {
+      tape_char_received = false;
+      //open_punch_file();
+      if ((c & 0xff) == RUBOUT)
+        return; // RUBOUT is not punched
+    } else if ( (c&0x7f) == TAPE )
+      tape_char_received = true;
 
-
-      if ((c & 0x7f) == XON)
-        {
-          //Printf("ASR: XON\n");
-          open_reader_file();
-        }
+    if ((c & 0x7f) == XON) {
+      open_reader_file();
     }
+  }
+  
+  if (running[ASR_PTP]) {
 
-  if (running[ASR_PTP])
-    {
-      if (ascii_file[ASR_PTP])
-        {
-          k = c & 0x7f;
-          if ((k != 015) && // ignore Carriage Return
-              (k != 0))     // ignore null
-            {
-              if (k == 012) // LF is newline
-                k = '\n';
-              putc(k, fp[ASR_PTP]);
-            }
-        }
-      else
-        putc(c, fp[ASR_PTP]);
+    tty_file[ASR_PTP].putc(c);
 
-      if (xoff_received)
-        {
-          //printf("XOFF\n");
-          xoff_received = false;
-          running[ASR_PTP] = false;
-          fflush(fp[ASR_PTP]);
-        }
-      else if ( (c & 0x7f) == XOFF )
-        xoff_received = true;
+    if (xoff_received) {
+      xoff_received = false;
+      running[ASR_PTP] = false;
+      tty_file[ASR_PTP].flush();
+    } else if ( (c & 0x7f) == XOFF ) {
+      xoff_received = true;
     }
+  }
+  
+  if ((!running[ASR_PTP]) || (!silent_file[ASR_PTP])) {
+    k = c & 0x7f;
 
-  if ((!running[ASR_PTP]) || (!silent_file[ASR_PTP]))
-    {
-      k = c & 0x7f;
-
-
-      //if (((c & 0xff) > 0240) && (!from_serial) && running[ASR_PTR])
-      if ((c & 0x80) && (!from_serial) && running[ASR_PTR])
-        return; // Don't echo reader data with MSB set
-
-      // MAP delete to backspace
-      if (k == 0177)
-        k = BS;
-
-      //printf("ASR: c = 0x%02x k = 0x%02x\n", c&0xff, k&0xff);
-
-      if ((k == 007) || (k == 012) || (k == 015) ||
-          ((k >= 040) && (k < 0174)) || (k == BS))
-        stdtty->putch(k);
-
-    }
+    if ((c & 0x80) && (!from_serial) && running[ASR_PTR])
+      return; // Don't echo reader data with MSB set
+    
+    // MAP delete to backspace
+    if (k == 0177)
+      k = BS;
+    
+    if ((k == 007) || (k == 012) || (k == 015) ||
+        ((k >= 040) && (k < 0174)) || (k == BS))
+      stdtty->putch(k);  
+  }
 }
 
 void ASR::set_filename(char *filename, bool asr_ptp)
@@ -294,49 +219,44 @@ void ASR::get_filename(bool asr_ptp)
 
 void ASR::close_file(bool asr_ptp)
 {
-  if (fp[asr_ptp])
-    {
-      fclose(fp[asr_ptp]);
-      fp[asr_ptp] = NULL;
-      running[asr_ptp] = false;
-    }
+  tty_file[asr_ptp].close();
+  running[asr_ptp] = false;
 }
 
 void ASR::open_reader_file()
 {
-  while (!fp[ASR_PTR])
-    {
-      clear_ptr_flags();
-      if (!pending_filename[ASR_PTR])
-        get_filename(ASR_PTR);
-      fp[ASR_PTR] = fopen(filename[ASR_PTR],
-                          (ascii_file[ASR_PTR] ? "r" : "rb"));
-      pending_filename[ASR_PTR] = false;
-      if (!fp[ASR_PTR])
-        fprintf(stderr, "Failed to open <%s> for reading\r\n",
-                filename[ASR_PTR]);
-
-      insert_lf = false;
-      char_count[ASR_PTR] = 0;
-    }
-
+  while (!tty_file[ASR_PTR].is_open()) {
+    clear_ptr_flags();
+    if (!pending_filename[ASR_PTR])
+      get_filename(ASR_PTR);
+    tty_file[ASR_PTR].open(filename[ASR_PTR],
+                           (ascii_file[ASR_PTR] ? TTY_file::READ_ASCII :
+                            TTY_file::READ_BINARY));
+    pending_filename[ASR_PTR] = false;
+    if (!tty_file[ASR_PTR].is_open())
+      fprintf(stderr, "Failed to open <%s> for reading\r\n",
+              filename[ASR_PTR]);
+    
+    insert_lf = false;
+    char_count[ASR_PTR] = 0;
+  }
+  
   running[ASR_PTR] = true;
-  //Printf("ASRPTR: Started\n");
 }
 
 void ASR::open_punch_file()
 {
-  while (!fp[ASR_PTP])
-    {
-      if (!pending_filename[ASR_PTP])
-        get_filename(ASR_PTP);
-      fp[ASR_PTP] = fopen(filename[ASR_PTP],
-                          (ascii_file[ASR_PTP] ? "w" : "wb"));
-      pending_filename[ASR_PTP] = false;
-      if (!fp[ASR_PTP])
-        fprintf(stderr, "Failed to open <%s> for writing\n",
-                filename[ASR_PTP]);
-    }
+  while (!tty_file[ASR_PTP].is_open()) {
+    if (!pending_filename[ASR_PTP])
+      get_filename(ASR_PTP);
+    tty_file[ASR_PTP].open(filename[ASR_PTP],
+                           (ascii_file[ASR_PTP] ? TTY_file::WRITE_ASCII :
+                            TTY_file::WRITE_BINARY));
+    pending_filename[ASR_PTP] = false;
+    if (!tty_file[ASR_PTP].is_open())
+      fprintf(stderr, "Failed to open <%s> for writing\n",
+              filename[ASR_PTP]);
+  }
   
   running[ASR_PTP] = true;
 }
@@ -345,68 +265,67 @@ bool ASR::special(char c)
 {
   bool r=false;
 
-  switch(c & 0x7f)
-    {
-    case 'h': /* close files */
-      printf("\n");
-      printf("ALT-h Print this help\n");
-      printf("ALT-p Select file for punch output\n");
-      printf("ALT-u Start punch\n");
-      printf("ALT-r Select file for reader input\n");
-      printf("ALT-t Start reader\n");
-      printf("      \'&\' before filename specifies ASCII file\n");
-      printf("      \'@\' before filename specifies silent\n");
-      printf("ALT-c Close files\n");
-      printf("ALT-q Quit\n");
-      r = 1;
-      break;
+  switch(c & 0x7f) {
+  case 'h': /* help */
+    printf("\n");
+    printf("ALT-h Print this help\n");
+    printf("ALT-p Select file for punch output\n");
+    printf("ALT-u Start punch\n");
+    printf("ALT-r Select file for reader input\n");
+    printf("ALT-t Start reader\n");
+    printf("      \'&\' before filename specifies ASCII file\n");
+    printf("      \'@\' before filename specifies silent\n");
+    printf("ALT-c Close files\n");
+    printf("ALT-q Quit\n");
+    r = 1;
+    break;
+    
+  case 'c': /* close files */
+    close_file(ASR_PTP);
+    close_file(ASR_PTR);
+    clear_ptr_flags();
+    clear_ptp_flags();
+    r = 1;
+    break;
+    
+  case 'q': /* quit */
+    close_file(ASR_PTP);
+    close_file(ASR_PTR);
+    r = 1;
+    exit(0);
+    break;
+    
+  case 'p': /* punch */
+    close_file(ASR_PTP);
+    clear_ptp_flags();
+    get_filename(ASR_PTP);
+    r = 1;
+    break;
+    
+  case 'r': /* reader */
+    close_file(ASR_PTR);
+    clear_ptr_flags();
+    get_filename(ASR_PTR);
+    r = 1;
+    break;
+    
+  case 't': /* start reader */
+    open_reader_file();
+    r = 1;
+    break;
 
-    case 'c': /* close files */
-      close_file(ASR_PTP);
-      close_file(ASR_PTR);
-      clear_ptr_flags();
-      clear_ptp_flags();
-      r = 1;
-      break;
-
-    case 'q': /* quit */
-      close_file(ASR_PTP);
-      close_file(ASR_PTR);
-      r = 1;
-      exit(0);
-      break;
-
-    case 'p': /* punch */
-      close_file(ASR_PTP);
-      clear_ptp_flags();
-      get_filename(ASR_PTP);
-      r = 1;
-      break;
-
-    case 'r': /* reader */
-      close_file(ASR_PTR);
-      clear_ptr_flags();
-      get_filename(ASR_PTR);
-      r = 1;
-      break;
-
-    case 't': /* start reader */
-      open_reader_file();
-      r = 1;
-      break;
-
-    case 'u': /* start punch */
-      open_punch_file();
-      r = 1;
-      break;
-
-    case 'z': /* Print some status */
-      printf("\nASRPTR:\n");
-      printf("running = %d\n", ((int)running[ASR_PTR]) );
-      printf("char_count = %d\n", ((int) char_count[ASR_PTR]) );
-
-      r = 1;
-      break;
-    }
+  case 'u': /* start punch */
+    open_punch_file();
+    r = 1;
+    break;
+    
+  case 'z': /* Print some status */
+    printf("\nASRPTR:\n");
+    printf("running = %d\n", ((int)running[ASR_PTR]) );
+    printf("char_count = %d\n", ((int) char_count[ASR_PTR]) );
+    
+    r = 1;
+    break;
+  }
   return r;
 }

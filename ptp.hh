@@ -17,9 +17,13 @@
  * MA  02111-1307 USA
  *
  */
+#ifndef _PTP_HH_
+#define _PTP_HH_
 
 class Proc;
 class STDTTY;
+
+#include "tty_file.hh"
 
 class PTP : public IODEV
 {
@@ -41,13 +45,14 @@ class PTP : public IODEV
   Proc *p;
   STDTTY *stdtty;
 
-  FILE *fp;
+  TTY_file tty_file;
   bool pending_filename;
   char *filename;
   
-  bool ascii_file;
   bool ready;
   bool power_on;
   
   unsigned short mask;
 };
+
+#endif // _PTP_HH_

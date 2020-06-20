@@ -20,6 +20,7 @@ h16_SOURCES = 	asr_intf.cc \
 		asr.cc \
 		stdtty.cc \
 		plt.cc \
+		tty_file.cc \
 		gpl.c \
 		asr.hh \
 		event_queue.hh \
@@ -28,6 +29,7 @@ h16_SOURCES = 	asr_intf.cc \
 		ptp.hh \
 		stdtty.hh \
 		plt.hh \
+		tty_file.hh \
 		asr_intf.hh \
 		instr.hh \
 		lpt.hh \
@@ -74,27 +76,27 @@ h16_pdap_SOURCES = utils/h16-pdap.cc
 
 h16_ppl_SOURCES = utils/h16-ppl.c
 
-h16_asctotty_SOURCES = utils/h16-asctotty.c
+h16_asctotty_SOURCES = utils/h16-asctotty.cc tty_file.cc tty_file.hh
 
-h16_ttytoasc_SOURCES = utils/h16-ttytoasc.c
+h16_ttytoasc_SOURCES = utils/h16-ttytoasc.cc tty_file.cc tty_file.hh
 
 h16_tabify_SOURCES = utils/h16-tabify.cc instr.cc
 h16_tabify_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
 h16_asr_SOURCES = utils/h16-asr_app.cc utils/serial.cc utils/serial.hh \
 		utils/dummy_proc.cc utils/dummy_proc.hh \
-		asr.cc asr.hh stdtty.cc stdtty.hh
+		asr.cc asr.hh tty_file.cc tty_file.hh stdtty.cc stdtty.hh
 
 h16_pp_asr_SOURCES = utils/h16-pp-asr_app.cc \
 		utils/dummy_proc.cc utils/dummy_proc.hh \
-		asr.cc asr.hh stdtty.cc stdtty.hh \
+		asr.cc asr.hh tty_file.cc tty_file.hh stdtty.cc stdtty.hh \
 		utils/pp_channel.h utils/pp_channel.c
 h16_pp_asr_CXXFLAGS = -pthread -Wall -Werror
 h16_pp_asr_LDADD = -lpthread
 
 h16_depp_asr_SOURCES = utils/h16-depp-asr_app.cc \
 		utils/dummy_proc.cc utils/dummy_proc.hh \
-		asr.cc asr.hh stdtty.cc stdtty.hh \
+		asr.cc asr.hh tty_file.cc tty_file.hh stdtty.cc stdtty.hh \
 		utils/depp_channel.h utils/depp_channel.c
 h16_depp_asr_CFLAGS = -I/usr/local/include/digilent/adept -Wall -Werror
 h16_depp_asr_CXXFLAGS = -pthread -I/usr/local/include/digilent/adept -Wall -Werror

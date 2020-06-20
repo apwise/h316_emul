@@ -66,8 +66,6 @@ PTR::PTR(Proc *p, STDTTY *stdtty)
   this->p = p;
   this->stdtty = stdtty;
 
-  fp = NULL;
-
   master_clear();
 }
 
@@ -75,13 +73,8 @@ void PTR::master_clear()
 {
   mask = 0;
 
-  if (fp)
-    fclose(fp);
-  fp = NULL;
+  tty_file.close();
   pending_filename = false;
-
-  ascii_file = false;
-  insert_lf = false;
 
   eot = false;
   eot_counter = 0;
@@ -99,49 +92,43 @@ PTR::STATUS PTR::ina(unsigned short instr, signed short &data)
 {
   bool r = ready;
 
-  if (ready)
-    {
-      data = data_buf;
-      ready = false;
-      p->clear_interrupt(SMK_MASK);
-      data_count ++;
-      //printf("\nPTR: Read character (%d) %d\n", data_buf, data_count);
+  if (ready) {
+    data = data_buf;
+    ready = false;
+    p->clear_interrupt(SMK_MASK);
+    data_count ++;
+    //printf("\nPTR: Read character (%d) %d\n", data_buf, data_count);
+  } else if (eot) {
+    eot_counter++;
+    
+    if (eot_counter > EOT_LIMIT) {
+      /*
+       * This is a kludge, however...
+       *
+       * Some programs (well the assembler in particular)
+       * don't read to the end of the tape. This is quite
+       * normal; most programs should be able to tell they
+       * are at the end of valid input without actually
+       * running out of tape. However, the assembler needs
+       * to get back to the start of the source code in order
+       * to do the second pass. On the real machine, this
+       * is simply done by taking the tape out of the
+       * reader, rewinding it, and putting it back at the
+       * start of the tape. Master clear would cause the
+       * PTR to ask for the name of the file again, but then
+       * the PC is lost, and the second pass cannot be easily
+       * started.
+       *
+       * In order to deal with this, after an arbitrary
+       * number of attempts to read after the EOT, close
+       * the file and ask for the name of a new file.
+       */
+      printf("PTR: EOT\n");
+      tty_file.close();
+      open_file();
+      start_reader();
     }
-  else if (eot)
-    {
-      eot_counter++;
-
-      if (eot_counter > EOT_LIMIT)
-        {
-          /*
-           * This is a cludge, however...
-           *
-           * Some programs (well the assembler in particular)
-           * don't read to the end of the tape. This is quite
-           * normal; most programs should be able to tell they
-           * are at the end of valid input without actually
-           * running out of tape. However, the assembler needs
-           * to get back to the start of the souce code in order
-           * to do the second pass. On the real machine, this
-           * is simply done by taking the tape out of the
-           * reader, rewinding it, and putting it back at the
-           * start of the tape. Master clear would cause the
-           * PTR to ask for the name of the file again, but then
-           * the PC is lost, and the second pass cannot be easily
-           * started.
-           *
-           * In order to deal with this, after an arbitrary
-           * number of attempts to read after the EOT, close
-           * the file and ask for the name of a new file.
-           */
-          printf("PTR: EOT\n");
-          if (fp)
-            fclose(fp);
-          fp = NULL;
-          open_file();
-          start_reader();
-        }
-    }
+  }
   
   return status(r);
 }
@@ -150,35 +137,35 @@ void PTR::open_file(void)
 {
   char buf[256];
   char *cp;
-
-  while (!fp)
-    {
-      if (pending_filename)
-        strcpy(buf, filename);
-      else
-        stdtty->get_input("PTR: Filename>", buf, 256, 0);
-      
-      cp = buf;
-      if (buf[0]=='&')
-        {
-          ascii_file = 1;
-          cp++;
-        }
-      
-      fp = fopen(cp, "rb");
-      if (!fp)
-        {
-          fprintf(((pending_filename) ? stderr : stdout),
-                  "Could not open <%s> for reading\n", cp);
-          if (pending_filename)
-            p->abort();
-        }
-      
-      if (pending_filename)
-        delete filename;
-      
-      pending_filename = 0;
+  bool ascii_file = false;
+  
+  while (!tty_file.is_open()) {
+    if (pending_filename)
+      strcpy(buf, filename);
+    else
+      stdtty->get_input("PTR: Filename>", buf, 256, 0);
+    
+    cp = buf;
+    if (buf[0]=='&') {
+      ascii_file = 1;
+      cp++;
     }
+    
+    tty_file.open(cp, (ascii_file ? TTY_file::READ_ASCII :
+                       TTY_file::READ_BINARY));
+    
+    if (!tty_file.is_open()) {
+      fprintf(((pending_filename) ? stderr : stdout),
+              "Could not open <%s> for reading\n", cp);
+      if (pending_filename)
+        p->abort();
+    }
+    
+    if (pending_filename)
+      delete filename;
+    
+    pending_filename = 0;
+  }
   
   eot = false;
   eot_counter = 0;
@@ -193,58 +180,54 @@ void PTR::start_reader(void)
 
 PTR::STATUS PTR::ocp(unsigned short instr)
 {
-  switch(instr & 0700)
-    {
-    case 0000:
-
-      if ((fp) && (eot))
-        {
-          fclose(fp);
-          fp = NULL;
-        }
-
-      if (!fp)
-        open_file();
-      
-      if (!tape_running)
-        start_reader();
-
-      break;
-
-    case 0100:
-
-      tape_running = false;
-      if (events_queued > 0)
-        ignore_event = true;
-      /*
-       * The first event should be ignored
-       * because the tape has been stopped, it is assumed
-       * that the tape is stopped early enough to avoid
-       * losing characters.
-       */
-      break;
-      
-    default:
-      fprintf(stderr, "PTR: OCP '%04o\n", instr&0x3ff);
-      p->abort();
+  switch(instr & 0700) {
+  case 0000:
+    
+    if (eot) {
+      tty_file.close();
     }
+    
+    if (! tty_file.is_open())
+      open_file();
+    
+    if (!tape_running)
+      start_reader();
+    
+    break;
+    
+  case 0100:
+    
+    tape_running = false;
+    if (events_queued > 0)
+      ignore_event = true;
+    /*
+     * The first event should be ignored
+     * because the tape has been stopped, it is assumed
+     * that the tape is stopped early enough to avoid
+     * losing characters.
+     */
+    break;
+    
+  default:
+    fprintf(stderr, "PTR: OCP '%04o\n", instr&0x3ff);
+    p->abort();
+  }
   return STATUS_READY;
 }
 
 PTR::STATUS PTR::sks(unsigned short instr)
 {
   bool r = 0;
-
-  switch(instr & 0700)
-    {
-    case 0000: r = ready; break;
-    case 0400: r = !(ready && mask); break;
-
-    default:
-      fprintf(stderr, "PTR: SKS '%04o\n", instr&0x3ff);
-      p->abort();
-    }
-
+  
+  switch(instr & 0700) {
+  case 0000: r = ready; break;
+  case 0400: r = !(ready && mask); break;
+    
+  default:
+    fprintf(stderr, "PTR: SKS '%04o\n", instr&0x3ff);
+    p->abort();
+  }
+  
   return status(r);
 }
 
@@ -252,19 +235,19 @@ PTR::STATUS PTR::ota(unsigned short instr, signed short data)
 {
   fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
   p->abort();
-
+  
   return STATUS_READY;
 }
 
 PTR::STATUS PTR::smk(unsigned short mask)
 {
   this->mask = mask & SMK_MASK;
-
+  
   if (ready && this->mask)
     p->set_interrupt(this->mask);
   else
     p->clear_interrupt(SMK_MASK);
-
+  
   return STATUS_READY;
 }
 
@@ -272,77 +255,50 @@ void PTR::event(int reason)
 {
   int c;
 
-  switch(reason)
-    {
-    case REASON_MASTER_CLEAR:
-      master_clear();
-      break;
+  switch(reason) {
+  case REASON_MASTER_CLEAR:
+    master_clear();
+    break;
+    
+  case PTR_REASON_CHARACTER:
+    
+    events_queued--;
+    
+    if (!ignore_event) {
+      if (ready) {
+        fprintf(stderr,
+                "%s " PRIuLL "Character overrun\n",
+                __PRETTY_FUNCTION__, p->get_half_cycles());
+      }
 
-    case PTR_REASON_CHARACTER:
+      c = tty_file.getc();
 
-      events_queued--;
-
-      if (!ignore_event)
-        {
-          if (ready)
-            fprintf(stderr,
-                    "%s " PRIuLL "Character overrun\n",
-                    __PRETTY_FUNCTION__, p->get_half_cycles());
-
-          if (insert_lf)
-            {
-              c = 0212;
-              insert_lf = false;
-            }
-          else
-            {
-              c = getc(fp);
-              if (ascii_file)
-                {
-                  if (c=='\n')
-                    {
-                      c = 0215;
-                      insert_lf = true;
-                    }
-                  else if (c != 0 )
-                    c |= 0x80;
-                }
-            }
-          
-          if (c == EOF)
-            {
-              eot = true;
-              eot_counter = 0;
-            }
-          else
-            {
-              data_buf = c & 0xff;
-              ready = true;
-              p->set_interrupt(mask);
-              p->queue((1000000 / SPEED), this, PTR_REASON_CHARACTER );
-              events_queued++;
-            }
-        }
-
-      ignore_event = false;
-      break;
-
-    default:
-      fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      p->abort();
-      break;
+      if (c == EOF) {
+        eot = true;
+        eot_counter = 0;
+      } else {
+        data_buf = c & 0xff;
+        ready = true;
+        p->set_interrupt(mask);
+        p->queue((1000000 / SPEED), this, PTR_REASON_CHARACTER );
+        events_queued++;
+      }
     }
+    
+    ignore_event = false;
+    break;
+    
+  default:
+    fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
+    p->abort();
+    break;
+  }
 }
 
 void PTR::set_filename(char *filename)
 {
-  if (fp)
-    fclose(fp);
-  fp = NULL;
+  tty_file.close();
   pending_filename = false;
-
-  ascii_file = false;
-  insert_lf = false;
 
   eot = false;
   eot_counter = 0;
