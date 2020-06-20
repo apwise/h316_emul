@@ -37,7 +37,7 @@ enum LPT_REASON
     LPT_REASON_NUM
   };
 
-static const char *ptp_reason[LPT_REASON_NUM] __attribute__ ((unused)) =
+static const char *lpt_reason[LPT_REASON_NUM] __attribute__ ((unused)) =
 {
   "Dummy"
 };

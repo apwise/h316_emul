@@ -37,8 +37,11 @@
 #include "iodev.hh"
 #include "rtc.hh"
 #include "ptr.hh"
+#include "ptp.hh"
 #include "asr_intf.hh"
 #include "stdtty.hh"
+#include "lpt.hh"
+#include "plt.hh"
 #endif
 
 #include "instr.hh"
@@ -1271,56 +1274,56 @@ void Proc::flush_events()
 void Proc::set_ptr_filename(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((PTR *) devices[IODEV::PTR_DEVICE])->set_filename(filename);
+  dynamic_cast<PTR *>(devices[IODEV::PTR_DEVICE])->set_filename(filename);
 #endif
 }
 
 void Proc::set_ptp_filename(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((PTR *) devices[IODEV::PTP_DEVICE])->set_filename(filename);
+  dynamic_cast<PTP *>(devices[IODEV::PTP_DEVICE])->set_filename(filename);
 #endif
 }
 
 void Proc::set_plt_filename(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((PTR *) devices[IODEV::PLT_DEVICE])->set_filename(filename);
+  dynamic_cast<PLT *>(devices[IODEV::PLT_DEVICE])->set_filename(filename);
 #endif
 }
 
 void Proc::set_lpt_filename(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((PTR *) devices[IODEV::LPT_DEVICE])->set_filename(filename);
+  dynamic_cast<LPT *>(devices[IODEV::LPT_DEVICE])->set_filename(filename);
 #endif
 }
 
 void Proc::set_asr_ptr_filename(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->set_filename(filename, false);
+  dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->set_filename(filename, false);
 #endif
 }
 
 void Proc::set_asr_ptp_filename(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->set_filename(filename, true);
+  dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->set_filename(filename, true);
 #endif
 }
 
 void Proc::asr_ptp_on(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->asr_ptp_on(filename);
+  dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->asr_ptp_on(filename);
 #endif
 }
 
 void Proc::asr_ptr_on(char *filename UNUSED)
 {
 #ifndef RTL_SIM
-  ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->asr_ptr_on(filename);
+  dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->asr_ptr_on(filename);
 #endif
 }
 
@@ -1329,7 +1332,7 @@ bool Proc::special(char k UNUSED)
   bool r = false;
 
 #ifndef RTL_SIM
-  r = ((ASR_INTF *) devices[IODEV::ASR_DEVICE])->special(k);
+  r = dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->special(k);
 
   if ( (k & 0x7f) == 'h' )
     {
@@ -2193,7 +2196,7 @@ void Proc::do_IRS(unsigned short instr)
 #ifndef RTL_SIM
   if ((d == 0) && break_flag &&
       (break_addr = 061) && (devices[IODEV::RTC_DEVICE])) {
-    static_cast<RTC *>(devices[IODEV::RTC_DEVICE])->rollover();
+    dynamic_cast<RTC *>(devices[IODEV::RTC_DEVICE])->rollover();
   }
 #endif
 }
