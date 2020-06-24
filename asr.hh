@@ -55,7 +55,6 @@ private:
   void clear_ptp_flags();
   void open_punch_file();
 
-  bool insert_lf;
   bool stop_after_next;
   bool xoff_read;
   void clear_ptr_flags();

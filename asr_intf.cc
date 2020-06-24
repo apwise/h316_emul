@@ -62,10 +62,10 @@ void ASR_INTF::master_clear()
 
   data_buf = 0;
   ready = false;
-  input_pending = 0;
+  input_pending = false;
 
-  output_mode = 0;
-  output_pending = 0;
+  output_mode = false;
+  output_pending = false;
   activity = ASR_ACTIVITY_NONE;
 }
 
@@ -85,7 +85,7 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
           p->abort();
         }
                         
-      output_pending = 0;
+      input_pending = false;
       ready = false;
       p->clear_interrupt(SMK_MASK);
     }
@@ -99,7 +99,7 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
                                                         
               activity = ASR_ACTIVITY_INPUT;
               input_pending = true;
-                                                        
+
               p->queue(((1000000*11)/ BAUD), this, ASR_REASON_INPUT );
             }
         }
@@ -183,7 +183,7 @@ ASR_INTF::STATUS ASR_INTF::ota(unsigned short instr, signed short data)
       p->clear_interrupt(SMK_MASK);
 
       if (activity == ASR_ACTIVITY_DUMMY)
-        output_pending = 1;
+        output_pending = true;
       else
         {
           activity = ASR_ACTIVITY_OUTPUT;
@@ -207,7 +207,6 @@ ASR_INTF::STATUS ASR_INTF::smk(unsigned short mask)
 
 void ASR_INTF::event(int reason)
 {
- 
   switch (reason)
     {
     case REASON_MASTER_CLEAR:
@@ -221,7 +220,7 @@ void ASR_INTF::event(int reason)
             {
               activity = ASR_ACTIVITY_OUTPUT;
               p->queue(((1000000*11) / BAUD), this, ASR_REASON_OUTPUT );
-              output_pending = 0;
+              output_pending = false;
             }
           else
             activity = ASR_ACTIVITY_NONE;
@@ -245,7 +244,7 @@ void ASR_INTF::event(int reason)
         {
           activity = ASR_ACTIVITY_NONE;
           input_pending = false;
-          ready = 1;
+          ready = true;
           p->set_interrupt(mask);
         }
       break;

@@ -61,7 +61,6 @@ void ASR::clear_ptp_flags()
 
 void ASR::clear_ptr_flags()
 {
-  insert_lf = false;
   stop_after_next = false;
   xoff_read = false;
 }
@@ -71,13 +70,14 @@ bool ASR::get_asrch(char &c, bool local_echo)
   char k;
   bool r = false;
 
-  //cout << __PRETTY_FUNCTION__ << "\n";
+  //std::cout << __PRETTY_FUNCTION__ << std::endl;
 
   if (running[ASR_PTR]) {
     stdtty->service_tty_input();
 
     c = tty_file[ASR_PTR].getc();
-    
+    r = true;
+
     if (stop_after_next) {
       running[ASR_PTR] = false;      
     } else if (xoff_read) {
@@ -96,11 +96,11 @@ bool ASR::get_asrch(char &c, bool local_echo)
     if (stdtty->got_char(k)) {
       k &= 0x7f;
       if ( (k == 012) || (k == 015) || (k == 007) )
-        r = 1;
+        r = true;
       else if (k >= 040) {
         if ((k >= 0140) && (k < 0177))
           k -= 040;
-        r = 1;
+        r = true;
       }
     }
     
@@ -199,8 +199,6 @@ void ASR::asr_ptp_on(char *filename)
 
 void ASR::asr_ptr_on(char *filename)
 {
-  //printf ("ASR::asr_ptr_on(%s)\n", (filename) ? filename : "NULL");
-
   if (filename)
     set_filename(filename, ASR_PTR);
 
@@ -237,7 +235,6 @@ void ASR::open_reader_file()
       fprintf(stderr, "Failed to open <%s> for reading\r\n",
               filename[ASR_PTR]);
     
-    insert_lf = false;
     char_count[ASR_PTR] = 0;
   }
   
