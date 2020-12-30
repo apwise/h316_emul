@@ -24,6 +24,7 @@
 #include <wx/config.h>
 
 #include "serialport.h"
+#include "asr_comms_prefs.hh"
 
 #include "teletype_logo_128.xpm"
 
@@ -34,7 +35,7 @@ class MyApp: public wxApp
   virtual bool OnInit();
 };
 
-class MyFrame: public wxFrame, public SimplePort
+class MyFrame: public wxFrame, public SimplePortPrefs
 {
 public:
   
@@ -52,6 +53,7 @@ public:
   void OnChar(wxKeyEvent& event);
 
   virtual void Process(unsigned char ch, int source=0);
+  virtual wxPreferencesPage *Preferences();
 
 private:
   static const int CHARACTER_TIMER_ID = 0;
@@ -323,3 +325,9 @@ void MyFrame::OnSerial(wxSerialPortEvent &event)
 
   // Is there anyting to do with an error return?
 }
+
+wxPreferencesPage *MyFrame::Preferences()
+{
+  return new AsrCommsPrefs;
+}
+

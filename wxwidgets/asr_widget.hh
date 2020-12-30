@@ -22,8 +22,9 @@
 #define __ASR_WIDGET_HH__
 
 #include <wx/wx.h> 
+#include <wx/preferences.h> 
 
-#include "simpleport.hh"
+#include "simpleportprefs.hh"
 #include "printedpaper.hh"
 #include "asr_ptp.hh"
 #include "asr_ptr.hh"
@@ -41,7 +42,7 @@ public:
     };
   
   AsrWidget( wxWindow *parent,
-             SimplePort *Line,
+             SimplePortPrefs *Line,
              wxWindowID id = wxID_ANY,
              const wxPoint& pos = wxDefaultPosition,
              const wxSize& size = wxDefaultSize,
@@ -54,6 +55,10 @@ public:
 
 private:
   static const int timerPeriod = 100;
+  
+  enum MenuId {
+    MenuIdPreferences = 220
+  };
 
   SimplePort *Line;
   
@@ -64,10 +69,14 @@ private:
   AsrPtr       *asr_ptr;
 
   wxTimer      *character_timer;
-
+  wxPreferencesEditor *preferences;
+  
   void CharacterPoll();
 
   void OnTimer(wxTimerEvent& event);
+  void OnContextMenu(wxContextMenuEvent &event);
+  void ShowContextMenu(const wxPoint &pos);
+  void PreferencesDialog();
 
   DECLARE_EVENT_TABLE()
 };
