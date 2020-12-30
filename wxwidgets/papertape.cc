@@ -1246,7 +1246,7 @@ int PaperTape::InsideCircle(double xc, double yc, double r,
       ((yc >= y) && (yc <= (y+1.0)))) {
     all_outside = false;
   }
-      
+
   if (all_inside) {
     return 2;
   } else if (all_outside) {

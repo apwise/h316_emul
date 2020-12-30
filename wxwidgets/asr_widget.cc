@@ -20,13 +20,71 @@
  */
 
 #include "asr_widget.hh"
+#include "asr_comms_prefs.hh"
 
 BEGIN_EVENT_TABLE(AsrWidget, wxPanel)
 EVT_TIMER(wxID_ANY, AsrWidget::OnTimer)
+EVT_CONTEXT_MENU(   AsrWidget::OnContextMenu)
 END_EVENT_TABLE()
 
+class AsrPreferencesPage: public wxStockPreferencesPage
+{
+public:
+  AsrPreferencesPage(Kind kind);
+  ~AsrPreferencesPage();
+
+  virtual wxWindow *CreateWindow (wxWindow *parent);
+  
+private:
+  wxPanel *panel;
+};
+
+AsrPreferencesPage::AsrPreferencesPage(Kind kind)
+  : wxStockPreferencesPage(kind)
+  , panel(0)
+{
+}
+
+AsrPreferencesPage::~AsrPreferencesPage()
+{
+  if (panel) delete panel;
+}
+
+wxWindow *AsrPreferencesPage::CreateWindow (wxWindow *parent)
+{
+  if (!panel) {
+    panel = new wxPanel(parent);
+
+    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+
+    wxSizerFlags flagsLabel(1), flagsItem(1), flagsLine(1);
+    flagsLabel.Align(wxALIGN_LEFT|wxALIGN_CENTRE_VERTICAL).Border(wxRIGHT, 5);
+    flagsItem.Align(wxALIGN_RIGHT|wxALIGN_CENTRE_VERTICAL);
+    flagsLine.Border(wxALL, 10);
+ 
+    wxBoxSizer *h_sizer = new wxBoxSizer(wxHORIZONTAL);
+
+    h_sizer->Add(new wxStaticText(panel, wxID_ANY, "Keyboard parity"), flagsLabel);
+    const wxString parityChoices[4] = {"Clear", "Even", "Odd", "Force"};
+    wxChoice *parityChoice = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                          4, parityChoices);
+    parityChoice->SetSelection(3);
+    h_sizer->Add(parityChoice, flagsItem);
+
+    sizer->Add(h_sizer, flagsLine);
+
+    sizer->Add(new wxStaticText(panel, wxID_ANY, "Tom"), flagsLine);
+    sizer->Add(new wxStaticText(panel, wxID_ANY, "Dick"), flagsLine);
+    sizer->Add(new wxStaticText(panel, wxID_ANY, "Harry"), flagsLine);
+
+    panel->SetSizerAndFit(sizer);
+  }
+
+  return panel;
+}
+
 AsrWidget::AsrWidget( wxWindow      *parent,
-                      SimplePort    *Line,
+                      SimplePortPrefs *Line,
                       wxWindowID     id,
                       const wxPoint &pos,
                       const wxSize  &size,
@@ -39,6 +97,7 @@ AsrWidget::AsrWidget( wxWindow      *parent,
   , printer(new PrintedPaper(this, static_cast<int>(Sources::Keyboard), static_cast<int>(Sources::SpecialFunctionKey)))
   , asr_ptp(new AsrPtp(this))
   , asr_ptr(new AsrPtr(this))
+  , preferences(0)
 {
 
   top_sizer->Add(tape_sizer,
@@ -56,10 +115,20 @@ AsrWidget::AsrWidget( wxWindow      *parent,
   character_timer->Start(timerPeriod, wxTIMER_CONTINUOUS);
   
   SetSizerAndFit(top_sizer);
+
+  preferences = new wxPreferencesEditor("Preferences");
+  wxPreferencesPage *commsPrefs = (Line) ? Line->Preferences() : 0;
+  if (commsPrefs) {
+    preferences->AddPage(commsPrefs);
+  }
+  preferences->AddPage(new AsrPreferencesPage(wxStockPreferencesPage::Kind_General));
 }
 
 AsrWidget::~AsrWidget()
 {
+  //if (preferences) {
+  //  delete preferences;
+  //}
 }
 
 bool AsrWidget::Unsaved(wxString &message)
@@ -148,3 +217,39 @@ void AsrWidget::CharacterPoll()
   }
 }
 
+void AsrWidget::OnContextMenu(wxContextMenuEvent &event)
+{
+  wxPoint point = event.GetPosition();
+
+  if (point == wxDefaultPosition) {
+    // From keyboard
+    wxSize size = GetSize();
+    point.x = size.x / 2;
+    point.y = size.y / 2;
+  } else {
+    point = wxDefaultPosition;
+  }
+  ShowContextMenu(point);
+}
+
+void AsrWidget::ShowContextMenu(const wxPoint &pos)
+{
+  wxMenu menu;
+
+  menu.Append(MenuIdPreferences, wxT("&Preferences"));
+  
+  int id = GetPopupMenuSelectionFromUser(menu, pos);
+
+  switch(id) {
+  case MenuIdPreferences: PreferencesDialog(); break;
+  default:
+    /* Do nothing */
+    ;
+  }
+
+}
+
+void AsrWidget::PreferencesDialog()
+{
+  preferences->Show(this);
+}
