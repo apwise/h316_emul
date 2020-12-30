@@ -12,7 +12,7 @@ CXXSOURCE := draw.cc papertape.cc papertapereader.cc printedpaper.cc
 CXXSOURCE2 := fp.cpp gui.cpp
 CXXSOURCE3 := message.cpp h16cmd.cpp
 CXXSOURCE4 := teletype.cc asr_widget.cc printedpaper.cc asr_ptp.cc \
-	asr_ptr.cc papertape.cc serialport.cpp
+	asr_ptr.cc papertape.cc serialport.cpp asr_comms_prefs.cc
 
 CXXSOURCE4_CC  := $(filter %.cc,  $(CXXSOURCE4))
 CXXSOURCE4_CPP := $(filter %.cpp, $(CXXSOURCE4))

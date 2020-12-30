@@ -1,6 +1,6 @@
-/* Emulate a teleype - simple communication port interface
+/* Emulate a teleype - simple communication port interface with preferences
  *
- * Copyright (c) 2019, 2020  Adrian Wise
+ * Copyright (c) 2020  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,15 +18,20 @@
  * MA  02111-1307 USA
  *
  */
-#ifndef _SIMPLE_PORT_
-#define _SIMPLE_PORT_
+#ifndef _SIMPLE_PORT_PREFS_
+#define _SIMPLE_PORT_PREFS_
 
-class SimplePort
+#include "simpleport.hh"
+#include <wx/wx.h> 
+#include <wx/preferences.h> 
+
+class SimplePortPrefs : public SimplePort
 {
 public:
-  SimplePort(){}
-  virtual ~SimplePort(){}
-  virtual void Process(unsigned char ch, int source=0) = 0;
+  virtual wxPreferencesPage *Preferences()
+  {
+    return 0;
+  }
 };
 
-#endif // _SIMPLE_PORT_
+#endif // _SIMPLE_PORT_PREFS_
