@@ -98,7 +98,7 @@ int main(int argc, char **argv)
   while (c != EOF) {
     c = c & 0177;  /* loose the top bit */
     d = 0;
-			
+                        
     if (c < 0040) {
       /* Only control code allowed is newline */
       if (c == '\n')
@@ -110,19 +110,19 @@ int main(int argc, char **argv)
       
     if (d > 0) {
       if (d == '\n') {
-        putc( LF, fpo); /* Line Feed Text */
         putc( CR, fpo); /* Carriage Return */
         if (asr) {
           putc( XOFF,   fpo); /* X-OFF (Control S) */
           putc( RUBOUT, fpo); /* RUBOUT */
         }
+        putc( LF, fpo); /* Line Feed Text */
       } else {
         putc((d | 0200), fpo);
       }
     }
     c = getc(fpi);
   }
-	
+        
   if (add_eom) {
     putc( EOM, fpo);
     if (asr) {
