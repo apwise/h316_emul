@@ -177,7 +177,9 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
   , exit_code(0)
   , exit_called(false)
   , instr_table()
+#ifndef RTL_SIM
   , event_queue(this)
+#endif
 {
   long i;
 

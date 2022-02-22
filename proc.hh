@@ -130,15 +130,19 @@ public:
 
   void queue(unsigned long microseconds, IODEV *device, int reason)
   {
+#ifndef RTL_SIM
     EventQueue::EventTime event_time = (half_cycles +
                                         (half_cycles_per_microsecond * microseconds));
     event_queue.queue(event_time, device, reason);
+#endif
   }
   
   void queue_hc(unsigned long long half_cycles, IODEV *device, int reason)
   {
+#ifndef RTL_SIM
     EventQueue::EventTime event_time = this->half_cycles + half_cycles;
     event_queue.queue(event_time, device, reason);
+#endif
   }
   void event(int reason);
   
@@ -227,7 +231,9 @@ private:
    */
   IODEV **devices;
   IODEV **dmc_devices;
+#ifndef RTL_SIM
   EventQueue event_queue;
+#endif
   EventQueue::EventTime half_cycles;
   static constexpr double cycle_time = 1.60; // Microseconds
   static constexpr double half_cycles_per_microsecond = (2.0 / cycle_time);
