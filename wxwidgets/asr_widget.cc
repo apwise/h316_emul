@@ -1,4 +1,4 @@
-/* Emulate a teleype
+/* Emulate a teletype
  *
  * Copyright (c) 2019  Adrian Wise
  *

@@ -6,7 +6,7 @@
 // Copyright:   (c) 2019, 2020 Adrian Wise
 // Licence:     wxWindows licence
 /////////////////////////////////////////////////////////////////////////////
-#ifndef _SERIALPORT_H__
+#ifndef _SERIALPORT_H_
 #define _SERIALPORT_H_
 
 #include <wx/wx.h>

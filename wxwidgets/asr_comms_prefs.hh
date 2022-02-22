@@ -39,7 +39,7 @@ public:
   
 private:
   wxPanel *panel;
-  
+
 };
 
 #endif // __ASR_COMMS_PREFS_HH__
