@@ -1,6 +1,6 @@
 /* Teletype emulation application
  *
- * Copyright (c) 2019  Adrian Wise
+ * Copyright (c) 2019, 2020  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,69 +18,15 @@
  * MA  02111-1307 USA
  *
  */
-#include "asr_widget.hh"
 
-#include <wx/graphics.h>
+#include "teletype.hh"
+
 #include <wx/config.h>
 
-#include "serialport.h"
+#include "asr_widget.hh"
 #include "asr_comms_prefs.hh"
 
 #include "teletype_logo_128.xpm"
-
-#define ROOT_CONFIG "teletypeApp"
-
-class MyApp: public wxApp
-{
-  virtual bool OnInit();
-};
-
-class MyFrame: public wxFrame, public SimplePortPrefs
-{
-public:
-  
-  MyFrame(const wxString &title, const wxPoint &pos = wxDefaultPosition,
-          const wxSize &size = wxDefaultSize);
-  virtual ~MyFrame();
-  
-  void OnQuit(wxCommandEvent& event);
-  void OnAbout(wxCommandEvent& event);
-  void OnClose(wxCloseEvent &event);
-  void OnSerial(wxSerialPortEvent &event);
-  
-  void OnKeyDown(wxKeyEvent& event);
-  void OnKeyUp(wxKeyEvent& event);
-  void OnChar(wxKeyEvent& event);
-
-  virtual void Process(unsigned char ch, int source=0);
-  virtual wxPreferencesPage *Preferences();
-
-private:
-  static const int CHARACTER_TIMER_ID = 0;
-
-  /*
-  enum class Sources {
-    Keyboard,
-    SpecialFunctionKey,
-    TapeReader,
-    AnswerBack,
-    Line
-  };
-  */
-  
-  //unsigned int ppi;
-  wxBoxSizer *top_sizer;
-  AsrWidget  *asr_widget;
-
-  //unsigned int GetPPI();
-
-  wxSerialPort *port;
-  wxSerialPort::Config config;
-  //wxSerialPort::SignalEventSet *ses;
-  wxSerialPort::AsyncInput *asi;
-  
-  DECLARE_EVENT_TABLE()
-};
 
 enum
   {
@@ -90,25 +36,14 @@ enum
     ID_Serial
   };
 
-BEGIN_EVENT_TABLE(MyFrame, wxFrame)
-EVT_MENU(ID_Quit, MyFrame::OnQuit)
-EVT_MENU(ID_About, MyFrame::OnAbout)
-EVT_CLOSE(MyFrame::OnClose)
-EVT_SERIAL_PORT_WAIT(ID_Serial, MyFrame::OnSerial)
+BEGIN_EVENT_TABLE(TeletypeFrame, wxFrame)
+EVT_MENU(ID_Quit, TeletypeFrame::OnQuit)
+EVT_MENU(ID_About, TeletypeFrame::OnAbout)
+EVT_CLOSE(TeletypeFrame::OnClose)
+EVT_SERIAL_PORT_WAIT(ID_Serial, TeletypeFrame::OnSerial)
 END_EVENT_TABLE()
 
-
-IMPLEMENT_APP(MyApp)
-
-bool MyApp::OnInit()
-{
-  MyFrame *frame = new MyFrame( wxT("Teletype") );
-  frame->Show(TRUE);
-  SetTopWindow(frame);
-  return TRUE;
-}
-
-void MyFrame::OnClose(wxCloseEvent &event)
+void TeletypeFrame::OnClose(wxCloseEvent &event)
 {
   wxString message;
 
@@ -143,7 +78,7 @@ void MyFrame::OnClose(wxCloseEvent &event)
 }
 
 /*
-unsigned int MyFrame::GetPPI()
+unsigned int TeletypeFrame::GetPPI()
 {
   wxSize size;
   int r;
@@ -160,7 +95,7 @@ unsigned int MyFrame::GetPPI()
 }
 */
 
-MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
+TeletypeFrame::TeletypeFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   : wxFrame((wxFrame *)NULL, -1, title, pos, size)
     //, ppi(GetPPI())
   , top_sizer(new wxBoxSizer(wxHORIZONTAL))
@@ -247,9 +182,18 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   
 #endif
 
-  (void) wxConfigBase::Set(new wxConfig(ROOT_CONFIG));
+  // Just rely on automatic handling for config file
+  //(void) wxConfigBase::Set(new wxConfig(ROOT_CONFIG));
+  //(void) wxConfigBase::Create();
+
+  // Check that a configuration object is available, so that
+  // other uses don't need to check.
 
   wxConfigBase *conf = wxConfigBase::Get();
+  if (!conf) {
+    std::cerr << "Cannot obtain a configuration object" << std::endl;
+    exit(1);
+  }
 
   if (conf->HasEntry("fred")) {
     wxString str;
@@ -261,7 +205,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
   }
 }
 
-MyFrame::~MyFrame()
+TeletypeFrame::~TeletypeFrame()
 {
   /*
   if (ses) {
@@ -281,24 +225,19 @@ MyFrame::~MyFrame()
   }
 }
 
-void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
+void TeletypeFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 {
   Close(TRUE);
 }
 
-void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
+void TeletypeFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
   wxMessageBox(wxT("This is a wxWindows Hello world sample"),
                wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
 }
 
-void MyFrame::Process(unsigned char ch, int source)
-{
-  uint8_t c = ch & 0x7f;
-  port->NonblockingWrite(&c, 1);
-}
 
-void MyFrame::OnSerial(wxSerialPortEvent &event)
+void TeletypeFrame::OnSerial(wxSerialPortEvent &event)
 {
   /*
   uint8_t c;
@@ -323,11 +262,38 @@ void MyFrame::OnSerial(wxSerialPortEvent &event)
   }
   */
 
-  // Is there anyting to do with an error return?
+  // Is there anything to do with an error return?
 }
 
-wxPreferencesPage *MyFrame::Preferences()
+/************************************************************************
+ * Implement SimplePortPrefs interface
+ ***********************************************************************/
+wxPreferencesPage *TeletypeFrame::Preferences()
 {
   return new AsrCommsPrefs;
 }
 
+void TeletypeFrame::Process(unsigned char ch, int source)
+{
+  uint8_t c = ch & 0x7f;
+  port->NonblockingWrite(&c, 1);
+}
+
+/************************************************************************
+ * Implement the application
+ ***********************************************************************/
+
+class TeletypeApp: public wxApp
+{
+  virtual bool OnInit();
+};
+
+IMPLEMENT_APP(TeletypeApp)
+
+bool TeletypeApp::OnInit()
+{
+  TeletypeFrame *frame = new TeletypeFrame( wxT("Teletype") );
+  frame->Show(TRUE);
+  SetTopWindow(frame);
+  return TRUE;
+}
