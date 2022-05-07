@@ -200,6 +200,7 @@ void Monitor::do_commands(bool &run, FILE **fp)
   
   while (doing_commands)
     {
+      memset(buffer, 0, BUFSIZE); // In case of ^C
       get_line(prompt, fp, buffer, BUFSIZE);
       
       cmd = break_command(buffer, words);
@@ -209,6 +210,15 @@ void Monitor::do_commands(bool &run, FILE **fp)
   
   fflush(stdout);
   stdtty->set_non_cannonical();
+}
+
+// Kludge to avoid mismatched malloc/delete
+static char *cc_strdup(const char *str1)
+{
+  int l = strlen(str1);
+  char *p = new char [l+1];
+  strcpy(p, str1);
+  return p;
 }
 
 char **Monitor::break_command(char *buf, int &words)
@@ -246,7 +256,7 @@ char **Monitor::break_command(char *buf, int &words)
       
       //printf("p[%d] = %s\n", k, &buf[j]);
       
-      p[k++] = strdup(&buf[j]);
+      p[k++] = cc_strdup(&buf[j]);
       buf[i] = temp_c;
   
       if ((buf[i] == ' ') || (buf[i] == ','))
@@ -267,8 +277,8 @@ void Monitor::free_command(char **q)
 {
   int i=0;
   while (q[i])
-    delete q[i++];
-  delete q;
+    delete[] q[i++];
+  delete[] q;
 }
 
 void Monitor::do_command(bool &run, int words, char **cmd)
