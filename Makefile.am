@@ -1,7 +1,7 @@
 bin_PROGRAMS = 	h16 \
 		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
 		h16-tabify h16-asr h16-tape h16-ppl h16-plt2ps \
-		h16-lib h16-pp-asr h16-disasm
+		h16-lib h16-pp-asr h16-disasm h16-leader
 
 if ENABLE_DEPP
   bin_PROGRAMS += h16-depp-asr 
@@ -111,6 +111,8 @@ h16_lib_SOURCES = utils/h16-lib.cc
 
 h16_disasm_SOURCES = utils/h16-disasm.cc instr.cc
 h16_disasm_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
+
+h16_leader_SOURCES = utils/h16-leader.c
 
 EXTRA_DIST = 	data/m4h_defines.m4 \
 		data/main.css \
