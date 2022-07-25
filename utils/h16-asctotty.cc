@@ -34,7 +34,8 @@ int main(int argc, char **argv)
   FILE *fpo;
   int c;
   
-  if ((strncmp(argv[a], "-h", 2)==0) || (strncmp(argv[a], "--h", 3)==0)) {
+  if ((argc > 1) &&
+      ((strncmp(argv[a], "-h", 2)==0) || (strncmp(argv[a], "--h", 3)==0))) {
     help = 1;
   }
   
