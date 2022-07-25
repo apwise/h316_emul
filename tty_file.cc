@@ -131,6 +131,10 @@ int TTY_file::getc()
   } else {
     c = simple_getc();
   }
+
+  if (c == EOF) {
+    close();
+  }
   
   return c;
 }

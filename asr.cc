@@ -134,7 +134,9 @@ void ASR::echo_asrch(char c, bool from_serial)
       tape_char_received = true;
 
     if ((c & 0x7f) == XON) {
-      open_reader_file();
+      if (tty_file[ASR_PTP].is_open()) {
+        running[ASR_PTP] = true;
+      }
     }
   }
   
@@ -157,12 +159,8 @@ void ASR::echo_asrch(char c, bool from_serial)
     if ((c & 0x80) && (!from_serial) && running[ASR_PTR])
       return; // Don't echo reader data with MSB set
     
-    // MAP delete to backspace
-    if (k == 0177)
-      k = BS;
-    
     if ((k == 007) || (k == 012) || (k == 015) ||
-        ((k >= 040) && (k < 0174)) || (k == BS))
+        ((k >= 040) && (k < 0174)))
       stdtty->putch(k);  
   }
 }
