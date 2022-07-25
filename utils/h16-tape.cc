@@ -424,7 +424,7 @@ static void dissassemble_block(unsigned short *block, int size, int addr)
                instr_table->disassemble((i+addr), block[i], false),
                printable(block[i]));
       else
-        printf("  0%06o%c /* %-35s %-4s */\n",
+        printf("  %06o%c /* %-35s %-4s */\n",
                block[i],
                ((i ==(size-1)) ? ' ' : ','),
                instr_table->disassemble((i+addr), block[i], false),
