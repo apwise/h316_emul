@@ -225,12 +225,9 @@ int main(int argc, char **argv)
           
           if (FD_ISSET(serial.get_fd(), &readfs))
             {
-              //fprintf(stderr, "Serial input ready\n");
-              
               /* Input from serial */
               c = serial.receive(ok);
               if (ok) {
-                //printf("<%03o>", c & 0xff);
                 fflush(stdout);
                 asr.put_asrch(c);
               }

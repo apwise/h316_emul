@@ -79,11 +79,11 @@ bool ASR::get_asrch(char &c, bool local_echo)
     r = true;
 
     if (stop_after_next) {
-      running[ASR_PTR] = false;      
+      running[ASR_PTR] = false;
+      stop_after_next = false;
     } else if (xoff_read) {
-      
       xoff_read = false;
-      if (c == RUBOUT) {
+      if ((c & 0xff) == RUBOUT) {
         running[ASR_PTR] = false;
       } else {
         stop_after_next = true;
@@ -130,12 +130,12 @@ void ASR::echo_asrch(char c, bool from_serial)
       //open_punch_file();
       if ((c & 0xff) == RUBOUT)
         return; // RUBOUT is not punched
-    } else if ( (c&0x7f) == TAPE )
+    } else if ( (c & 0x7f) == TAPE )
       tape_char_received = true;
 
     if ((c & 0x7f) == XON) {
-      if (tty_file[ASR_PTP].is_open()) {
-        running[ASR_PTP] = true;
+      if (tty_file[ASR_PTR].is_open()) {
+        running[ASR_PTR] = true;
       }
     }
   }
@@ -222,7 +222,6 @@ void ASR::close_file(bool asr_ptp)
 void ASR::open_reader_file()
 {
   while (!tty_file[ASR_PTR].is_open()) {
-    clear_ptr_flags();
     if (!pending_filename[ASR_PTR])
       get_filename(ASR_PTR);
     tty_file[ASR_PTR].open(filename[ASR_PTR],
@@ -235,7 +234,7 @@ void ASR::open_reader_file()
     
     char_count[ASR_PTR] = 0;
   }
-  
+  clear_ptr_flags();
   running[ASR_PTR] = true;
 }
 
