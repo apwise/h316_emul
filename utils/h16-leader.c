@@ -1,18 +1,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 /*
  * usage:
  *
  * h16-leader [-h | --help]
  *
- * h16-leader [-l num] [-t num] [-o output-filename] [input-filename]
+ * h16-leader [-l num] [-t num] [-e] [-o output-filename] [input-filename]
  *
- * h16-leader [-l num] [-t num] input-filename output-filename
+ * h16-leader [-l num] [-t num] [-e] input-filename output-filename
  *
  * -l : number of leader  bytes (default zero)
  * -t : number of trailer bytes (default same as no. leader bytes)
+ * -e : add EOT mark after content (unless there already is one) 
  *
  * By default, strip the nul-byte leader and trailer (of a papertape
  * file). Optionally, set the amount of leader and trailer to known
@@ -35,11 +37,28 @@ int output_leader(int num, FILE *fout)
   return r;
 }
 
-int strip_leader(FILE *fin, FILE *fout)
+int add_eot(FILE *fout)
+{
+  int r = 0;
+  if (putc(0203, fout) < 0) {
+    r = 2;
+  } else if (putc(0223, fout) < 0) {
+    r = 2;
+  } else if (putc(0377, fout) < 0) {
+    r = 2;
+  }
+  return r;
+}
+
+int strip_leader(FILE *fin, FILE *fout, bool *p_eot)
 {
   int r = 0;
   int c = getc(fin);
   int zeros = 0;
+  enum EOT
+  {
+   EOT0, EOT1, EOT2, EOT3
+  } eot = EOT0;
   
   // strip the leader
   while (c == 0) {
@@ -53,6 +72,13 @@ int strip_leader(FILE *fin, FILE *fout)
       if (zeros > 0) {
         r = output_leader(zeros, fout);
         zeros = 0;
+        eot = EOT0;
+      }
+      switch(eot) {
+      case EOT3:
+      case EOT0: eot = (c==0203) ? EOT1 : EOT0; break;
+      case EOT1: eot = (c==0223) ? EOT2 : EOT0; break;
+      case EOT2: eot = (c==0377) ? EOT3 : EOT0; break;
       }
       if (putc(c, fout) < 0) {
         r = 2;
@@ -63,6 +89,9 @@ int strip_leader(FILE *fin, FILE *fout)
     }
   }
 
+  if (p_eot) {
+    *p_eot = ((r==0) && (eot==EOT3));
+  }
   return r;
 }
 
@@ -93,6 +122,8 @@ int main(int argc, char **argv)
   int leader = 0;
   int trailer = -1;
   int r = 0;
+  bool ensure_eot = false;
+  bool eot = false;
   
   while ((i < argc) && (!usage)) {
     if ((strcmp(argv[i], "-h"    ) == 0) ||
@@ -115,6 +146,8 @@ int main(int argc, char **argv)
       if (i < argc) {
         trailer = number(argv[i], &usage);
       }
+    } else if (strcmp(argv[i], "-e") == 0) {
+     ensure_eot = true;
     } else {
       if (argv[i][0] == '-') {
         // An unrecognized option
@@ -147,10 +180,11 @@ int main(int argc, char **argv)
 
   if (usage) {
     fprintf(stderr, "%s [-h | --help] | \\\n"
-            "%s [-l num] [-t num] [-o output-filename] [input-filename] | \\\n"
-            "%s [-l num] [-t num] input-filename output-filename\n"
+            "%s [-l num] [-t num] [-e] [-o output-filename] [input-filename] | \\\n"
+            "%s [-l num] [-t num] [-e] input-filename output-filename\n"
             "-l : number of leader  bytes (default zero)\n"
-            "-t : number of trailer bytes (default same as no. leader bytes)\n",
+            "-t : number of trailer bytes (default same as no. leader bytes)\n"
+            "-e : add EOT mark after content (unless there already is one)\n", 
             argv[0], argv[0], argv[0]);
     exit(1);
   }
@@ -180,7 +214,11 @@ int main(int argc, char **argv)
   }
   
   if (r == 0) {
-    r = strip_leader(fin, fout);
+    r = strip_leader(fin, fout, &eot);
+  }
+
+  if ((r==0) && (ensure_eot) && (! eot)) {
+    r = add_eot(fout);
   }
 
   if ((r == 0) && (trailer > 0)) {
