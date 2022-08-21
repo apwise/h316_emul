@@ -12,10 +12,11 @@
 #include <sys/signal.h>
 #include <sys/types.h>
 
-#define DEVICE "/dev/ttyUSB0"
-#define BAUD B1200
+//#define DEVICE "/dev/ttyUSB0"
+#define DEVICE "/dev/ttyS0"
+//#define BAUD B1200
 //#define BAUD B600
-//#define BAUD B110
+#define BAUD B110
 //#define BAUD B9600
 
 #include "stdtty.hh"
