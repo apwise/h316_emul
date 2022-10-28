@@ -25,18 +25,25 @@
 #include <stdlib.h>
 
 #include <iostream>
+#include <ostream>
 #include <istream>
+#include <iomanip>
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
+#include <cassert>
 
 class Block
 {
 public:
   Block();
-  ~Block();
+  virtual ~Block();
 
   void read(std::istream &st);
   void write(std::ostream &st);
+
+  void dump(std::ostream &st);
 
   enum ERROR {
     ERR_NONE,     // All OK
@@ -64,8 +71,11 @@ protected:
   ERROR Error;
   bool ok() const { return Error == ERR_NONE; };
   bool eot;
+  std::streampos pos;
   std::vector<unsigned int> words;
   unsigned int leader_frames;
+
+  virtual std::string annotation(int wi);
   
 private:
   unsigned int checksum;
@@ -80,7 +90,9 @@ private:
   void write_char(std::ostream &st, unsigned char uc);
   void write_block_start(std::ostream &st);
   void write_eot(std::ostream &st);
-  void write_invisible_char(std::ostream &st, int sixbit);
+  int to_invisible_char(int sixbit);
+  //void write_invisible_char(std::ostream &st, int sixbit);
+  int to_invisible(int sixteenbit, int i);
   void write_invisible(std::ostream &st, int sixteenbit);
   void write_block_finish(std::ostream &st);
   void compute_checksum(bool add_not_replace = false);
@@ -94,6 +106,7 @@ private:
 Block::Block()
   : Error(ERR_NONE),
     eot(false),
+    pos(-1),
     leader_frames(0),
     checksum(0)
 {
@@ -139,8 +152,9 @@ void Block::write_char(std::ostream &st, unsigned char uc)
 
 bool Block::read_block_start(std::istream &st)
 {
-  bool r = true;
+  bool r = false;
   unsigned char c = 0;
+  std::streampos stream_pos(-1);
   if (ok()) c = read_char(st);
   while ((ok()) && (c == 0)) {
     leader_frames++;
@@ -150,8 +164,9 @@ bool Block::read_block_start(std::istream &st)
     Error = ERR_END; // Clean end of file
 
   if (ok()) {
+    stream_pos = st.tellg();
     switch(c) {
-    case SOH: break; // Normal Start of block
+    case SOH: r = true; break; // Normal Start of block
     case ETX:
       c = read_char(st);
       if ((c == DC3) && (ok())) {
@@ -170,6 +185,9 @@ bool Block::read_block_start(std::istream &st)
     default:
       Error = ERR_SOH;
     }
+  }
+  if (ok()) {
+    pos = stream_pos;
   }
   return r;
 }
@@ -220,7 +238,7 @@ int Block::read_invisible_char(std::istream &st, bool first)
   return r;
 }
 
-void Block::write_invisible_char(std::ostream &st, int sixbit)
+int Block::to_invisible_char(int sixbit)
 {
   int c = ((sixbit & 040) << 2) | (sixbit & 037);
   int l7 = c & 0177;
@@ -236,8 +254,15 @@ void Block::write_invisible_char(std::ostream &st, int sixbit)
 
   c = (c & 0200) | l7;
   
-  write_char(st, c);
+  return c;
 }
+
+/*
+void Block::write_invisible_char(std::ostream &st, int sixbit)
+{
+  write_char(st, to_invisible_char(sixbit));
+}
+*/
 
 int Block::read_invisible(std::istream &st)
 {
@@ -253,11 +278,24 @@ int Block::read_invisible(std::istream &st)
   return r;
 }
 
+int Block::to_invisible(int sixteenbit, int i)
+{
+  int c;
+  assert(i<3);
+  switch(i) {
+  case 0: c = to_invisible_char((sixteenbit >> 12) & 017); break;
+  case 1: c = to_invisible_char((sixteenbit >> 6)  & 077); break;
+  case 2: c = to_invisible_char( sixteenbit        & 077); break;
+  default: c = DEL; 
+  }
+  return c;
+}
+  
 void Block::write_invisible(std::ostream &st, int sixteenbit)
 {
-  write_invisible_char(st, (sixteenbit >> 12) & 017);
-  write_invisible_char(st, (sixteenbit >> 6)  & 077);
-  write_invisible_char(st,  sixteenbit        & 077);
+  write_char(st, to_invisible(sixteenbit, 0));
+  write_char(st, to_invisible(sixteenbit, 1));
+  write_char(st, to_invisible(sixteenbit, 2));
 }
 
 void Block::read_block_finish(std::istream &st)
@@ -299,10 +337,66 @@ void Block::read(std::istream &st)
       if (checksum != 0)
         Error = ERR_CHECKSUM;
     }
-  } else {
+  } else if (ok()) {
     // It's an EOT mark - set special flag
     eot = true;
   }
+
+  //dump(std::cout);
+}
+
+// low-level diagnostic dump of the block
+void Block::dump(std::ostream &st)
+{
+  unsigned a = pos;
+  unsigned i;
+
+  if (eot) {
+    st << std::oct << std::setfill('0')
+       << std::setw(6) << a++
+       << " " << std::setw(3) << ETX
+       << " " << std::setw(3) << DC3
+       << " " << std::setw(3) << DEL;
+  } else {
+    st << std::oct << std::setfill('0')
+       << std::setw(6) << a++
+       << " " << std::setw(3) << SOH << "\n";
+    
+    for (i=0; i<words.size(); i++) {
+      std::string annot = annotation(i);
+      
+      st << std::oct << std::setfill('0')
+         << std::setw(6) << a++
+         << " " << std::setw(3) << to_invisible(words[i], 0)
+         << " " << std::setw(3) << to_invisible(words[i], 1)
+         << " " << std::setw(3) << to_invisible(words[i], 2);
+
+      if (annot.size() > 0) {
+        st << " " << annot;
+      }
+      st << "\n";
+    }
+    
+    st << std::oct << std::setfill('0')
+       << std::setw(6) << a++
+       << " " << std::setw(3) << DC3
+       << " " << std::setw(3) << DEL;
+  }
+
+  st << std::endl;
+}
+
+std::string Block::annotation(int wi)
+{
+  std::string s;
+
+  if ((wi>=0) && (wi<static_cast<int>(words.size()))) {
+    std::ostringstream st;
+    st << std::oct << std::setfill('0')
+       << std::setw(6) << words[wi];
+    s = st.str();
+  }
+  return s;
 }
 
 //
@@ -409,7 +503,7 @@ class ObjectBlock : public Block
 {
 public:
   ObjectBlock();
-  ~ObjectBlock();
+  virtual ~ObjectBlock();
 
   void parse_block_type();
 
@@ -428,27 +522,59 @@ public:
     ERR_WORDS,      // No Words in block
     ERR_NUM
   };
+  
+  enum BT
+  {
+   BT_SUB_PROG_NAME,
+   BT_SPECIAL_FORCE,
+   BT_SPECIAL_CHAIN,
+   BT_SPECIAL_END_OF_JOB,
+   BT_DATA,
+   BT_SYMBOL_NUM_DEFN,
+   BT_END,
+   BT_REL,
+   BT_ABS,
+   BT_CALL,
+   BT_SUBR,
+   BT_EXD,
+   BT_LXD,
+   BT_SETB,
+   BT_ABS_PROG_WORDS,
+   BT_REL_PROG_WORDS,
+   BT_ABS_END_JMP,
+   BT_REL_END_JMP,
+   BT_SUBR_CALL,
+   BT_SUBR_OR_COMN,
+   BT_REF_ITEM_COMN,
+   BT_EOT,
+
+   BT_NUM_TYPES
+  };
 
   static ObjectBlock *read_new_block(std::istream &st, ERROR *p_error = 0,
                                      unsigned int *trailing_frames = 0);
 
   bool is_eoj() { return ((type == 0) && (subtype == 3)); };
 
+protected:
+  virtual std::string annotation(int wi);
+
 private:
   struct BlockType {
     int type;
     int subtype;
-    const char *name;
+    const char *descr;
   };
 
   ERROR Error;
   int type;
   int subtype;
   BlockType *block_type;
+  BT bt;
 
   static ERROR conv_block_error(Block::ERROR error);
 
-  static BlockType block_types[];
+  static BlockType block_types[BT_NUM_TYPES];
   static ObjectBlock EOT_block_type;
 
   void lookup_block_type();
@@ -458,7 +584,8 @@ ObjectBlock::ObjectBlock()
   : Error(ERR_NONE),
     type(-1),
     subtype(-1),
-    block_type(0)
+    block_type(0),
+    bt(static_cast<ObjectBlock::BT>(-1))
 {
 }
 
@@ -466,7 +593,8 @@ ObjectBlock::~ObjectBlock()
 {
 }
 
-ObjectBlock::BlockType ObjectBlock::block_types[] = {
+// This must match enum BT
+ObjectBlock::BlockType ObjectBlock::block_types[BT_NUM_TYPES] = {
   { 0, 000, "Subprogram Name"},
   { 0, 001, "Special Action - Force Load Next Subprogram"},
   { 0, 002, "Special Action - Turn On Chain Flag"},
@@ -494,24 +622,27 @@ ObjectBlock::BlockType ObjectBlock::block_types[] = {
 
 void ObjectBlock::lookup_block_type()
 {
-  BlockType *bt = block_types;
+  BlockType *pbt = block_types;
 
   block_type = 0;
 
-  while (bt->type >= 0) {
+  while (pbt->type >= 0) {
 
-    if ((bt->type == this->type) &&
-        ((bt->subtype < 0) ||
-         ((bt->subtype == this->subtype)))) {
+    if ((pbt->type == this->type) &&
+        ((pbt->subtype < 0) ||
+         ((pbt->subtype == this->subtype)))) {
       //std::cout << bt->name << std::endl;
-      block_type = bt;
+      block_type = pbt;
     }
-    bt++;
+    pbt++;
   }
   if (eot)
-    block_type = bt;
+    block_type = pbt;
   else
     Error = ERR_BLOCK_TYPE;
+  if (ok()) {
+    bt = static_cast<ObjectBlock::BT>(pbt - block_types);
+  }
 }
 
 void ObjectBlock::parse_block_type()
@@ -529,6 +660,16 @@ void ObjectBlock::parse_block_type()
         Error = ERR_WORDS;
     }
   }
+}
+
+std::string ObjectBlock::annotation(int wi)
+{
+  std::string r = Block::annotation(wi);
+
+  if ((wi == 0) && (block_type)) {
+    r = block_type->descr;
+  }
+  return r;
 }
 
 ObjectBlock::ERROR ObjectBlock::conv_block_error(Block::ERROR error)
@@ -565,6 +706,7 @@ ObjectBlock *ObjectBlock::read_new_block(std::istream &st, ERROR *p_error,
 
   if (block_error == Block::ERR_NONE) {
     block->parse_block_type();
+    block->dump(std::cout);
   } else {
     error = conv_block_error(block_error);
     if ((error == ERR_END) && p_trailing_frames) {
