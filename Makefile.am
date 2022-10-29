@@ -120,13 +120,15 @@ EXTRA_DIST = 	data/m4h_defines.m4 \
 		scripts/h16-as.in \
 		scripts/h16-as.m4 \
 		scripts/h16-mac.m4 \
+		scripts/h16-ld.in \
 		tapes/dap-16_mod2_slst.ptp \
 		tapes/mac_slst.ptp \
+		tapes/ldrapm-76-palap-77.slst \
 		scripts/h16-f4.in \
 		scripts/h16-f4.m4 \
 		tapes/fortran_slst.ptp
 
-install-data-local: h16-as h16-f4
+install-data-local: h16-as h16-f4 h16-ld
 	test -z "$(DESTDIR)$(pkgdatadir)/data" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/data"
 	$(INSTALL_DATA) $(srcdir)/data/m4h_defines.m4 $(DESTDIR)$(pkgdatadir)/data
 	$(INSTALL_DATA) $(srcdir)/data/main.css $(DESTDIR)$(pkgdatadir)/data
@@ -134,28 +136,30 @@ install-data-local: h16-as h16-f4
 	test -z "$(DESTDIR)$(pkgdatadir)/scripts" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/scripts"
 	$(INSTALL_PROGRAM) h16-as $(DESTDIR)$(pkgdatadir)/scripts
 	$(INSTALL_PROGRAM) h16-f4 $(DESTDIR)$(pkgdatadir)/scripts
+	$(INSTALL_PROGRAM) h16-ld $(DESTDIR)$(pkgdatadir)/scripts
 	$(INSTALL_DATA) $(srcdir)/scripts/h16-as.m4 $(DESTDIR)$(pkgdatadir)/scripts
 	$(INSTALL_DATA) $(srcdir)/scripts/h16-mac.m4 $(DESTDIR)$(pkgdatadir)/scripts
 	$(INSTALL_DATA) $(srcdir)/scripts/h16-f4.m4 $(DESTDIR)$(pkgdatadir)/scripts
 	test -z "$(DESTDIR)$(pkgdatadir)/tapes" || $(mkdir_p) "$(DESTDIR)$(pkgdatadir)/tapes"
 	$(INSTALL_DATA) $(srcdir)/tapes/dap-16_mod2_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 	$(INSTALL_DATA) $(srcdir)/tapes/mac_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
+	$(INSTALL_DATA) $(srcdir)/tapes/ldrapm-76-palap-77.slst $(DESTDIR)$(pkgdatadir)/tapes
 	$(INSTALL_DATA) $(srcdir)/tapes/fortran_slst.ptp $(DESTDIR)$(pkgdatadir)/tapes
 
-CLEANFILES = h16-as h16-f4 version.h
+CLEANFILES = h16-as h16-ld h16-f4 version.h
 
 do_subst = sed -e 's,[@]pkgdatadir[@],$(pkgdatadir),g'
 
-h16-as: $(srcdir)/scripts/h16-as.in Makefile
-	$(do_subst) < $< > $@
-
-h16-f4: $(srcdir)/scripts/h16-f4.in Makefile
+%: $(srcdir)/scripts/%.in Makefile
 	$(do_subst) < $< > $@
 
 install-exec-local:
 	rm -f $(bindir)/h16-as && \
 	{ ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-as $(DESTDIR)$(bindir)/h16-as || \
 	  $(INSTALL_PROGRAM) h16-as $(DESTDIR)$(bindir); }
+	rm -f $(bindir)/h16-ld && \
+	{ ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-ld $(DESTDIR)$(bindir)/h16-ld || \
+	  $(INSTALL_PROGRAM) h16-ld $(DESTDIR)$(bindir); }
 	rm -f $(bindir)/h16-f4 && \
 	{ ln -s $(DESTDIR)$(pkgdatadir)/scripts/h16-f4 $(DESTDIR)$(bindir)/h16-f4 || \
 	  $(INSTALL_PROGRAM) h16-f4 $(DESTDIR)$(bindir); }
@@ -165,4 +169,5 @@ uninstall-local:
 	rm -rf $(DESTDIR)$(pkgdatadir)/data
 	rm -rf $(DESTDIR)$(pkgdatadir)/scripts
 	rm -f  $(DESTDIR)$(bindir)/h16-as
+	rm -f  $(DESTDIR)$(bindir)/h16-ld
 	rm -f  $(DESTDIR)$(bindir)/h16-f4
