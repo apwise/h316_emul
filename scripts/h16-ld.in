@@ -142,15 +142,15 @@ while [ -n "$1" ]; do
             fi
             continue;;
         
-        *)  if [ ${have_slst_nam} = false ]; then
+        *)  if [ "${have_slst_nam}" = false ]; then
                 have_slst_nam=true
                 slst_nam=`expr //$1 : '.*/\([^.]*\)'`.slst
             fi
-            if [ ! -r $1 ]; then
+            if [ ! -r "$1" ]; then
                 (>&2 echo "Cannot open <$1> for reading")
                 ${rmprog} -f ${tmpnam}; exit ${EXIT_FILE}
             fi
-            if [ ${start_script} = true ]; then
+            if [ "${start_script}" = true ]; then
                 start_script=false
                 # Load LDR-APM and PAL-AP then clear out the bootstrap
                 cat > ${tmpnam} <<EOF
@@ -165,15 +165,15 @@ m'00000,'177737
 g'73044
 clear
 EOF
-                if [ ${addr_set} = true ]; then
+                if [ "${addr_set}" = true ]; then
                     echo "a'${addr}" >> ${tmpnam}
                 fi
                 
-                if [ ${base_set} = true ]; then
+                if [ "${base_set}" = true ]; then
                     echo "b'${base}" >> ${tmpnam}
                 fi
                 
-                if [ ${extended} = true ]; then
+                if [ "${extended}" = true ]; then
                     echo "g'76006" >> ${tmpnam}
                 else
                     echo "g'76000" >> ${tmpnam}
@@ -181,7 +181,7 @@ EOF
             fi
             
             echo ptr $1 >> ${tmpnam}
-            if [ ${force} = true ]; then
+            if [ "${force}" = true ]; then
                 echo "g'76004" >> ${tmpnam}
                 force=false
             else        
@@ -189,7 +189,7 @@ EOF
             fi;;
     esac
 
-    if [ ${usage_flag} != false ]; then
+    if [ "${usage_flag}" != false ]; then
         echo "$usage"
         ${rmprog} -f ${tmpnam}
         exit ${EXIT_ARGS}
@@ -198,7 +198,7 @@ EOF
 
 done
 
-if [ ${start_script} = true ]; then
+if [ "${start_script}" = true ]; then
     echo "$usage"; ${rmprog} -f ${tmpnam}; exit ${EXIT_ARGS}
 fi
 
@@ -207,7 +207,7 @@ full_nam=`dirname ${slst_nam}`/${base_nam}
 vmem_nam=${full_nam}.vmem
 coem_nam=${full_nam}.coe
 
-if [ ${map_file} = true ]; then
+if [ "${map_file}" = true ]; then
     map_nam=${full_nam}.map
 else
     map_nam=`$mktempprog -t map.XXXXXX` || map_nam=/tmp/map.$$
@@ -224,29 +224,31 @@ q
 EOF
 
 if ${h16prog} -t ${tmpnam2} > /dev/null; then
-    if [ ${low_set} = false ]; then
+    if [ "${low_set}" = false ]; then
         low=`awk '/LOW/ { print $2}' ${map_nam}`
     fi
     base=`awk '/BASE/ { print $2}' ${map_nam}`
-    if [ ${high_set} = false ]; then
+    if [ "${high_set}" = false ]; then
         high=`awk '/HIGH/ { print $2}' ${map_nam}`
     fi
     start=`awk '/START/ { print $2}' ${map_nam}`
     names=`awk '/NAMES/ { print $2}' ${map_nam}`
     mr=`awk '/^MR$/ { print 1}' ${map_nam}`0
     
-    if [ ${mr} -ne 0 ]; then
+    if [ "${mr}" -ne 0 ]; then
         # More (object files) Required
         cat ${map_nam}
-        if [ ${map_file} = false ]; then
+        if [ "${map_file}" = false ]; then
             ${rmprog} -f ${map_nam}
         fi
         ${rmprog} -f ${tmpnam} ${tmpnam2}
         exit ${EXIT_MR}
     fi
-    if [ ${low_set} = false ]; then
-        if [ ${base} -lt ${low} ]; then
-            low=$base
+    if [ "${low_set}" = false ]; then
+        if [ ! -z "${base}" ]; then
+            if [ "${base}" -lt "${low}" ]; then
+                low=$base
+            fi
         fi
         # The PAL-AP loader uses locations '20 to '25 as variables
         # so low cannot be lower than '26 (but if it is set by the
@@ -263,7 +265,7 @@ fi
 # We're done with the h16 script file that produced the map
 ${rmprog} -f ${tmpnam2}
 # and maybe the mapfile itself
-if [ ${map_file} = false ]; then
+if [ "${map_file}" = false ]; then
     ${rmprog} -f ${map_nam}
 fi
 
@@ -312,7 +314,7 @@ ptp ${slst_nam}
 g
 EOF
 
-if [ ${vmem_file} = true -o ${coe_file} = true ]; then
+if [ "${vmem_file}" = true -o ${coe_file} = true ]; then
     # Clear upper memory containing LDR-APM and PAL-AP
     # and LDR-APM's name table
     cat >> ${tmpnam} <<EOF
@@ -330,13 +332,13 @@ m'77777,'000000
 EOF
 fi
 
-if [ ${vmem_file} = true ]; then
+if [ "${vmem_file}" = true ]; then
     cat >> ${tmpnam} <<EOF
 vmem ${vmem_nam},'${start}
 EOF
 fi
 
-if [ ${coe_file} = true ]; then
+if [ "${coe_file}" = true ]; then
     cat >> ${tmpnam} <<EOF
 coemem ${coem_nam},'${start}
 EOF
