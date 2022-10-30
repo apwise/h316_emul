@@ -12,25 +12,47 @@
 #include <sys/signal.h>
 #include <sys/types.h>
 
-//#define DEVICE "/dev/ttyUSB0"
-#define DEVICE "/dev/ttyS0"
-//#define BAUD B1200
-//#define BAUD B600
-#define BAUD B110
-//#define BAUD B9600
-
 #include "stdtty.hh"
 #include "serial.hh"
 
-Serial::Serial()
+typedef struct
+{
+  speed_t speed;
+  unsigned int baud_rate;
+} baud_pair_t;
+
+const baud_pair_t baud_pairs[] =
+  {
+    {B50,     50    },
+    {B75,     75    },
+    {B110,    110   },
+    {B134,    134   },
+    {B150,    150   },
+    {B200,    200   },
+    {B300,    300   },
+    {B600,    600   },
+    {B1200,   1200  },
+    {B1800,   1800  },
+    {B2400,   2400  },
+    {B4800,   4800  },
+    {B9600,   9600  },
+    {B19200,  19200 },
+    {B38400,  38400 },
+    {B57600,  57600 },
+    {B115200, 115200},
+    {B230400, 230400},
+    {B0,      0     },
+  };
+
+Serial::Serial(const char *device, unsigned int baud)
 {
   oldtio = new struct termios;
   newtio = new struct termios;
 
   /* open the device to be non-blocking (read will return immediatly) */
   //printf("About to open %s\n", DEVICE);
-  fd = open(DEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
-  if (fd <0) {perror(DEVICE); exit(1); }
+  fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+  if (fd <0) {perror(device); exit(1); }
 
   /* allow the process to receive SIGIO */
   //fcntl(fd, F_SETOWN, getpid());
@@ -54,13 +76,28 @@ Serial::Serial()
   //  newtio->c_cflag &= ~MDMBUF;
   //  newtio->c_cflag &= ~CIGNORE;
 
-  if (cfsetispeed(newtio, BAUD))
+  // Lookup the numerical baud rate
+  speed_t speed = B0;
+  unsigned i = 0;
+  while (baud_pairs[i].baud_rate) {
+    if (baud_pairs[i].baud_rate == baud) {
+      speed = baud_pairs[i].speed;
+      break;
+    }
+    ++i;
+  }
+  if (speed == B0) {
+    fprintf(stderr, "Baud rate not recognised\n");
+    exit(1);
+  }
+  
+  if (cfsetispeed(newtio, speed))
     {
       fprintf(stderr, "Could not set input baud rate\n");
       exit(1);
     }
 
-  if (cfsetospeed (newtio, BAUD))
+  if (cfsetospeed (newtio, speed))
     {
       fprintf(stderr, "Could not set output baud rate\n");
       exit(1);
@@ -102,33 +139,16 @@ Serial::Serial()
   struct termios check;
   tcgetattr(fd, &check);
 
-  if (cfgetispeed(&check) != BAUD) {
+  if (cfgetispeed(&check) != speed) {
     fprintf(stderr, "Input baud rate not correct\n");
     exit(1);
   }
   
-  if (cfgetospeed(&check) != BAUD) {
+  if (cfgetospeed(&check) != speed) {
     fprintf(stderr, "Output baud rate not correct\n");
     exit(1);
   }
   
-  
-  unsigned int baud = 0;
-  switch (BAUD) {
-  case B50:   baud = 50;   break;
-  case B75:   baud = 75;   break;
-  case B110:  baud = 110;  break;
-  case B300:  baud = 300;  break;
-  case B600:  baud = 600;  break;
-  case B1200: baud = 1200; break;
-  case B2400: baud = 2400; break;
-  case B4800: baud = 4800; break;
-  case B9600: baud = 9600; break;
-  default:
-    fprintf(stderr, "Unknown baud rate\n");
-    exit(1);
-  }
-
   // 11 bits per character
   // in microseconds...
   character_time = (1000000 * 11) / baud;

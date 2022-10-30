@@ -1,6 +1,9 @@
 #include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
+
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+
 #include <iostream>
 
 #include "dummy_proc.hh"
@@ -22,6 +25,12 @@
 #define XOFF DC3 // Stop reader (and punch)
 
 #define RUBOUT 0377
+
+//#define DEFAULT_DEVICE "/dev/ttyUSB0"
+#define DEFAULT_DEVICE "/dev/ttyS0"
+//#define DEFAULT_BAUD 1200
+//#define DEFAULT_BAUD 600
+#define DEFAULT_BAUD 110
 
 static bool call_special_chars(Proc *p, int k)
 {
@@ -144,7 +153,72 @@ unsigned int Pal_monitor::zero_words(char c)
 }
 
 int main(int argc, char **argv)
-{ 
+{
+  bool help = false;
+  bool usage = false;
+  unsigned baud = DEFAULT_BAUD;
+  const char *device = DEFAULT_DEVICE;
+  
+  int a = 1;
+  while (a < argc) {
+    if (argv[a][0] == '-') {
+      if ((strcmp(argv[a], "-h") == 0) || (strcmp(argv[a], "--help") == 0)) {
+        help = true;
+        break;
+      } else if ((strncmp(argv[a], "-b", 2) == 0) || (strncmp(argv[a], "--baud",6) == 0)) {
+        unsigned int n = (argv[a][1] == '-') ? 6 : 2;
+
+        if ((n==6) && (strlen(argv[a]) > (n+1)) && (argv[a][n] == '=')) {
+          ++n; // Allow "--baud=<num>", but not "--baud=" (with no number)
+        }
+
+        unsigned long b = 0;
+        char *nptr = &argv[a][n];
+        char *endptr;
+
+        if (strlen(argv[a]) <= n) {
+          // No text remains following flag - baud in next argument
+          ++a;
+          if (a >= argc) {
+            usage = 1;
+            break;
+          }
+          nptr = argv[a];
+        }
+        
+        // Try to convert the baud rate argument
+        b = strtoul(nptr, &endptr, 10);
+        if ((*endptr) != '\0') {
+          fprintf(stderr, "Failed to convert \"%s\" to baud rate\n", nptr);
+          exit(1);
+        }
+        baud = b;
+      } else {
+        // Flag not recognized
+        usage = 1;
+      }
+    } else {
+      break;
+    }
+    ++a;
+  }
+
+  if (a < argc) {
+    device = argv[a];
+    ++a;
+  }
+  
+  if (a < argc) {
+    usage = 1;
+  }
+  
+  if (help || usage) {
+    fprintf(((usage) ? stderr : stdout),
+            "usage: %s [-h] [-b|--baud= <baud-rate> (default=%d)] [<device> (default=\"%s\")]\n",
+            argv[0], DEFAULT_BAUD, DEFAULT_DEVICE);
+    exit((usage) ? 1 : 0);
+  }
+
   fd_set readfs;    /* file descriptor set */
   fd_set writefs;   /* file descriptor set */
   int    maxfd=0;   /* maximum file desciptor used */
@@ -152,7 +226,7 @@ int main(int argc, char **argv)
   STDTTY stdtty;
   ASR asr(&stdtty);
   Proc p(&asr);
-  Serial serial;
+  Serial serial(device, baud);
   char c;
   bool ok;
   Pal_monitor pal_monitor;

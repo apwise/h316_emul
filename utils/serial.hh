@@ -4,7 +4,7 @@ struct termios;
 class Serial
 {
 public:
-  Serial();
+  Serial(const char *device, unsigned int baud);
   ~Serial();
   int get_fd(){return fd;};
   char receive(bool &ok);
