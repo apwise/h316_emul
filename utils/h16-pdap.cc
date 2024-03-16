@@ -489,7 +489,6 @@ static bool number(const string str,
   if (s)
     {
       n = strtoul(s, &ptr, base);
-      delete [] s;
 
       if (ptr > s)
         {
@@ -498,6 +497,7 @@ static bool number(const string str,
           else
             r = ((ptr-s) == length);
         }
+      delete [] s;
     }
 
   return r;
