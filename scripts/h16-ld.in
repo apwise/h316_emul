@@ -302,6 +302,14 @@ m'77613 '103632
 m'77616 '103632
 m'77632 '${start}
 EOF
+    if [ ${palap_load_addr} -lt 40000 ]; then
+        # Run PAL-AP loader in normal (not extended) addressing mode
+        # because there will be no clear before the progam runs, and
+        # it probably assumes normal addressing mode. (Replace EXA with DXA)
+        cat >> ${tmpnam} <<EOF
+m'77553 '000011
+EOF
+    fi
 fi
 
 cat >> ${tmpnam} <<EOF
