@@ -33,9 +33,9 @@ public:
   ASR(STDTTY *stdtty);
   bool get_asrch(char &c, bool local_echo=true);
   void put_asrch(char c);
-  void set_filename(char *filename, bool asr_ptp);
-  void asr_ptp_on(char *filenamep);
-  void asr_ptr_on(char *filenamep);
+  void set_filename(const char *filename, bool asr_ptp);
+  void asr_ptp_on(const char *filenamep);
+  void asr_ptr_on(const char *filenamep);
   bool file_input(){return (running[ASR_PTR]);};
 
   bool special(char c);

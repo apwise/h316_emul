@@ -26,10 +26,7 @@
 
 #define RUBOUT 0377
 
-//#define DEFAULT_DEVICE "/dev/ttyUSB0"
 #define DEFAULT_DEVICE "/dev/ttyS0"
-//#define DEFAULT_BAUD 1200
-//#define DEFAULT_BAUD 600
 #define DEFAULT_BAUD 110
 
 static bool call_special_chars(Proc *p, int k)
@@ -158,13 +155,15 @@ int main(int argc, char **argv)
   bool usage = false;
   unsigned baud = DEFAULT_BAUD;
   const char *device = DEFAULT_DEVICE;
+  const char *tape = NULL;
+  bool echo, echo_set = false;
+  bool non_help = false;
   
   int a = 1;
   while (a < argc) {
     if (argv[a][0] == '-') {
       if ((strcmp(argv[a], "-h") == 0) || (strcmp(argv[a], "--help") == 0)) {
         help = true;
-        break;
       } else if ((strncmp(argv[a], "-b", 2) == 0) || (strncmp(argv[a], "--baud",6) == 0)) {
         unsigned int n = (argv[a][1] == '-') ? 6 : 2;
 
@@ -193,6 +192,34 @@ int main(int argc, char **argv)
           exit(1);
         }
         baud = b;
+        non_help = true;
+      } else if ((strncmp(argv[a], "-t", 2) == 0) || (strncmp(argv[a], "--tape",6) == 0)) {
+        unsigned int n = (argv[a][1] == '-') ? 6 : 2;
+
+        if ((n==6) && (strlen(argv[a]) > (n+1)) && (argv[a][n] == '=')) {
+          ++n; // Allow "--tape=<filename>", but not "--tape=" (with no filename)
+        }
+
+        if (strlen(argv[a]) > n) {
+          tape = &argv[a][n];
+        } else {
+          // No text remains following flag - baud in next argument
+          ++a;
+          if (a >= argc) {
+            usage = 1;
+            break;
+          }
+          tape = argv[a];
+        }
+        non_help = true;
+      } else if ((strcmp(argv[a], "-e") == 0) || (strcmp(argv[a], "--echo") == 0)) {
+        echo = true;
+        echo_set = true;
+        non_help = true;
+      } else if ((strcmp(argv[a], "-n") == 0) || (strcmp(argv[a], "--no-echo") == 0)) {
+        echo = false;
+        echo_set = true;
+        non_help = true;
       } else {
         // Flag not recognized
         usage = 1;
@@ -211,11 +238,22 @@ int main(int argc, char **argv)
   if (a < argc) {
     usage = 1;
   }
+
+  if (!echo_set) {
+    echo = (baud == 110);
+  }
   
   if (help || usage) {
     fprintf(((usage) ? stderr : stdout),
-            "usage: %s [-h] [-b|--baud= <baud-rate> (default=%d)] [<device> (default=\"%s\")]\n",
+            "usage: %s [-h] [-e|--echo] [-n|--no-echo] [-b|--baud=<baud-rate> (default=%d)]\n"
+            "                 [-t|--tape=<filename>] [<device> (default=\"%s\")]\n",
             argv[0], DEFAULT_BAUD, DEFAULT_DEVICE);
+
+    if (non_help && (!usage)) {
+      fprintf(((usage) ? stderr : stdout),
+              "device=%s, baud=%d, %slocal echo\n", device, baud, ((echo)?"":"no "));
+    }
+    
     exit((usage) ? 1 : 0);
   }
 
@@ -232,6 +270,10 @@ int main(int argc, char **argv)
   Pal_monitor pal_monitor;
   
   stdtty.set_proc(&p, &call_special_chars);
+
+  if (tape) {
+    asr.asr_ptr_on(tape);
+  }
 
   maxfd = serial.get_fd() + 1;
   if (maxfd < STDIN_FILENO)
@@ -280,7 +322,7 @@ int main(int argc, char **argv)
               //  fprintf(stderr, "Serial output ready\n");
               
               /* Input from keyboard */
-              ok = asr.get_asrch(c, false);
+              ok = asr.get_asrch(c, echo);
               if (ok) {
                 serial.transmit(c, ok);
                 unsigned int zero_words = pal_monitor.zero_words(c);

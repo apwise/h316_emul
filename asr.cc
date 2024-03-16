@@ -165,7 +165,7 @@ void ASR::echo_asrch(char c, bool from_serial)
   }
 }
 
-void ASR::set_filename(char *filename, bool asr_ptp)
+void ASR::set_filename(const char *filename, bool asr_ptp)
 {
   int f=0;
   ascii_file[asr_ptp] = silent_file[asr_ptp] = false;
@@ -185,7 +185,7 @@ void ASR::set_filename(char *filename, bool asr_ptp)
   pending_filename[asr_ptp] = true;
 }
 
-void ASR::asr_ptp_on(char *filename)
+void ASR::asr_ptp_on(const char *filename)
 {
   //printf ("ASR::asr_ptp_on(%s)\n", (filename) ? filename : "NULL");
 
@@ -195,7 +195,7 @@ void ASR::asr_ptp_on(char *filename)
   open_punch_file();
 }
 
-void ASR::asr_ptr_on(char *filename)
+void ASR::asr_ptr_on(const char *filename)
 {
   if (filename)
     set_filename(filename, ASR_PTR);
