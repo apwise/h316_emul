@@ -227,7 +227,12 @@ if ${h16prog} -t ${tmpnam2} > /dev/null; then
     if [ "${low_set}" = false ]; then
         low=`awk '/LOW/ { print $2}' ${map_nam}`
     fi
-    base=`awk '/BASE/ { print $2}' ${map_nam}`
+    if [ "${base_set}" = false ]; then
+        # Want the *start* of desectorizing, not the value in the
+        # map file, which would be where any further loading would
+        # start its desectorizing
+        base='00100'
+    fi
     if [ "${high_set}" = false ]; then
         high=`awk '/HIGH/ { print $2}' ${map_nam}`
     fi
