@@ -149,8 +149,7 @@ void TTY_file::putc(int c)
     c &= 0x7f; // Drop the forced-parity bit
     if (c == CR7) {
       c = '\n';
-    } else if (((c < SP7) && (c != NUL)) ||
-               (c == RUB7)) {
+    } else if ((c < SP7) || (c == RUB7)) {
       return; // Discard control characters
     }
   }
