@@ -1,0 +1,284 @@
+#! /bin/bash
+
+pkgdatadir=@pkgdatadir@
+
+#
+# For development - if the substitution hasn't happened
+# and there are still '@' characters in the value above
+#
+if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
+  pkgdatadir=..
+fi
+#
+# Directories based upon pkgdatadir
+#
+m4_dir=$pkgdatadir/scripts
+tape_dir=$pkgdatadir/tapes
+
+#
+# Some programs this script uses...
+#
+cpprog="${CPPROG-cp}"
+sedprog="${SEDPROG-sed}"
+awkprog="${AWKPROG-awk}"
+grepprog="${GREPPROG-grep}"
+rmprog="${RMPROG-rm}"
+mktempprog="${MKTEMPPROG-mktemp}"
+m4prog="${M4PROG-m4}"
+
+h16prog="${H16PROG-h16}"
+
+#
+# help and usage information
+#
+usage="Usage: $0 [--help] [-ac] [-an] [-ap] [-r] [-d <SLST-file>] [--go] [addresses...] <source-file>" 
+help="Options:
+--help     display this help and exit.
+-d|--dump  specify SLST file, disable run unless -r passed
+-g|--go    produce load-and-go SLST
+-r|--run   run program (even if dump it afterwards)
+-s|--start start address (else '1000 assumed)
+-b|--base  base of cross-sector linkage (else '100 assumed)
+-l|--low   end of cross-sector linkage (else computed from compiler output)
+-a|--addr  address of start of code to dump (else '1000 assumed)
+-h|--high  address of end of code to dump (else computed from compiler output)
+-ac        print generated code
+-an        print namelist as it is collapsed
+-ap        print local address as procedures declared
+
+If dumping SLST, two regions are dumped: (base-low) and (addr-high)"
+
+#
+# flags and values from argument parsing
+#
+have_srcnam=false
+force_run=false   # run (even if dumping SLST)
+dump=false        # dump SLST
+dmpnam="?"        # SLST filename
+load_and_go=false # SLST is load-and-go
+start="001000"    # where to run from, or set load-and-go
+addr="001000"     # start of program text to dump
+high="001000"     # end of program text to dump
+have_high=false   # (else work it out from compiler output)
+base="100"        # start of inter-sector links to dump
+low="100"         # end of inter-sector links to dump
+have_low=false    # (else work it out from compiler output)
+a_code=false      # SS2 - dump code as it is generated
+a_name=false      # SS3 - dump namelist as it is collapsed
+a_proc=false      # SS4 - dump local address as procedures declared
+
+while test -n "$1"; do
+    case $1 in
+        --help) echo "$usage"; echo "$help"; exit 0;;
+
+        --run|-r) force_run=true;;
+        
+        --dump|-d) if [ "$#" -gt 2 ]; then
+                       dump=true
+                       dmpnam=$2
+                       shift
+                   else
+                       echo "$usage"; exit 1
+                   fi;;
+        
+        --base|-b) if [ "$#" -gt 2 ]; then
+                       base=$2
+                       shift
+                   else
+                       echo "$usage"; exit 1
+                   fi;;
+        
+        --low|-l) if [ "$#" -gt 2 ]; then
+                      have_low=true
+                      low=$2
+                      shift
+                  else
+                      echo "$usage"; exit 1
+                  fi;;
+        
+        --addr|-a) if [ "$#" -gt 2 ]; then
+                       addr=$2
+                       shift
+                   else
+                       echo "$usage"; exit 1
+                   fi;;
+        
+        --high|-h) if [ "$#" -gt 2 ]; then
+                       have_high=true
+                       high=$2
+                       shift
+                   else
+                       echo "$usage"; exit 1
+                   fi;;
+        
+        --start|-s) if [ "$#" -gt 2 ]; then
+                        start=$2
+                        shift
+                    else
+                        echo "$usage"; exit 1
+                    fi;;
+        
+        --go|-g) load_and_go=true;;
+        --ac|-ac) a_code=true;;
+        --an|-an) a_name=true;;
+        --ap|-ap) a_proc=true;;
+        
+        *)  if [ "$#" -eq 1 ]; then
+                srcnam=$1
+                have_srcnam=true
+                shift
+            else
+                echo "$usage"; exit 1
+            fi
+            break;;
+    esac
+    shift
+done
+
+if [ $have_srcnam = false ]; then
+    echo "$usage"; exit 1
+else
+    if [ ${srcnam} = "-help" ]; then 
+        echo "$usage"; exit 1
+    fi
+fi
+
+if [[ ! -e "${srcnam}" ]]; then
+    echo "\"${srcnam}\" does not exist." >&2
+    exit 2
+elif [[ ! -r "${srcnam}" ]]; then
+    echo "\"${srcnam}\" not available for reading." >&2
+    exit 2
+fi
+
+#
+# Files used by this script
+#
+pl516=${tape_dir}/pl516_pt_27000_slst.ptp
+coredump=${tape_dir}/coredump_25000_slst.ptp
+
+#
+# Compute filenames
+#
+tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
+tmpttynam=`$mktempprog -t h16-tty.XXXXXX` || tmpttynam=/tmp/h16-tty.$$
+
+#
+# Initial compile just to see if this program will compile
+#
+cat > ${tmpnam} <<EOF
+ptr ${pl516}
+g'1
+clear
+ptr &${srcnam}
+g'27000
+q
+EOF
+
+${h16prog} -t "${tmpnam}" > ${tmpttynam}
+status=$?
+
+if [ "${status}" -ne 0 ]; then exit ${status}; fi
+                               
+#
+# Parse output to derive (as best as possible) extent of program
+# and with compile as OK
+#
+if [ "${have_low}" = "false" ]; then
+    lows=( $( "${sedprog}" -n -e "s/^ \([0-7]\{3\}\)$/\1/p" -e "s/^ \([0-7]\{6\}\) \([0-7]\{3\}\)$/\2/p" "${tmpttynam}") )
+    low=0
+    for i in "${lows[@]}"; do
+        num="0$i"
+        if [ "$num" = "0000" ]; then num="01000"; fi
+        let "low = (low < num) ? num : low"
+    done
+    let "low = (low == 0) ? 0 : low - 1"
+    low=$(printf "%03o\n" $low)
+fi
+
+if [ "${have_high}" = "false" ]; then
+    highs=( $( "${sedprog}" -n -e "s/^ \([0-7]\{6\}\)$/\1/p" -e "s/^ \([0-7]\{6\}\) \([0-7]\{3\}\)$/\1/p" "${tmpttynam}") )
+    high=0
+    for i in "${highs[@]}"; do
+        let "high = (high < i) ? i : high"
+    done
+    let "high = (high == 0) ? 0 : high - 1"
+    high=$(printf "%06o\n" $high)
+fi
+
+"${grepprog}" -q "^OK$" "${tmpttynam}"
+ok=$(( ! $? ))
+
+"${grepprog}" -q "\^*NEXT\*" "${tmpttynam}"
+next=$(( ! $? ))
+
+"${rmprog}" -f "${tmpnam}";
+"${rmprog}" -f "${tmpttynam}";
+
+if [ "${next}" -ne 0 ]; then
+    echo "More source required \"*NEXT*\"." >&2
+    exit 2
+fi
+
+cat > ${tmpnam} <<EOF
+ptr ${pl516}
+g'1
+clear
+ptr &${srcnam}
+EOF
+
+# Add listing options to sense switches
+if [ "${a_code}" = "true" ]; then echo "ss2 1" >> ${tmpnam}; fi
+if [ "${a_name}" = "true" ]; then echo "ss3 1" >> ${tmpnam}; fi
+if [ "${a_proc}" = "true" ]; then echo "ss4 1" >> ${tmpnam}; fi
+
+# Run the compiler
+cat >> ${tmpnam} <<EOF
+g'27000
+EOF
+
+if [ "${ok}" -ne 0 ]; then
+
+    if [ \( "${force_run}" = "true" \) -o \( "$dump" = "false" \) ]; then
+        # Run the compiler program
+        cat >> ${tmpnam} <<EOF
+clear   
+g'${start}
+q
+EOF
+    fi
+
+    if [ "${dump}" = "true" ]; then
+        cat > ${tmpttynam} <<EOF
+${base} ${low}
+${addr} ${high}
+EOF
+        if [ ${load_and_go} = "true" ]; then
+            echo "_${start}" >> ${tmpttynam}
+        else
+            echo "_0" >> ${tmpttynam}
+        fi
+        
+        cat >> ${tmpnam} <<EOF
+clear
+ptr ${coredump}
+g'1
+clear
+ptp ${dmpnam}
+g'25000
+q
+EOF
+    fi
+fi
+
+if [ "${dump}" = "true" ]; then
+    ${h16prog} -t "${tmpnam}" < ${tmpttynam}
+else
+    ${h16prog} -t "${tmpnam}"
+fi
+status=$?
+
+"${rmprog}" -f "${tmpnam}";
+"${rmprog}" -f "${tmpttynam}";
+
+exit $status
