@@ -179,7 +179,7 @@ struct LexRule {
   int (*cont_test)(int);  /* Routine to test continuation condition */
   int invert_cont;        /* (bool) invert continuation test */
   int unget_last;         /* (bool) whether to unget the ending char */
-} rule_table[] = 
+} rule_table[] =
   {
     /*  {SPACE,      my_isblank, my_isblank,    0, 1},*/
     {RESERVED,   my_isdot,   isalnum,       0, 1},
@@ -219,7 +219,7 @@ static int lex(FILE *fp)
             {
               putch(ch);
               ch = getch(fp);
-            } while ( rule_table[i].cont_test(ch) != 
+            } while ( rule_table[i].cont_test(ch) !=
                       rule_table[i].invert_cont );
           if ( rule_table[i].unget_last )
             ungetch(ch);
@@ -283,7 +283,7 @@ struct Symbol
   enum SymbolType type;
   bool defined;
 
-  int token_number; 
+  int token_number;
   int line_number;
   int file_number;
 };
@@ -298,7 +298,7 @@ static struct Symbol *add_symbol(char *name, enum SymbolType type)
   //printf("add_symbol(%s) %d %s\n", name, procedure_depth, procedure_name);
   struct Symbol *s = malloc(sizeof(struct Symbol));
   if (!s) abort();
-  
+
   s->next   = NULL;
   s->locals = NULL;
   s->parent = NULL;
@@ -333,7 +333,7 @@ static struct Symbol *lookup_full(char *name, bool *global)
       }
       s = s->next;
     }
-    
+
     ++i;
   }
 
@@ -381,12 +381,12 @@ static void exit_procedure()
           (procedure_name[i-1] == '_')) {
         char *tmp = malloc(i);
         // GCC 9.2.1 being pssimistic in checking for string overflow...
-#if (__GNUC__ == 9)
+#if (__GNUC__ >= 9)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
         strncpy(tmp, procedure_name, i-1);
-#if (__GNUC__ == 9)
+#if (__GNUC__ >= 9)
 #pragma GCC diagnostic pop
 #endif
         tmp[i-1] = '\0';
@@ -491,7 +491,7 @@ static void end_code(FILE *fp, int class)
 static bool good_file_break(int token, int token2)
 {
   int r = false;
-  
+
   if ((token == RESERVED) && (strcmp(lex_buf, ".ORIGIN")==0)) {
     r = true;
   } else if ((token == RESERVED) && (strcmp(lex_buf, ".PROCEDURE")==0)) {
@@ -505,7 +505,7 @@ static bool good_file_break(int token, int token2)
              ((token2 == RESERVED) && (strcmp(lex_buf2, ".CONDITIONAL")==0))) {
     r = true;
   }
-  
+
   return r;
 }
 
@@ -519,7 +519,7 @@ char *ref_name(char *name, bool global, char *pn)
   } else {
     sprintf(buf, "%s_%s", pn, name);
   }
-  
+
   for (i=0; buf[i]; i++) {
     if (buf[i] == ' ') {
       buf[i] = '_';
@@ -531,7 +531,7 @@ char *ref_name(char *name, bool global, char *pn)
 void render_token(int token, int next_token, FILE **pfp)
 {
   int i;
-  
+
   bool set_line_start         = false;
   static bool line_start      = false;
   static bool procedure_seen  = false;
@@ -566,14 +566,14 @@ void render_token(int token, int next_token, FILE **pfp)
         (!single_file)) {
       fp = (*pfp) = start_new_file(fp, (fp!=0));
     }
-    
+
     /* If the first token on this line
      * un-indents then do it now, before printing
      * the indenting spaces */
-    
+
     if (unindent(token, lex_buf))
       indent--;
-    
+
     for (i=0; i<indent; i++) {
       char_sub(' ', fp);
       char_sub(' ', fp);
@@ -582,13 +582,13 @@ void render_token(int token, int next_token, FILE **pfp)
     if (unindent(token, lex_buf)) {
       indent--;
     }
-    
+
     /* render any leading spaces */
     if (spaces > 0) {
       if (pending_end_code == -1) {
         start_code(fp, 0);
       }
-      
+
       for (i=0; i<spaces; i++) {
         char_sub(' ', fp);
       }
@@ -598,22 +598,22 @@ void render_token(int token, int next_token, FILE **pfp)
   if (doindent(token, lex_buf)) {
     indent++;
   }
-  
+
   switch (token) {
   case '\n':
     if (fp) fprintf(fp, "\n");
     set_line_start = 1;
     line_number++;
     break;
-    
+
   case EOF:
     break;
-    
+
   case RESERVED:
     start_code(fp, 'R');
     copy_token(fp);
     end_code(fp,'R');
-    
+
     if (strcmp(".PROCEDURE",        lex_buf)==0) {
       procedure_seen = true;
     } else if (strcmp(".FORWARD",   lex_buf)==0) {
@@ -675,19 +675,19 @@ void render_token(int token, int next_token, FILE **pfp)
       switch_seen = true;
     }
     break;
-    
+
   case STRING:
     start_code(fp, 'S');
     copy_token(fp);
     end_code(fp,'S');
     break;
-    
+
   case COMMENT:
     start_code(fp, 'C');
     copy_token(fp);
     end_code(fp,'C');
     break;
-    
+
   case IDENTIFIER: {
     bool gen_hyper = false;
     bool gen_name  = false;
@@ -728,7 +728,7 @@ void render_token(int token, int next_token, FILE **pfp)
             s->defined = true;
             s->token_number = token_number;
             s->line_number = line_number;
-            s->file_number = file_number;                       
+            s->file_number = file_number;
           } else if (global) {
             /* must be a local of same name as global?*/
             //printf("Local %s masks global? %d\n", lex_buf, s->type);
@@ -784,7 +784,7 @@ void render_token(int token, int next_token, FILE **pfp)
             }
           }
           break;
-            
+
         default:
           abort();
         }
@@ -805,7 +805,7 @@ void render_token(int token, int next_token, FILE **pfp)
         fprintf(fp,"</A>");
       }
       end_code(fp,'I');
-      
+
       if (procedure_seen && (!forward_seen)) {
         s=lookup(lex_buf);
         enter_procedure(lex_buf, s);
@@ -813,7 +813,7 @@ void render_token(int token, int next_token, FILE **pfp)
     }
   }
     break;
-    
+
   case NUMBER:
     start_code(fp, 0);
     copy_token(fp);
@@ -826,7 +826,7 @@ void render_token(int token, int next_token, FILE **pfp)
     end_code(fp, 0);
     for_seen = false;
     break;
-    
+
   default:
     start_code(fp, 0);
     char_sub(token, fp);
@@ -867,7 +867,7 @@ void render_token(int token, int next_token, FILE **pfp)
     }
     break;
   }
-  
+
   line_start = set_line_start;
 }
 
@@ -894,7 +894,7 @@ static char *m4h_output_file_name(int file_num)
   } else {
     sprintf(buf, "%s_%d.m4h", output_root, file_num);
   }
-  
+
   return buf;
 }
 
@@ -910,7 +910,7 @@ static void button(FILE *fp, const char *legend, const char *filename)
     ref[0] = '\0';
     eref[0] = '\0';
   }
-  
+
   fprintf(fp, "      %s%s%s%s%s%s%s%s%s\n",
           BUTTON_START, left_quote, right_quote,
           ref, legend, eref,
@@ -920,16 +920,16 @@ static void button(FILE *fp, const char *legend, const char *filename)
 static void buttons(FILE *fp, int top)
 {
   if (!fp) return;
-      
+
   if (!single_file) {
     fprintf(fp, "%s\n", TABLE_START);
-    
+
     button(fp, FIRST_PAGE,    ((file_number == 1) ? NULL : output_file_name(1)));
     button(fp, PREVIOUS_PAGE, ((file_number == 1) ? NULL : output_file_name(file_number-1)));
     fprintf(fp, "      %s\n", BUTTON_EMPTY);
     button(fp, NEXT_PAGE,     ((file_number == max_file_number) ? NULL : output_file_name(file_number+1)));
     button(fp, LAST_PAGE,     ((file_number == max_file_number) ? NULL : output_file_name(max_file_number)));
-      
+
     fprintf(fp, "%s\n", TABLE_STOP);
   }
 
@@ -970,7 +970,7 @@ static FILE *start_new_file(FILE *fp, int realy_open)
             left_quote,  title,
             ((file_number == 1) ? "" : (file_number == max_file_number) ? CONCLUDED : CONTINUED),
             right_quote);
-    
+
     (void) time(&t);
     ctime_r(&t, buf);
     if ((*buf) && (buf[strlen(buf)-1]=='\n'))
@@ -1019,7 +1019,7 @@ static void args(int argc, char **argv)
 
   for (a=1; a<argc; a++) {
     if (argv[a][0] == '-') {
-      
+
       if (strcmp(argv[a], "-s") == 0)
         single_file = 1;
       else if ((strncmp(argv[a], "-l", 2) == 0)) {
@@ -1031,10 +1031,10 @@ static void args(int argc, char **argv)
         char *p, *l, *r;
         p = &argv[a][2];
         l = r = 0;
-        
+
         while ((*p) && ((*p)!=','))
           p++;
-        
+
         if (*p) {
           // Have found a ','
           if (p > l)
@@ -1044,13 +1044,13 @@ static void args(int argc, char **argv)
           if (!(*r))
             r = 0;
         }
-        
+
         if ((strlen(l)>MAX_LEN_QUOTE) || (strlen(r)>MAX_LEN_QUOTE)) {
           fprintf(stderr, "Quote chars <%s>, <%s> are too long. (Max: %d characters)\n",
                   ((l)?l:"[none]"), ((r)?r:"[none]"), MAX_LEN_QUOTE);
           exit(1);
         }
-        
+
         strcpy(left_quote,  ((l) ? l : DEFAULT_LEFT_QUOTE ));
         strcpy(right_quote, ((r) ? r : DEFAULT_RIGHT_QUOTE));
       }
@@ -1103,7 +1103,7 @@ int main(int argc, char **argv)
     token_number = line_number = file_number = 0;
     pending_end_code = -1;
     ofp = start_new_file(NULL, (pass>1));
-      
+
     next_token = lex( ifp );
     do {
       token = next_token;
@@ -1126,7 +1126,7 @@ int main(int argc, char **argv)
 
       render_token(token, next_token, &ofp);
     } while (token != EOF);
-      
+
     complete_file(ofp);
     fclose(ifp);
     free_lex();
