@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005, 2006, 2012  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2006, 2012, 2024  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,6 +60,9 @@
 #define CR 015
 #define ESCAPE 0x1b
 
+#define FCNTL_EXIT 2
+#define EOF_EXIT   2
+
 /*
  * This file provides the interface to the terminal.
  *
@@ -91,7 +94,7 @@
  * to check whether characters have been typed at all times
  * and in fact a signal (interrupt) is installed for this
  * purpose.
- * 
+ *
  */
 
 /* Use this variable to remember original terminal attributes. */
@@ -106,10 +109,11 @@ STDTTY::STDTTY()
   p = NULL;
   if (!saved_attributes)
     {
-      STDTTY::save_input_mode();
-      STDTTY::install_handler();
+      save_input_mode();
+      if (isatty(STDIN_FILENO))
+          install_handler();
     }
-  
+
   tty_input = 0;
   pending = 0;
   escape = 0;
@@ -136,10 +140,10 @@ void STDTTY::set_proc(Proc *p, bool (*call_special_chars)(Proc *p, int k))
 void STDTTY::save_input_mode()
 {
   saved_attributes = new termios;
- 
+
   /* Make sure stdin is a terminal. */
   if (isatty (STDIN_FILENO)) {
- 
+
     /* Save the terminal attributes so we can restore them later. */
     tcgetattr (STDIN_FILENO, saved_attributes);
     atexit (STDTTY::reset_input_mode);
@@ -161,7 +165,7 @@ void STDTTY::set_non_cannonical()
 
   //cout << __PRETTY_FUNCTION__ << "\n";
 
-  if (cannonical)
+  if (cannonical && isatty(STDIN_FILENO))
     {
       tty_input = 0;
       pending = 0;
@@ -178,7 +182,7 @@ void STDTTY::set_non_cannonical()
       tattr.c_cc[VMIN] = 0;
       tattr.c_cc[VTIME] = 0;
       tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
-    
+
       cannonical = 0;
     }
 }
@@ -220,7 +224,7 @@ void STDTTY::set_cannonical()
 bool STDTTY::got_char(char &c)
 {
   bool r;
-
+  
   if (pending)
     {
       r = 1;
@@ -230,16 +234,22 @@ bool STDTTY::got_char(char &c)
   else
     {
       r = (read(STDIN_FILENO, &c, 1) == 1);
-      
+
+      if ((! isatty(STDIN_FILENO)) && (c == '\n')) {
+        // If input redirected from a file (or pipe) then translate
+        // a line-end to a carriage-return, as if typed on keyboard.
+        c = '\r';
+      }
+
       if (r)
         r = !special_action(c);
     }
-  
+
   return r;
 }
 
 /* putch()
- * 
+ *
  * The point of this routine is that code written for the
  * H316 assumes that both CR and LF needs to be sent to
  * the ASR. This is actually true of the terminal emulators
@@ -249,10 +259,10 @@ bool STDTTY::got_char(char &c)
  * It is possible to turn this behaviour off (and an earlier
  * version of this emulator did that) however this means
  * that messages from the emulator (generated with printf() or
- * cout) don't behave properly beacause the CR is missing
+ * cout) don't behave properly because the CR is missing
  * (/n is LF).
  * So instead this routine replaces CR-LF or LF-CR sequences
- * by the newline (\n) character. Isolated CR of LF characters
+ * by the newline (\n) character. Isolated CR or LF characters
  * are passed unchanged.
  */
 void STDTTY::putch(const char &c)
@@ -313,46 +323,27 @@ void STDTTY::putch(const char &c)
 
 static char *no_readline(const char *prompt)
 {
-  static char buf[NRL_BUFLEN];
-  int i, j, n;
-  bool reading;
-
+  char *ptr = NULL;
+  size_t n = 0;
+  ssize_t r;
+  
   fputs(prompt, stdout);
   fflush(stdout);
 
-  reading = true;
-  i=0;
+  r = getline(&ptr, &n, stdin);
 
-  while (reading)
-    {
-      n = read(STDIN_FILENO, &buf[i], NRL_BUFLEN-1);
-      if (n == -1)
-        {
-          if (errno != EAGAIN)
-            {
-              std::cerr << "read() returned -1: errno => "
-                        << strerror(errno) << " (" << errno << ")" << std::endl;
-              exit(1);
-            }
-        }
-      else
-        {
-          for (j=i; j<(i+n); j++)
-            if (buf[j] == '\n')
-              {
-                buf[j] = '\0';
-                reading = false;
-              }
-          i+=n;
-        }
-    };
-  return buf;
+  if (r < 0) {
+    if (ptr) free(ptr);
+    ptr = 0;
+  }
+
+  return ptr;
 }
 #endif
 
-void STDTTY::get_input(const char *prompt, char *str, int len, bool more)
+void STDTTY::get_input(const char *prompt, char *str, unsigned len, bool more)
 {
-  int n;
+  unsigned n;
   char *ptr;
 
   set_cannonical();
@@ -363,27 +354,35 @@ void STDTTY::get_input(const char *prompt, char *str, int len, bool more)
   ptr = no_readline(prompt);
 #endif
 
-  if (ptr)
-    {
-      n = strlen(ptr);
-      // Nibble any spaces off the end
-      // (They're likely due to filename completion)
-      while ((n>1) && (ptr[n-1] == ' '))
-        n--;
-            
-      if (n>(len - 1))
-        n = len - 1;
-      int i;
-      for (i=0; i<n; i++)
-        str[i]=ptr[i];
+  if (ptr) {
+    n = strlen(ptr);
+    // Nibble any spaces off the end
+    // (They're likely due to filename completion)
+    while ((n>1) && (ptr[n-1] == ' '))
+      n--;
+    
+    if (n>(len - 1))
+      n = len - 1;
 
+    strncpy(str, ptr, n);
+    
 #ifdef HAVE_LIBREADLINE
-      if (str[0])
-        add_history(ptr);//Add including the trailing space
+    if (n > 0)
+      add_history(ptr); // Add including the trailing space
 #endif
-    }
-  else
+  } else {
     n = 0;
+    
+    if (! isatty(STDIN_FILENO)) {
+      // Input is not from a terminal (file or pipe?)
+      // and something failed - probably EOF.
+      // Returning as normal will be interpreted as a blank
+      // line, but this probably isn't what's expected.
+      // Exit instead.
+      fprintf(stderr, "EOF\n");
+      exit(EOF_EXIT);
+    }
+  }
 
   str[n] = '\0';
 #ifdef HAVE_LIBREADLINE
@@ -406,7 +405,7 @@ int STDTTY::fcntl_perror(char *prefix, int fildes, int cmd, int arg)
   if (res == -1)
     {
       perror(prefix);
-      exit(1);
+      exit(FCNTL_EXIT);
     }
   return res;
 }
@@ -421,7 +420,7 @@ void STDTTY::install_handler()
 
   flags = fcntl_perror(const_cast<char *>("STDTTY::install_handler() F_GETFL"),
                        STDIN_FILENO, F_GETFL, 0);
-  
+
   saved_flags = flags; // Save to restore at exit
 
   flags |= O_NONBLOCK;
@@ -459,7 +458,7 @@ void STDTTY::service_tty_input()
 
   tty_input = 0;
 
-  if (!cannonical)
+  if ((!cannonical) && isatty(0))
     {
       while ((r = read (STDIN_FILENO, &pending_char, 1)) == 1)
         {
@@ -489,7 +488,7 @@ bool STDTTY::special_action(char c)
   /* In xterm ALT-<c> causes the MSB of the byte received to
      be set. However, not all terminals do this. In particular,
      the gnome-terminal sends ESC folowed by <c>. */
-  
+
   if (k == ESCAPE)
     {
       escape = true;

@@ -32,7 +32,7 @@ public:
   bool got_char(char &c);
   void putch(const char &c);
 
-  void get_input(const char *prompt, char *str, int len, bool more);
+  void get_input(const char *prompt, char *str, unsigned len, bool more);
 
   static void service_tty_input();
   static bool get_tty_input(){return tty_input;};
