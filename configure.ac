@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.71])
-AC_INIT([h16],[1.7.0],[apw@adrianwise.co.uk])
+AC_INIT([h16],[1.8.0],[apw@adrianwise.co.uk])
 
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2020 Adrian Wise])
+AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2020, 2024 Adrian Wise])
 AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADERS([config.h])
 
