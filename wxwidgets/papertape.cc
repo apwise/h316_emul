@@ -18,10 +18,12 @@
  * MA  02111-1307 USA
  *
  */
+#include "papertape.hh"
+
+#include <cstdint>
 #include <cmath>
 #include <wx/rawbmp.h>
 
-#include "papertape.hh"
 
 #define TIMER_PERIOD 100 // update every tenth of a second
 
@@ -584,7 +586,7 @@ wxBitmap *PaperTape::GetBitmap(int i, PT_type type)
    */
   
   wxColour paper_colour(245, 244, 229); /* Yellowing papertape colour */
-  wxBrush paper_brush(paper_colour, wxSOLID);
+  wxBrush paper_brush(paper_colour);
   dc.SetBackground(paper_brush);
   dc.Clear();
    

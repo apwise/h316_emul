@@ -1,6 +1,6 @@
 /* Emulate a teletype
  *
- * Copyright (c) 2019  Adrian Wise
+ * Copyright (c) 2019, 2024  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,8 +58,8 @@ wxWindow *AsrPreferencesPage::CreateWindow (wxWindow *parent)
     wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
 
     wxSizerFlags flagsLabel(1), flagsItem(1), flagsLine(1);
-    flagsLabel.Align(wxALIGN_LEFT|wxALIGN_CENTRE_VERTICAL).Border(wxRIGHT, 5);
-    flagsItem.Align(wxALIGN_RIGHT|wxALIGN_CENTRE_VERTICAL);
+    flagsLabel.Align(/*wxALIGN_LEFT|*/wxALIGN_CENTRE_VERTICAL).Border(wxRIGHT, 5);
+    flagsItem.Align(/*wxALIGN_RIGHT|*/wxALIGN_CENTRE_VERTICAL);
     flagsLine.Border(wxALL, 10);
  
     wxBoxSizer *h_sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -109,7 +109,7 @@ AsrWidget::AsrWidget( wxWindow      *parent,
                   wxSizerFlags(1).Align(wxALIGN_TOP));
   tape_sizer->AddSpacer(wxSizerFlags::GetDefaultBorder());
   tape_sizer->Add(asr_ptr,
-                  wxSizerFlags(1).Align(wxALIGN_BOTTOM));
+                  wxSizerFlags(1)/*.Align(wxALIGN_BOTTOM)*/);
 
   character_timer = new wxTimer(this);
   character_timer->Start(timerPeriod, wxTIMER_CONTINUOUS);

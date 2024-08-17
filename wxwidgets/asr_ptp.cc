@@ -1,6 +1,6 @@
 /* Emulate paper-tape punch on a teleype
  *
- * Copyright (c) 2019  Adrian Wise
+ * Copyright (c) 2019, 2024  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ AsrPtp::AsrPtp( wxWindow      *parent,
   for (i=ButtonIdRel; i<ButtonIdEnd; i++) {
     button_sizer->Add(ControlButton(i),
                       wxSizerFlags().
-                      Align(wxALIGN_CENTER|wxALIGN_CENTER_VERTICAL).
+                      /*Align(wxALIGN_CENTER|wxALIGN_CENTER_VERTICAL).*/
                       Expand());
   }
 

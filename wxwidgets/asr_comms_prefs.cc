@@ -1,6 +1,6 @@
 /* Emulate a teleype - communications preferences
  *
- * Copyright (c) 2020  Adrian Wise
+ * Copyright (c) 2020, 2024  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -147,8 +147,8 @@ AsrCommsPrefsPanel::AsrCommsPrefsPanel(wxWindow *parent,
   sizer = new wxBoxSizer(wxVERTICAL);
   
   wxSizerFlags flagsLabel(1), flagsItem(1), flagsLine(1);
-  flagsLabel.Align(wxALIGN_LEFT|wxALIGN_CENTRE_VERTICAL).Border(wxRIGHT, 5);
-  flagsItem.Align(wxALIGN_RIGHT|wxALIGN_CENTRE_VERTICAL);
+  flagsLabel.Align(/*wxALIGN_LEFT|*/wxALIGN_CENTRE_VERTICAL).Border(wxRIGHT, 5);
+  flagsItem.Align(/*wxALIGN_RIGHT|*/wxALIGN_CENTRE_VERTICAL);
   flagsLine.Border(wxALL, 10);
 
   /**********************************************************************

@@ -3,7 +3,7 @@
 // Purpose:     Wrapper for libserialport
 // Author:      Adrian Wise <adrian@adrianwise.co.uk>
 // Created:     2019-07-27
-// Copyright:   (c) 2019, 2020 Adrian Wise
+// Copyright:   (c) 2019, 2020, 2024 Adrian Wise
 // Licence:     wxWindows licence
 /////////////////////////////////////////////////////////////////////////////
 #ifndef _SERIALPORT_H_
@@ -14,6 +14,8 @@
 
 #include <deque>
 #include <queue>
+
+#include <cstdint>
 
 // TODO: Replace Allocated() by IsOK() - more wxWidgets-like?
 
