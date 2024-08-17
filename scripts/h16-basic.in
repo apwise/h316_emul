@@ -7,7 +7,7 @@ pkgdatadir=@pkgdatadir@
 # and there are still '@' characters in the value above
 #
 if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
-  pkgdatadir=./
+    pkgdatadir=`dirname $0`/..
 fi
 #
 # Directories based upon pkgdata
@@ -45,22 +45,22 @@ while test -n "$1"; do
     -a) if [ "$#" -gt 2 ]; then
           have_lstnam=true
           lstnam=$2
-	  shift
-	  shift
+          shift
+          shift
         else
           echo "$usage"; exit 1
-	fi
-	continue;;
+        fi
+        continue;;
 
     -o) if [ "$#" -gt 2 ]; then
           have_objnam=true
           objnam=$2
-	  shift
-	  shift
+          shift
+          shift
         else
           echo "$usage"; exit 1
-	fi
-	continue;;
+        fi
+        continue;;
 
     --help) echo "$usage"; echo "$help"; exit 0;;
 
@@ -68,10 +68,10 @@ while test -n "$1"; do
           srcnam=$1
           have_srcnam=true
           shift
-	else
+        else
           echo "$usage"; exit 1
-	fi
-	break;;
+        fi
+        break;;
   esac
 done
 

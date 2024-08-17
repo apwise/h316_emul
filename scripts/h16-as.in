@@ -7,7 +7,7 @@ pkgdatadir=@pkgdatadir@
 # and there are still '@' characters in the value above
 #
 if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
-  pkgdatadir=..
+    pkgdatadir=`dirname $0`/..
 fi
 #
 # Directories based upon pkgdatadir
@@ -51,50 +51,50 @@ run_mac=false
 omit_cond=false
 
 while test -n "$1"; do
-  case $1 in
-    -m) run_mac=true
-        shift
-        continue;;
+    case $1 in
+        -m) run_mac=true
+            shift
+            continue;;
 
-    -ac) omit_cond=true
-        shift
-        continue;;
+        -ac) omit_cond=true
+             shift
+             continue;;
 
-    -a) if [ "$#" -gt 2 ]; then
-          have_lstnam=true
-          lstnam=$2
-          shift
-          shift
-        else
-          echo "$usage"; exit 1
-        fi
-        continue;;
+        -a) if [ "$#" -gt 2 ]; then
+                have_lstnam=true
+                lstnam=$2
+                shift
+                shift
+            else
+                echo "$usage"; exit 1
+            fi
+            continue;;
 
-    -o) if [ "$#" -gt 2 ]; then
-          have_objnam=true
-          objnam=$2
-          shift
-          shift
-        else
-          echo "$usage"; exit 1
-        fi
-        continue;;
+        -o) if [ "$#" -gt 2 ]; then
+                have_objnam=true
+                objnam=$2
+                shift
+                shift
+            else
+                echo "$usage"; exit 1
+            fi
+            continue;;
 
-    --help) echo "$usage"; echo "$help"; exit 0;;
+        --help) echo "$usage"; echo "$help"; exit 0;;
 
-    *)  if [ "$#" -eq 1 ]; then
-          srcnam=$1
-          have_srcnam=true
-          shift
-        else
-          echo "$usage"; exit 1
-        fi
-        break;;
-  esac
+        *)  if [ "$#" -eq 1 ]; then
+                srcnam=$1
+                have_srcnam=true
+                shift
+            else
+                echo "$usage"; exit 1
+            fi
+            break;;
+    esac
 done
 
 if [ $have_srcnam = false ]; then
-  echo "$usage"; exit 1
+    echo "$usage"; exit 1
 fi
 
 #
@@ -113,17 +113,17 @@ dirnam=`dirname $srcnam`
 basnam=`echo $srcnam | $sedprog 's/\.[^.]*$//'`
 
 if [ "${have_objnam}" = false ]; then
-  objnam=$dirnam/$basnam.obj
+    objnam=$dirnam/$basnam.obj
 fi
 
 if [ "${have_lstnam}" = false ]; then
-  lstnam=$dirnam/$basnam.lst
+    lstnam=$dirnam/$basnam.lst
 fi
 
 if [ "${omit_cond}" = false ]; then
-  ctrlnum="'140223"
+    ctrlnum="'140223"
 else
-  ctrlnum="'100223"
+    ctrlnum="'100223"
 fi
 
 tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
@@ -131,55 +131,54 @@ tmpobjnam=`$mktempprog -t h16-dap-obj.XXXXXX` || tmpobjnam=/tmp/h16-dap-obj.$$
 
 if [ "${run_mac}" != false ]; then
 
-  prenam=`$mktempprog -t h16-mac.XXXXXX` || tmpnam=/tmp/h16-mac.$$
-  asrnam=`$mktempprog -t h16-mac-asr.XXXXXX` || tmpnam=/tmp/h16-mac-asr.$$
+    prenam=`$mktempprog -t h16-mac.XXXXXX` || tmpnam=/tmp/h16-mac.$$
+    asrnam=`$mktempprog -t h16-mac-asr.XXXXXX` || tmpnam=/tmp/h16-mac-asr.$$
 
-  $m4prog "-DSLSTNAM=$macslstnam" "-DSRCNAM=&$srcnam" "-DPRENAM=$prenam" \
-          $mac_m4_filename > $tmpnam && \
-  $h16prog -t $tmpnam > $asrnam && \
-  errors=`$awkprog -- '/MACRO ERRORS/{print $1}' $asrnam`
+    $m4prog "-DSLSTNAM=$macslstnam" "-DSRCNAM=&$srcnam" "-DPRENAM=$prenam" \
+            $mac_m4_filename > $tmpnam && \
+        $h16prog -t $tmpnam > $asrnam && \
+        errors=`$awkprog -- '/MACRO ERRORS/{print $1}' $asrnam`
 
-  if [ "${errors}" = "NO" ]; then
-    errors=0;
-  elif [ "${errors}" = '**' ]; then
-    errors=1;
-  fi
-  status=$errors
+    if [ "${errors}" = "NO" ]; then
+        errors=0;
+    elif [ "${errors}" = '**' ]; then
+        errors=1;
+    fi
+    status=$errors
 
-  $rmprog -f $asrnam
+    $rmprog -f $asrnam
 
-  if [ "${errors}" -ne 0 ]; then
-    echo $errors MACRO ERRORS >&2
-    "${rmprog}" -f "${prenam}";
-    exit "${status}";
-  fi
+    if [ "${errors}" -ne 0 ]; then
+        echo $errors MACRO ERRORS >&2
+        "${rmprog}" -f "${prenam}";
+        exit "${status}";
+    fi
 
-  srcnam="${prenam}"
+    srcnam="${prenam}"
 else
-  srcnam=\&"${srcnam}"
+    srcnam=\&"${srcnam}"
 fi
 
 $m4prog "-DSLSTNAM=$dapslstnam" "-DSRCNAM=$srcnam" "-DLSTNAM=&$lstnam" \
         "-DOBJNAM=$tmpobjnam" "-DCTRLNUM=$ctrlnum" $dap_m4_filename > $tmpnam && \
-$h16prog -t "${tmpnam}" > /dev/null && \
-errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{status = $1}
+    $h16prog -t "${tmpnam}" > /dev/null && \
+    errors=`$awkprog -- '/WARNING OR ERROR FLAGS/{status = $1}
                      END {print status}' $lstnam`
 
 status=$errors
 
 if [ "${errors}" -eq 0 ]; then
-  $cpprog $tmpobjnam $objnam
+    $cpprog $tmpobjnam $objnam
 else
-  $rmprog -f $tmpobjnam;
-  echo $errors WARNING OR ERROR FLAGS >&2
-  $grepprog "^[[:alpha:]]" $lstnam >&2
+    echo $errors WARNING OR ERROR FLAGS >&2
+    $grepprog "^[[:alpha:]]" $lstnam >&2
 fi
 
 
-$rmprog -f $tmpnam
+$rmprog -f $tmpobjnam $tmpnam
 
 if [ "${run_mac}" != false ]; then
-  "${rmprog}" -f "${prenam}";
+    "${rmprog}" -f "${prenam}";
 fi
 
 exit $status

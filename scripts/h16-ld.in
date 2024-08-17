@@ -7,7 +7,7 @@ pkgdatadir=@pkgdatadir@
 # and there are still '@' characters in the value above
 #
 if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
-    pkgdatadir=..
+    pkgdatadir=`dirname $0`/..
 fi
 #
 # Directories based upon pkgdatadir
@@ -332,16 +332,15 @@ if [ "${vmem_file}" = true -o ${coe_file} = true ]; then
     # and LDR-APM's name table
     cat >> ${tmpnam} <<EOF
 clear
-m'77774,'000013
-m'77775,'051777
-m'77776,'024000
-m'77777,'003775
+m'77774,'000013   # EXA
+m'77775,'110000   # STA* '000000
+m'77776,'024000   # IRS  '000000
+m'77777,'003775   # JMP  *-2
 m'00000,'${names}
-d'77774,'77777
-g'77774
+g'77774           # runs until STA, above, is replaced by HLT
 clear
-m'77776,'000000
-m'77777,'000000
+m'77776,'000000   # clear last two
+m'77777,'000000   # words of memory
 EOF
 fi
 

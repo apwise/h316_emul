@@ -7,7 +7,7 @@ pkgdatadir=@pkgdatadir@
 # and there are still '@' characters in the value above
 #
 if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
-  pkgdatadir=..
+    pkgdatadir=`dirname $0`/..
 fi
 #
 # Directories based upon pkgdata
@@ -57,59 +57,59 @@ block_flag=0
 trace_flag=0
 
 while test -n "$1"; do
-  case $1 in
+    case $1 in
 
-    -a) if [ "$#" -gt 2 ]; then
-          have_lstnam=true
-          lstnam=$2
-	  shift
-	  shift
-        else
-          echo "$usage"; exit 1
-	fi
-	continue;;
+        -a) if [ "$#" -gt 2 ]; then
+                have_lstnam=true
+                lstnam=$2
+                shift
+                shift
+            else
+                echo "$usage"; exit 1
+            fi
+            continue;;
 
-    -l) library_flag=1
-        shift
-        continue;;
+        -l) library_flag=1
+            shift
+            continue;;
 
-    -s) octal_flag=1
-        shift
-        continue;;
+        -s) octal_flag=1
+            shift
+            continue;;
 
-    -b) block_flag=1
-        shift
-        continue;;
+        -b) block_flag=1
+            shift
+            continue;;
 
-    -t) trace_flag=1
-        shift
-        continue;;
+        -t) trace_flag=1
+            shift
+            continue;;
 
-    -o) if [ "$#" -gt 2 ]; then
-          have_objnam=true
-          objnam=$2
-	  shift
-	  shift
-        else
-          echo "$usage"; exit 1
-	fi
-	continue;;
+        -o) if [ "$#" -gt 2 ]; then
+                have_objnam=true
+                objnam=$2
+                shift
+                shift
+            else
+                echo "$usage"; exit 1
+            fi
+            continue;;
 
-    --help) echo "$usage"; echo "$help"; exit 0;;
+        --help) echo "$usage"; echo "$help"; exit 0;;
 
-    *)  if [ "$#" -eq 1 ]; then
-          srcnam=$1
-          have_srcnam=true
-          shift
-	else
-          echo "$usage"; exit 1
-	fi
-	break;;
-  esac
+        *)  if [ "$#" -eq 1 ]; then
+                srcnam=$1
+                have_srcnam=true
+                shift
+            else
+                echo "$usage"; exit 1
+            fi
+            break;;
+    esac
 done
 
 if [ $have_srcnam = false ]; then
-  echo "$usage"; exit 1
+    echo "$usage"; exit 1
 fi
 
 #
@@ -125,11 +125,11 @@ dirnam=`dirname $srcnam`
 basnam=`echo $srcnam | $sedprog 's/\.[^.]*$//'`
 
 if [ $have_objnam = false ]; then
-  objnam=$dirnam/$basnam.obj
+    objnam=$dirnam/$basnam.obj
 fi
 
 if [ $have_lstnam = false ]; then
-  lstnam=$dirnam/$basnam.lst
+    lstnam=$dirnam/$basnam.lst
 fi
 
 tmpnam=`$mktempprog -t h16-commands.XXXXXX` || tmpnam=/tmp/h16-commands.$$
@@ -149,21 +149,21 @@ devices=`$exprprog $devices + \( $trace_flag    \* 1024 \)`
 octal_devices=`$printfprog "%06o" $devices`
 
 $m4prog -DSLSTNAM=$f4_slstnam -DSRCNAM=\&$srcnam -DLSTNAM=\&$lstnam -DOBJNAM=$tmpobjnam -DAREG=$octal_devices $f4_m4_filename > $tmpnam && \
-$h16prog -t $tmpnam > /dev/null && \
-errors=`$grepprog -c "\*\*\*\*\*\*\*\*\*\*" $lstnam`
+    $h16prog -t $tmpnam > /dev/null && \
+    errors=`$grepprog -c "\*\*\*\*\*\*\*\*\*\*" $lstnam`
 
 if [ $errors -eq 1 ]; then
-  echo $errors "ERROR" >&2
+    echo $errors "ERROR" >&2
 elif [ $errors -ne 0 ]; then
-  echo $errors "ERRORS" >&2
+    echo $errors "ERRORS" >&2
 fi
 
 status=$errors
 
 if [ $errors -eq 0 ]; then
-  $cpprog $tmpobjnam $objnam
+    $cpprog $tmpobjnam $objnam
 else
-  $grepprog -B 5 "\*\*\*\*\*\*\*\*\*\*" $lstnam >&2
+    $grepprog -B 5 "\*\*\*\*\*\*\*\*\*\*" $lstnam >&2
 fi
 
 $rmprog -f $tmpnam

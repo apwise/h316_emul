@@ -7,7 +7,7 @@ pkgdatadir=@pkgdatadir@
 # and there are still '@' characters in the value above
 #
 if [ x`echo $pkgdatadir | sed 's/[^@]//g'` != "x" ]; then
-  pkgdatadir=..
+    pkgdatadir=`dirname $0`/..
 fi
 #
 # Directories based upon pkgdatadir
@@ -179,7 +179,7 @@ ${h16prog} -t "${tmpnam}" > ${tmpttynam}
 status=$?
 
 if [ "${status}" -ne 0 ]; then exit ${status}; fi
-                               
+
 #
 # Parse output to derive (as best as possible) extent of program
 # and with compile as OK
