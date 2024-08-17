@@ -38,6 +38,7 @@
 #include "rtc.hh"
 #include "ptr.hh"
 #include "ptp.hh"
+#include "plt.hh"
 #include "asr_intf.hh"
 #include "stdtty.hh"
 #include "lpt.hh"
@@ -420,7 +421,18 @@ void Proc::dump_vmem(char *filename, int exec_addr, bool octal)
     }
   }
 
-  for (i=0; i<CORE_SIZE; i++) {
+  // As a special-case, a contiguous block of zeros from the
+  // top of core is treated as if it had never been written
+  // (this allows scripting, such as in h16-ld.in, to clear
+  // top of core where LDR-APM and PAL-AP were and not have
+  // this dumped)
+
+  int core_end = CORE_SIZE-1;
+  while ((core_end > 0) && (core[core_end]==0)) {
+    --core_end;
+  }
+
+  for (i=0; i<=core_end; i++) {
     instr = core[i];
     mod = modified[i];
     dac = false;

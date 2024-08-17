@@ -144,10 +144,11 @@ void PLT::ensure_file_open()
           p->abort();
       }
         
-      if (pending_filename)
-        delete filename;
-        
-      pending_filename = 0;
+      if (pending_filename) {
+        free(filename);
+      }
+
+      pending_filename = false;
     }
   }
 }
@@ -318,5 +319,5 @@ void PLT::set_filename(char *filename)
 {
   master_clear();
   this->filename = strdup(filename);
-  pending_filename = 1;
+  pending_filename = true;
 }
