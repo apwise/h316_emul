@@ -1621,11 +1621,11 @@ void Proc::do_ADD(unsigned short instr)
       if (dp) addr &= ((~0)<<1); // lose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
-        dm |= ((~0) << 31);
+        dm |= ((~0l) << 31);
 
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
-        da |= ((~0) << 31);
+        da |= ((~0l) << 31);
 
       v = ~(da ^ dm);        // Bit 30 is signs same
       da += dm;
@@ -1669,11 +1669,11 @@ void Proc::do_SUB(unsigned short instr)
       if (dp) addr &= ((~0)<<1); // lose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
-        dm |= ((~0) << 31);
+        dm |= ((~0l) << 31);
 
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
-        da |= ((~0) << 31);
+        da |= ((~0l) << 31);
 
       dm = -dm;
 
