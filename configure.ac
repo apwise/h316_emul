@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.71])
-AC_INIT([h16],[1.8.0],[apw@adrianwise.co.uk])
+AC_INIT([h16],[1.9.0],[apw@adrianwise.co.uk])
 
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
