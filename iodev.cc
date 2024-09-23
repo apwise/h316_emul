@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2018  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "config.h"
+
 #include "stdtty.hh"
 #include "iodev.hh"
 
@@ -29,8 +31,16 @@
 #include "lpt.hh"
 #include "rtc.hh"
 #include "plt.hh"
+
+#if ENABLE_VERIF
 #include "vdmc.hh"
 #include "vsim.hh"
+#endif
+
+#if ENABLE_SPI
+#include "spi.hh"
+#include "fram.hh"
+#endif
 
 #include "proc.hh"
 
@@ -95,7 +105,6 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
 {
   IODEV **dt = new IODEV *[64];
   IODEV *dummy = new IODEV(p);
-  VDMC *vdmc = 0;
   int i;
   
   for(i=0; i<64; i++)
@@ -105,25 +114,43 @@ IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
   dt[PTR_DEVICE] = new PTR(p, stdtty);
   dt[PTP_DEVICE] = new PTP(p, stdtty);
   dt[LPT_DEVICE] = new LPT(p, stdtty);
+
+#if ENABLE_SPI
+  FRAM *fram = new FRAM;
+  SpiDev *devices[SPI::CHIP_SELECTS] = {fram, 0, 0, 0};
+                  
+  dt[SPI_DEVICE] = new SPI(p, devices);  
+#endif
+  
   dt[RTC_DEVICE] = new RTC(p);
   dt[PLT_DEVICE] = new PLT(p, stdtty);
 
+#if ENABLE_VERIF
   dt[VSM_DEVICE] = new VSIM(p);
-  vdmc = new VDMC(p, VD2_DEVICE);
+  VDMC *vdmc = new VDMC(p, VD2_DEVICE);
   dt[VD1_DEVICE] = vdmc;
   dt[VD2_DEVICE] = vdmc;
-
+#endif
+  
   return dt;
 }
 
 IODEV **IODEV::dmc_dispatch_table(Proc *p, STDTTY *stdtty, IODEV **dt)
 {
   IODEV **dmct = new IODEV *[16];
-  //IODEV *dummy = dt[DUM_DEVICE];
-  int i;
-  
-  for(i=0; i<16; i++)
+  int i=0;
+
+#if ENABLE_SPI
+  dmct[i++] = dt[SPI_DEVICE];
+#endif
+#if ENABLE_VERIF
+  for( ; i<16; i++) {
     dmct[i] = dt[VD1_DEVICE];
+  }
+#endif
+  for( ; i<16; i++) {
+    dmct[i] = dt[DUM_DEVICE];
+  }
     
   return dmct;
 } 

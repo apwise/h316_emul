@@ -37,10 +37,6 @@ h16_SOURCES = 	asr_intf.cc \
 		ptr.hh \
 		rtc.cc \
 		rtc.hh \
-		vdmc.cc \
-		vdmc.hh \
-		vsim.cc \
-		vsim.hh \
 		gpl.h
 
 AM_CXXFLAGS = -Wall -Werror
@@ -60,6 +56,26 @@ h16_LDADD = $(GTK_LIBS)
 
 endif
 
+if ENABLE_VERIF
+
+h16_SOURCES +=  vdmc.cc \
+		vdmc.hh \
+		vsim.cc \
+		vsim.hh
+
+endif
+
+
+if ENABLE_SPI
+
+h16_SOURCES += 	spi.cc \
+		spi.hh \
+		spi_dev.hh \
+		fram.cc \
+		fram.hh
+
+endif
+
 nodist_h16_SOURCES = version.h
 
 BUILT_SOURCES = version.h
@@ -67,7 +83,7 @@ BUILT_SOURCES = version.h
 version.h: $(h16_SOURCES)
 	@echo "#define NAME \"$(PACKAGE_NAME)\"" > $@
 	@echo "#define VERSION \"$(PACKAGE_VERSION)\"" >> $@
-	@echo "#define COPYRIGHT \"`grep ^Copyright.*Wise$$ configure`\"" >> $@
+	@echo "#define COPYRIGHT \"`grep ^Copyright.*Wise$$ $(srcdir)/configure`\"" >> $@
 	@echo "#define DATE \"`date`\"" >> $@
 
 h16_tabs_SOURCES = utils/h16-tabs.c

@@ -18,6 +18,9 @@
  *
  */
 
+#ifndef _VSIM_HH_
+#define _VSIM_HH_
+
 #include "iodev.hh"
 
 class Proc;
@@ -31,3 +34,5 @@ public:
 
 private:
 };
+
+#endif // _VSIM_HH_

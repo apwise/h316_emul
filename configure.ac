@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.71])
-AC_INIT([h16],[1.8.0],[apw@adrianwise.co.uk])
+AC_INIT([h16],[1.9.0],[apw@adrianwise.co.uk])
 
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
@@ -23,6 +23,22 @@ AM_CONDITIONAL([ENABLE_GUI], [test x$enable_gui = xyes])
 if test x$enable_gui = xyes; then
   AC_DEFINE_UNQUOTED([ENABLE_GUI], [1], [Define to 1 to compile with the GUI])
   PKG_CHECK_MODULES(GTK, gtk+-3.0)
+fi
+
+AC_ARG_ENABLE([verif],
+              AS_HELP_STRING([--enable-verif],[Compile with support for verification devices]),
+              [], [enable_verif=no])
+AM_CONDITIONAL([ENABLE_VERIF], [test x$enable_verif = xyes])
+if test x$enable_verif = xyes; then
+  AC_DEFINE_UNQUOTED([ENABLE_VERIF], [1], [Define to 1 to compile with verification devices])
+fi
+
+AC_ARG_ENABLE([spi],
+              AS_HELP_STRING([--enable-spi],[Compile with support for experimental SPI devices]),
+              [], [enable_spi=no])
+AM_CONDITIONAL([ENABLE_SPI], [test x$enable_spi = xyes])
+if test x$enable_spi = xyes; then
+  AC_DEFINE_UNQUOTED([ENABLE_SPI], [1], [Define to 1 to compile with SPI])
 fi
 
 # Checks for libraries.

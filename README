@@ -1,7 +1,8 @@
 Generic instructions for installing code can be found in INSTALL.
 
-h16 provides one optional feature - whether or not to compile with
-the GUI. The default is to compile with the GUI. However, if this is
+h16 provides some optional features:
+
+The default is to compile with the GUI. However, if this is
 not desired (or GTK is not available) then the emulator may be
 compiled without the GUI as follows:
 
@@ -12,9 +13,20 @@ text mode by passing the -t as the first argument:
 
 h16 -t
 
+The emulator may be compiled with support for some experimental
+devices associated with using the emulator as a reference model for
+RTL verification (vsim and vdmc):
+
+./configure --enable-verif
+
+The emulator may be compiled with support for experimental SPI
+storage devices (spi and fram):
+
+./configure --enable-spi
+
 To compile the verion of the ASR utility with adept support (to talk
-to FPGA boardss (such as the Digilent cmods6) configure with something
-like this (sepending on install locations):
+to FPGA boards (such as the Digilent cmods6) configure with something
+like this (depending on install locations):
 
 ./configure CFLAGS="-I /usr/include/digilent/adept" LDFLAGS=-L/usr/lib64/digilent/adept
 
@@ -45,5 +57,9 @@ MON> help
 
 In text mode (but not when using the GUI) a filename may be passed
 which is used to supply commands to the monitor. This allows simple
-batch processing scripts to be constructed.
+batch processing scripts to be constructed:
+
+h16 -t <script-file>
+
+
 

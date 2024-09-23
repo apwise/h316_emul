@@ -178,7 +178,6 @@ private:
   unsigned short interrupts;
   unsigned short dmc_req;
   bool dmc_cyc;
-  unsigned short dmc_addr;
   unsigned int dmc_dev;
   
   bool start_button_interrupt;

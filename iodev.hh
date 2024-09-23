@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2018  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,15 +32,22 @@ public:
       PTP_DEVICE = 002, // Paper-tape punch
       LPT_DEVICE = 003, // Lineprinter
       ASR_DEVICE = 004, // ASR (teletype)
+#if ENABLE_SPI
+      SPI_DEVICE = 007, // SPI flash controller
+#endif
       RTC_DEVICE = 020, // Real-time clock
       PLT_DEVICE = 027, // Incremental plotter
 
+#if ENABLE_VERIF
       DUM_DEVICE = 034, // Any unused device (to pick up dummy)
       
       // Devices for verification purposes
       VSM_DEVICE = 035, // Simulation exit code
       VD1_DEVICE = 036, // DMC verification - channel
-      VD2_DEVICE = 037  // DMC verification - central controller
+      VD2_DEVICE = 037, // DMC verification - central controller
+#else
+      DUM_DEVICE = 037, // Any unused device (to pick up dummy)
+#endif
     };
 
   enum STATUS
@@ -72,7 +79,17 @@ public:
 
 protected:
   Proc *p;
+  static const int REASON_MASTER_CLEAR = -1;
+
+  static unsigned short device_addr(unsigned short instr)
+  {
+    return instr & 077;
+  }
+  static unsigned short function_code(unsigned short instr)
+  {
+    return (instr >> 6) & 017;
+  }
+  
 };
 
-#define REASON_MASTER_CLEAR -1
 #endif //_IODEV_HH_
