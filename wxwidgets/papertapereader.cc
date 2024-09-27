@@ -1,3 +1,23 @@
+/* Emulate a papertape reader
+ *
+ * Copyright (c) 2019, 2024  Adrian Wise
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA  02111-1307 USA
+ *
+ */
 #include <wx/wx.h> 
 #include <wx/ffile.h>
 #include <wx/statline.h>
@@ -53,9 +73,9 @@ PaperTapeReader::PaperTapeReader(wxWindow* parent)
 //             const wxPoint &pos = wxDefaultPosition, const wxSize &size = wxDefaultSize, 
 //             long style = wxLI_HORIZONTAL, const wxString &name = wxStaticTextNameStr );
 
-  papertape = new wxPaperTape(this, -1,
-                              wxDefaultPosition, wxDefaultSize,
-                              true, wxHORIZONTAL, wxPaperTape::wxPT_LeftToRight, false);
+  papertape = new PaperTape(this, -1,
+                            wxDefaultPosition, wxDefaultSize,
+                            true, wxHORIZONTAL, PaperTape::PT_LeftToRight, false);
 
   v_sizer->Add(
                papertape,
@@ -70,9 +90,9 @@ PaperTapeReader::~PaperTapeReader()
 {
 }
 
-int PaperTapeReader::Read()
+bool PaperTapeReader::Read(unsigned char &ch)
 {
-  return papertape->Read();
+  return papertape->Read(ch);
 }
 
 void PaperTapeReader::OnLoad(wxCommandEvent& WXUNUSED(event))
@@ -93,11 +113,12 @@ void PaperTapeReader::OnLoad(wxCommandEvent& WXUNUSED(event))
         {
           size_t len = file.Length();
           size_t len_read;
-          char *buffer = new char[len];
+          unsigned char *buffer = new unsigned char[len];
           len_read = file.Read(buffer, len);
           file.Close();
 
           papertape->Load(buffer, len_read);
+          delete [] buffer;
         }
     }
 }

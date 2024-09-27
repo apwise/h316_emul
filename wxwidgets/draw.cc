@@ -17,6 +17,7 @@
 
 #include "papertape.hh"
 #include "papertapereader.hh"
+//#include "printedpaper.hh"
 
 
 
@@ -39,6 +40,7 @@ public:
 private:
   wxTimer *timer;
   PaperTapeReader *reader;
+  //PrintedPaper *printer;
 
   DECLARE_EVENT_TABLE()
 };
@@ -90,7 +92,17 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
     /* Adrian */
 
     reader = new PaperTapeReader(this);
+    //printer = new PrintedPaper(this);
 
+    /*
+    printer->Print("HELLO \016CRUEL\017 WORLD\r\n");
+    printer->Print("0123456789_\n");
+    printer->Print("01234567890123456789012345678901234567890123456789012345678901234567890123456789\r\n");
+    printer->Print("+/\rX\\\n");
+    printer->Print("ABC\n\n");
+    printer->Print("DEF");
+    */
+    
     Refresh();
 }
 
@@ -102,7 +114,7 @@ void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
   wxMessageBox(wxT("This is a wxWindows Hello world sample"),
-	       wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
+               wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
 }
 
 void MyFrame::OnRead(wxCommandEvent& WXUNUSED(event))
@@ -114,10 +126,12 @@ void MyFrame::OnRead(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnTimer(wxTimerEvent& WXUNUSED(event))
 {
-  int data = reader->Read();
+  bool valid;
+  unsigned char ch;
   
-  if (data < 0)
+  valid = reader->Read(ch);
+  
+  if (!valid) {
     timer->Stop();
-//   else
-//     std::cout << "OnTimer " << data << std::endl;
+  }
 }
