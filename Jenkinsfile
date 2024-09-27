@@ -6,7 +6,7 @@ pipeline {
             steps {
                 sh 'aclocal && autoconf && automake --add-missing'
                 sh 'mkdir -p build install'
-                sh 'workspace=`pwd` && cd build && ../configure --prefix=${workspace}/install'
+                sh 'workspace=`pwd` && cd build && ../configure --prefix=${workspace}/install --enable-verif'
                 sh 'cd build && make'
                 sh 'cd build && make install'
             }
