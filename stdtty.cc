@@ -302,14 +302,15 @@ void STDTTY::putch(const char &c)
       cr_or_lf = ch;
     }
 
-  if (send_cr_or_lf) {
-    if (write(STDOUT_FILENO, &cr_or_lf, 1) != 1)
-      abort();
-  }
-
-  if (send) {
-    if (write(STDOUT_FILENO, &ch, 1) != 1)
-      abort();
+  if (send_cr_or_lf || send) {
+    ssize_t n;
+    do {
+      n = write(STDOUT_FILENO, ((send) ? &ch : &cr_or_lf), 1);
+      if (n == -1) {
+        if ((errno != EAGAIN) && (errno != EINTR))
+          abort();
+      }
+    } while (n == 0);
   }
 }
 
