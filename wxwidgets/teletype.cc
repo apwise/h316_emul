@@ -145,7 +145,7 @@ TeletypeFrame::TeletypeFrame(const wxString& title, const wxPoint& pos, const wx
   if (config.Allocated() != wxSerialPort::OK)
     std::cerr << "config not allocated" << std::endl;
 
-  port = new wxSerialPort(portArray[2]);
+  port = new wxSerialPort(portArray[0]);
   if (port->Allocated() != wxSerialPort::OK)
     std::cerr << "port not allocated" << std::endl;
 
