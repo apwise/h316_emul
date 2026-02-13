@@ -20,7 +20,7 @@
  */
 
 #ifndef _FP_HPP_
-#define _FP_HPP
+#define _FP_HPP_
 
 #include "h16cmd.hpp"
 
