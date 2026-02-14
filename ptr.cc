@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <iostream>
+#include <iomanip>
 
 #include "iodev.hh"
 #include "stdtty.hh"
@@ -266,9 +268,14 @@ void PTR::event(int reason)
     
     if (!ignore_event) {
       if (ready) {
+        std::cerr << __PRETTY_FUNCTION__ << " "
+                  << std::dec << p->get_half_cycles()
+                  << " Character overrun" << std::endl;
+        /*
         fprintf(stderr,
-                "%s " PRIuLL "Character overrun\n",
+                "%s " PRIu64 " Character overrun\n",
                 __PRETTY_FUNCTION__, p->get_half_cycles());
+        */
       }
 
       c = tty_file.getc();
