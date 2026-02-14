@@ -1,6 +1,6 @@
 /* Convert plot file from h316 emulator to postscript
  *
- * Copyright (C) 2008, 2012  Adrian Wise
+ * Copyright (C) 2008, 2011, 2012, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

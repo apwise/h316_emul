@@ -1,6 +1,6 @@
 /* Convert Honeywell Series-16 DAP assembler code to HTML
  *
- * Copyright (C) 2004, 2006, 2018  Adrian Wise
+ * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2011, 2012, 2018, 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,13 +19,21 @@
  *
  */
 
-// {{{ TODO
+#include <stdlib.h>
+#include <stdio.h>
+#include <string>
+#include <sstream>
+#include <cstring>
+#include <cctype>
+#include <list>
+#include <map>
+
+#include <iostream>
+using namespace std;
 
 /*
- * Pop-up alternate forms for literals?
+ * TODO: Pop-up alternate forms for literals?
  */
-
-// }}}
 
 #define MAX_LEN_QUOTE 20
 #define DEFAULT_LEFT_QUOTE "`"
@@ -65,24 +73,6 @@
 #define TAIL1 "M4H_TAIL1"
 #define TAIL2 "M4H_TAIL2"
 
-// {{{ Includes
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string>
-#include <sstream>
-#include <cstring>
-#include <cctype>
-#include <list>
-#include <map>
-
-#include <iostream>
-using namespace std;
-
-// }}}
-
-// {{{ struct Instr
-
 enum INSTR_TYPE
   {
     GA, GB, MR, IOG, SH, IO, SK,
@@ -96,9 +86,6 @@ struct Instr
   INSTR_TYPE type;
   const char *description;
 };
-
-// }}}
-// {{{ static Instr instructions[] = 
 
 static Instr instructions[] = 
 {
@@ -174,7 +161,7 @@ static Instr instructions[] =
   {"ICA", GA, "Interchange characters in A"},
   {"ICL", GA, "Interchange and clear left half of A"},
   {"ICR", GA, "Interchange and clear right half of A"},
-  
+
   {"CF1", AD, "Configuration DDP-116"},
   {"CF3", AD, "Configuration H316"},
   {"CF4", AD, "Configuration DDP-416"},
@@ -224,11 +211,7 @@ static Instr instructions[] =
   {0,GA,0}
 };
 
-// }}}
-
 class Symbol;
-
-// {{{ class Annotation
 
 class Annotation
 {
@@ -261,11 +244,7 @@ class Annotation
   Symbol *s;
 };
 
-// }}}
-
 class File;
-
-// {{{ class Line
 
 class Line
 {
@@ -320,9 +299,6 @@ class Line
 
   void render_char(FILE *fp, char c);
 };
-
-// }}}
-// {{{ class File
 
 class File
 {
@@ -391,9 +367,6 @@ class File
   void quote_dollars(const string &in_str, string &out_str);
 };
 
-// }}}
-// {{{ class Symbol 
-
 class Symbol 
 {
  public:
@@ -432,14 +405,10 @@ class Symbol
   static int next_serial_number;
 };
 
-// }}}
-
 static File **files;
 static int n_files;
 static char left_quote[MAX_LEN_QUOTE+1];
 static char right_quote[MAX_LEN_QUOTE+1];
-
-// {{{ Annotation::Annotation(enum A type, int first, int len)
 
 Annotation::Annotation(enum A type, int first, int len)
   : type(type),
@@ -449,10 +418,6 @@ Annotation::Annotation(enum A type, int first, int len)
 {
   
 }
-
-// }}}
-
-// {{{ static char *get_substr(const string st, int n, int l)
 
 static char *get_substr(const string st, int n, int l)
 {
@@ -474,9 +439,6 @@ static char *get_substr(const string st, int n, int l)
   else
     return 0;
 }
-
-// }}}
-// {{{ static bool number(const string str,
 
 static bool number(const string str,
                    unsigned long &n,
@@ -503,10 +465,6 @@ static bool number(const string str,
   return r;
 }
 
-// }}}
-
-// {{{ Line::Line(const string src_line, File *file)
-
 Line::Line(const string src_line, File *file, int page)
   : src_line(src_line),
     src_line_num(-1),
@@ -518,9 +476,6 @@ Line::Line(const string src_line, File *file, int page)
 {
   //printf("Line constructor\n");
 };
-
-// }}}
-// {{{ void Line::analyze()
 
 #define SLN        4
 #define SLN_LEN    4
@@ -680,9 +635,6 @@ void Line::analyze()
     }
 }
 
-// }}}
-// {{{ Annotation *Line::find_field(int pos, int len, Annotation::A annot)
-
 Annotation *Line::find_field(int pos, int len, Annotation::A annot)
 {
   int src_len = src_line.size();
@@ -715,10 +667,6 @@ Annotation *Line::find_field(int pos, int len, Annotation::A annot)
     }
   return a;
 }
-
-// }}}
-
-// {{{ void Line::analyze_src()
 
 void Line::analyze_src()
 {
@@ -1000,9 +948,6 @@ void Line::analyze_src()
     }
 }
 
-// }}}
-// {{{ void Line::render_char(FILE *fp, char c)
-
 void Line::render_char(FILE *fp, char c)
 {
   switch (c)
@@ -1016,9 +961,6 @@ void Line::render_char(FILE *fp, char c)
     default:  fprintf(fp, "%c", c);  break;
     }
 }
-
-// }}}
-// {{{ void Line::render(FILE *fp, bool html_per_page)
 
 void Line::render(FILE *fp, bool html_per_page, bool first)
 {
@@ -1212,10 +1154,6 @@ void Line::render(FILE *fp, bool html_per_page, bool first)
   file->set_render_state(state);
 }
 
-// }}}
-
-// {{{ string Line::render_link(Symbol *s, bool html_per_page)
-
 string Line::render_link(Symbol *s, bool html_per_page)
 {
   string r="";
@@ -1237,10 +1175,6 @@ string Line::render_link(Symbol *s, bool html_per_page)
   //
   return r;
 }
-
-// }}}
-
-// {{{ int Line::find_sub_field(int first, SF_TYPE type,
 
 static void assemble_number(bool minus, int integer_part, int fraction_digits,
                             int fraction_part, int Es_seen, int Bs_seen,
@@ -1619,10 +1553,7 @@ int Line::find_sub_field(int first, SF_TYPE type,
   return i;
 }
 
-// }}}
-
 map<string, Symbol *> File::global_symbol_table;
-// {{{ File::File(const char *filename, bool is_toc)
 
 File::File(const char *filename, bool is_toc)
   : filename(filename),
@@ -1662,9 +1593,6 @@ File::File(const char *filename, bool is_toc)
   render_state = RS_WAIT_HEAD;
 }
 
-// }}}
-// {{{ string File::basename(string filename)
-
 string File::basename(string filename)
 {
   int i;
@@ -1685,9 +1613,6 @@ string File::basename(string filename)
   return filename.substr(0, j);
 }
 
-// }}}
-// {{{ string File::get_html_name(int page)
-
 string File::get_html_name(int page)
 {
   string r = basename(filename);
@@ -1701,18 +1626,11 @@ string File::get_html_name(int page)
   return r;
 }
 
-// }}}
-
-// {{{ string File::find_first_file_name(bool html_per_page, string &title_str)
-
 string File::find_first_file_name(bool html_per_page, string &title_str)
 {
   title_str = files[0]->title;
   return files[0]->get_html_name((html_per_page && (!files[0]->is_toc)) ? 1 : 0);
 }
-
-// }}}
-// {{{ string File::find_last_file_name(bool html_per_page, string &title_str)
 
 string File::find_last_file_name(bool html_per_page, string &title_str)
 {
@@ -1725,9 +1643,6 @@ string File::find_last_file_name(bool html_per_page, string &title_str)
   title_str = files[i]->title;
   return files[i]->get_html_name((html_per_page) ? (files[i]->pages) : 0);
 }
-
-// }}}
-// {{{ string File::find_file_name(bool previous, bool html_per_page, int page, string &title_str)
 
 string File::find_file_name(bool previous, bool html_per_page, int page, string &title_str)
 {
@@ -1809,10 +1724,6 @@ string File::find_file_name(bool previous, bool html_per_page, int page, string 
     return f->get_html_name(0);
 }
 
-// }}}
-
-// {{{ void File::link_button(FILE *fp, string filename, char *str, const string &title_str)
-
 void File::link_button(FILE *fp, string filename, const char *str, const string &title_str)
 {
   if (filename.size()>0)
@@ -1821,9 +1732,6 @@ void File::link_button(FILE *fp, string filename, const char *str, const string 
   else
     fprintf(fp, "%s %s %s\n", BUTTON_START, str, BUTTON_STOP);
 }
-
-// }}}
-// {{{ void File::links(FILE *fp, bool html_per_page, int page)
 
 void File::links(FILE *fp, bool html_per_page, int page)
 {
@@ -1871,9 +1779,6 @@ void File::links(FILE *fp, bool html_per_page, int page)
 
 }
 
-// }}}
-// {{{ void File::link_buttons(FILE *fp, bool html_per_page, int page)
-
 void File::link_buttons(FILE *fp, bool html_per_page, int page)
 {
   string title_str;
@@ -1907,10 +1812,6 @@ void File::link_buttons(FILE *fp, bool html_per_page, int page)
 
   fprintf(fp, "%s\n", TABLE_STOP);
 }
-
-// }}}
-
-// {{{ void File::file_title()
 
 void File::file_title()
 {
@@ -1966,9 +1867,6 @@ void File::file_title()
 
 }
 
-// }}}
-// {{{ void File::quote_dollars(const string &in_str, string &out_str)
-
 void File::quote_dollars(const string &in_str, string &out_str)
 {
   string::const_iterator i;
@@ -1983,10 +1881,6 @@ void File::quote_dollars(const string &in_str, string &out_str)
     }
   }
 }
-
-// }}}
-
-// {{{ void File::file_start(FILE *fp, bool html_per_page, int page)
 
 void File::file_start(FILE *fp, bool html_per_page, int page)
 {
@@ -2019,9 +1913,6 @@ void File::file_start(FILE *fp, bool html_per_page, int page)
     }
 }
 
-// }}}
-// {{{ void File::file_stop(FILE *fp, bool html_per_page, int page)
-
 void File::file_stop(FILE *fp, bool html_per_page, int page)
 {
   if (!is_toc)
@@ -2031,10 +1922,6 @@ void File::file_stop(FILE *fp, bool html_per_page, int page)
     }
   fprintf(fp, "%s\n", TAIL2);
 }
-
-// }}}
-
-// {{{ void File::render()
 
 void File::render()
 {
@@ -2124,9 +2011,6 @@ void File::render()
   fclose(fp);
 }
 
-// }}}
-// {{{ string File::read_line(FILE *fp, bool &ok)
-
 string File::read_line(FILE *fp, bool &ok)
 {
   string res;
@@ -2144,9 +2028,6 @@ string File::read_line(FILE *fp, bool &ok)
   return res;
 }
 
-// }}}
-// {{{ Symbol *File::lookup_local(string name)
-
 Symbol *File::lookup_local(string name)
 {
   int len = name.size();
@@ -2160,9 +2041,6 @@ Symbol *File::lookup_local(string name)
   else
     return 0;
 }
-
-// }}}
-// {{{ Symbol *File::lookup_global(string name)
 
 Symbol *File::lookup_global(string name)
 {
@@ -2178,9 +2056,6 @@ Symbol *File::lookup_global(string name)
     return 0;
 }
 
-// }}}
-// {{{ Symbol *File::lookup(string name)
-
 Symbol *File::lookup(string name)
 {
   Symbol *s = lookup_local(name);
@@ -2188,10 +2063,6 @@ Symbol *File::lookup(string name)
     s = lookup_global(name);
   return s;
 }
-
-// }}}
-
-// {{{ Symbol *File::define(string name)
 
 Symbol *File::define(string name)
 {
@@ -2206,24 +2077,16 @@ Symbol *File::define(string name)
   return s;
 }
 
-// }}}
-
 void File::redefine(Symbol *s)
 {
   s->redefine(pages);
 }
-
-// {{{ void File::define_symbol(Symbol *s)
 
 void File::define_symbol(Symbol *s)
 {
   s->set_page(pages);
   s->set_defined(true);
 }
-
-// }}}
-
-// {{{ Symbol *File::declare_local(string name, bool ext)
 
 Symbol *File::declare_local(string name, bool ext)
 {
@@ -2242,9 +2105,6 @@ Symbol *File::declare_local(string name, bool ext)
     }
   return s;
 }
-
-// }}}
-// {{{ Symbol *File::declare_global(string name, Symbol *local)
 
 Symbol *File::declare_global(string name, Symbol *local)
 {
@@ -2266,9 +2126,6 @@ Symbol *File::declare_global(string name, Symbol *local)
   return local;
 }
 
-// }}}
-// {{{ Symbol *File::local_synonym(string name, Symbol *local)
-
 Symbol *File::local_synonym(string name, Symbol *local)
 {
   int len = name.size();
@@ -2285,17 +2142,10 @@ Symbol *File::local_synonym(string name, Symbol *local)
   return local;
 }
 
-// }}}
-
-// {{{ void File::set_use_comment_as_title(bool tc)
-
 void File::set_use_comment_as_title(bool tc)
 {
   use_comment_as_title = tc;
 }
-
-// }}}
-// {{{ void File::supply_title(string title)
 
 void File::supply_title(string title)
 {
@@ -2303,10 +2153,7 @@ void File::supply_title(string title)
   supplied_title = title;
 }
 
-// }}}
-
 int Symbol::next_serial_number = 0;
-// {{{ Symbol::Symbol(string name, int page, bool ext)
 
 Symbol::Symbol(string name, int page, File *file, bool ext, bool defined)
   : name(name),
@@ -2320,7 +2167,7 @@ Symbol::Symbol(string name, int page, File *file, bool ext, bool defined)
   serial_number = next_serial_number++;
 }
 
-// }}}
+
 
 void Symbol::redefine(int new_page)
 {
@@ -2361,8 +2208,6 @@ void Symbol::md_step()
   }
   // If not multiply defined, silently ignore
 }
-
-// {{{ int main (int argc, char **argv)
 
 int main (int argc, char **argv)
 {
@@ -2475,4 +2320,3 @@ int main (int argc, char **argv)
   exit(0);
 }
 
-// }}}

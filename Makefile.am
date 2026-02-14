@@ -88,44 +88,44 @@ version.h: $(h16_SOURCES)
 
 h16_tabs_SOURCES = utils/h16-tabs.c
 
-h16_pdap_SOURCES = utils/h16-pdap.cc
+h16_pdap_SOURCES = utils/h16-pdap.cpp
 
 h16_ppl_SOURCES = utils/h16-ppl.c
 
-h16_asctotty_SOURCES = utils/h16-asctotty.cc tty_file.cpp tty_file.hpp
+h16_asctotty_SOURCES = utils/h16-asctotty.cpp tty_file.cpp tty_file.hpp
 
-h16_ttytoasc_SOURCES = utils/h16-ttytoasc.cc tty_file.cpp tty_file.hpp
+h16_ttytoasc_SOURCES = utils/h16-ttytoasc.cpp tty_file.cpp tty_file.hpp
 
-h16_tabify_SOURCES = utils/h16-tabify.cc instr.cpp
+h16_tabify_SOURCES = utils/h16-tabify.cpp instr.cpp
 h16_tabify_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
-h16_asr_SOURCES = utils/h16-asr_app.cc utils/serial.cc utils/serial.hh \
+h16_asr_SOURCES = utils/h16-asr_app.cpp utils/serial.cpp utils/serial.hpp \
 		utils/dummy_proc.cpp utils/dummy_proc.hpp \
 		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp
 
-h16_pp_asr_SOURCES = utils/h16-pp-asr_app.cc \
-		utils/dummy_proc.cc utils/dummy_proc.hpp \
+h16_pp_asr_SOURCES = utils/h16-pp-asr_app.cpp \
+		utils/dummy_proc.cpp utils/dummy_proc.hpp \
 		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp \
 		utils/pp_channel.h utils/pp_channel.c
 h16_pp_asr_CXXFLAGS = -pthread -Wall -Werror
 h16_pp_asr_LDADD = -lpthread
 
-h16_depp_asr_SOURCES = utils/h16-depp-asr_app.cc \
-		utils/dummy_proc.cc utils/dummy_proc.hpp \
+h16_depp_asr_SOURCES = utils/h16-depp-asr_app.cpp \
+		utils/dummy_proc.cpp utils/dummy_proc.hpp \
 		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp \
 		utils/depp_channel.h utils/depp_channel.c
 h16_depp_asr_CFLAGS = -I/usr/local/include/digilent/adept -Wall -Werror
 h16_depp_asr_CXXFLAGS = -pthread -I/usr/local/include/digilent/adept -Wall -Werror
 h16_depp_asr_LDADD = -lpthread -L/usr/local/lib64/digilent/adept -ldmgr -ldepp
 
-h16_tape_SOURCES = utils/h16-tape.cc instr.cpp
+h16_tape_SOURCES = utils/h16-tape.cpp instr.cpp
 h16_tape_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
-h16_plt2ps_SOURCES = utils/h16-plt2ps.cc
+h16_plt2ps_SOURCES = utils/h16-plt2ps.cpp
 
-h16_lib_SOURCES = utils/h16-lib.cc
+h16_lib_SOURCES = utils/h16-lib.cpp
 
-h16_disasm_SOURCES = utils/h16-disasm.cc instr.cpp
+h16_disasm_SOURCES = utils/h16-disasm.cpp instr.cpp
 h16_disasm_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
 h16_leader_SOURCES = utils/h16-leader.c

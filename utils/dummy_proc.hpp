@@ -18,17 +18,21 @@
  *
  */
 
-#include "dummy_proc.hh"
+#ifndef _DUMMY_PROC_HPP_
+#define _DUMMY_PROC_HPP_
 
-#include <cstdio>
-#include "asr.hpp"
+#define STANDALONE 1
 
-Proc::Proc(ASR *asr)
+class ASR;
+
+class Proc
 {
-        this->asr = asr;
-}
+public:
+        Proc(ASR *asr);
+        bool special(char k);
 
-bool Proc::special(char k)
-{
-        return asr->special(k);
-}
+private:
+        ASR *asr;
+};
+
+#endif // _DUMMY_PROC_HPP_

@@ -1,6 +1,6 @@
 /* Analyse an X16 papertape file
  *
- * Copyright (C) 2006, 2008, 2012  Adrian Wise
+ * Copyright (C) 2006, 2008, 2012, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
