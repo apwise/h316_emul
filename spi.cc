@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2018, 2024  Adrian Wise
+ * Copyright (C) 2018, 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,17 +18,17 @@
  *
  */
 
+#include "spi.hpp"
+
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
 #include <iostream>
 #include <iomanip>
 
-#include "iodev.hh"
-#include "stdtty.hh"
-
-#include "proc.hh"
-#include "spi.hh"
+#include "iodev.hpp"
+#include "stdtty.hpp"
+#include "proc.hpp"
 
 using namespace std;
 

@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1998, 2004, 2005  Adrian Wise
+ * Copyright (C) 1998, 2004, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
  * Command line monitor for H316 emulator
  */
 
+#include "monitor.hpp"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -26,11 +28,10 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "proc.hh"
-#include "stdtty.hh"
+#include "proc.hpp"
+#include "stdtty.hpp"
 #include "gpl.h"
 #include "version.h"
-#include "monitor.hh"
 
 #define BUFSIZE 1024
 #define PROMPT "MON"

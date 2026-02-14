@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005, 2006, 2012, 2024  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2006, 2012, 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  * MA  02111-1307 USA
  *
  */
+
+#include "stdtty.hpp"
 
 #include "config.h"
 
@@ -49,12 +51,9 @@
 #ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>
 #endif
-
 #ifdef HAVE_READLINE_HISTORY_H
 #include <readline/history.h>
 #endif
-
-#include "stdtty.hh"
 
 #define LF 012
 #define CR 015
@@ -367,7 +366,7 @@ void STDTTY::get_input(const char *prompt, char *str, unsigned len, bool more)
 
     strncpy(str, ptr, n);
     
-#ifdef HAVE_LIBREADLINE
+#ifdef HAVE_LIBHISTORY
     if (n > 0)
       add_history(ptr); // Add including the trailing space
 #endif

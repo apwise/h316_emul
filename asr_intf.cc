@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,14 +17,16 @@
  * MA  02111-1307 USA
  *
  */
+
+#include "asr_intf.hpp"
+
 #include <stdlib.h>
 #include <stdio.h>
-#include "stdtty.hh"
+#include "stdtty.hpp"
 
-#include "proc.hh"
-#include "iodev.hh"
-#include "asr.hh"
-#include "asr_intf.hh"
+#include "proc.hpp"
+#include "iodev.hpp"
+#include "asr.hpp"
 
 #define BAUD 9600 // 110
 #define SMK_MASK (1 << (16-11))

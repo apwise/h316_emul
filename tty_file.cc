@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2020  Adrian Wise
+ * Copyright (C) 2020, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  * MA  02111-1307 USA
  *
  */
-#include "tty_file.hh"
+#include "tty_file.hpp"
 
 TTY_file::TTY_file()
   : fp(0)

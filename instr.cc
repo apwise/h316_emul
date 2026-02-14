@@ -17,11 +17,13 @@
  * MA  02111-1307 USA
  *
  */
+#include "instr.hpp"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #ifndef RTL_SIM
-#include "stdtty.hh"
+#include "stdtty.hpp"
 #endif
 #include <iostream>
 
@@ -29,11 +31,9 @@
 class Proc;
 #define PD(proc) 0
 #else
-#include "proc.hh"
+#include "proc.hpp"
 #define PD(proc) &Proc::proc
 #endif
-
-#include "instr.hh"
 
 InstrTable::Instr::Instr(const char *x_mnemonic,
                          INSTR_TYPE x_type,

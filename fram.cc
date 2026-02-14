@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2024  Adrian Wise
+ * Copyright (C) 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +17,11 @@
  * MA  02111-1307 USA
  *
  */
-#include "fram.hh"
+#include "fram.hpp"
+
 #include <iostream>
 #include <iomanip>
 #include <cassert>
-
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/file.h>

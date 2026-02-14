@@ -22,7 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "tty_file.hh"
+#include "tty_file.hpp"
 #define USAGE "usage: %s [-h|--help] <ASCII filename> <TTY filename>\n"
 
 int main(int argc, char **argv)

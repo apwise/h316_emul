@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,15 @@
  * MA  02111-1307 USA
  *
  */
+
+#include "asr.hpp"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
 #include <string.h>
 
-#include "stdtty.hh"
-#include "asr.hh"
+#include "stdtty.hpp"
 
 #define WRU  005
 #define BS   010

@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2024  Adrian Wise
+ * Copyright (C) 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
  * MA  02111-1307 USA
  *
  */
-#ifndef _FRAM_HH_
-#define _FRAM_HH_
+#ifndef _FRAM_HPP_
+#define _FRAM_HPP_
 
 #include "spi_dev.hh" // provides <deque> and <cstdint>
 
@@ -68,4 +68,4 @@ private:
   Cmnd fast_cmnd;
 };
 
-#endif // _FRAM_HH_
+#endif // _FRAM_HPP_

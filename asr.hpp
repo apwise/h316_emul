@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,10 +17,10 @@
  * MA  02111-1307 USA
  *
  */
-#ifndef _ASR_HH_
-#define _ASR_HH_
+#ifndef _ASR_HPP_
+#define _ASR_HPP_
 
-#include "tty_file.hh"
+#include "tty_file.hpp"
 
 class STDTTY;
 
@@ -66,4 +66,4 @@ private:
 
 };
 
-#endif // _ASR_HH_
+#endif // _ASR_HPP_

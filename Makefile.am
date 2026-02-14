@@ -22,21 +22,21 @@ h16_SOURCES = 	asr_intf.cc \
 		plt.cc \
 		tty_file.cc \
 		gpl.c \
-		asr.hh \
-		event_queue.hh \
-		iodev.hh \
-		monitor.hh \
-		ptp.hh \
-		stdtty.hh \
-		plt.hh \
-		tty_file.hh \
-		asr_intf.hh \
-		instr.hh \
-		lpt.hh \
-		proc.hh \
-		ptr.hh \
+		asr.hpp \
+		event_queue.hpp \
+		iodev.hpp \
+		monitor.hpp \
+		ptp.hpp \
+		stdtty.hpp \
+		plt.hpp \
+		tty_file.hpp \
+		asr_intf.hpp \
+		instr.hpp \
+		lpt.hpp \
+		proc.hpp \
+		ptr.hpp \
 		rtc.cc \
-		rtc.hh \
+		rtc.hpp \
 		gpl.h
 
 AM_CXXFLAGS = -Wall -Werror
@@ -59,9 +59,9 @@ endif
 if ENABLE_VERIF
 
 h16_SOURCES +=  vdmc.cc \
-		vdmc.hh \
+		vdmc.hpp \
 		vsim.cc \
-		vsim.hh
+		vsim.hpp
 
 endif
 
@@ -69,10 +69,10 @@ endif
 if ENABLE_SPI
 
 h16_SOURCES += 	spi.cc \
-		spi.hh \
-		spi_dev.hh \
+		spi.hpp \
+		spi_dev.hpp \
 		fram.cc \
-		fram.hh
+		fram.hpp
 
 endif
 
@@ -92,27 +92,27 @@ h16_pdap_SOURCES = utils/h16-pdap.cc
 
 h16_ppl_SOURCES = utils/h16-ppl.c
 
-h16_asctotty_SOURCES = utils/h16-asctotty.cc tty_file.cc tty_file.hh
+h16_asctotty_SOURCES = utils/h16-asctotty.cc tty_file.cc tty_file.hpp
 
-h16_ttytoasc_SOURCES = utils/h16-ttytoasc.cc tty_file.cc tty_file.hh
+h16_ttytoasc_SOURCES = utils/h16-ttytoasc.cc tty_file.cc tty_file.hpp
 
 h16_tabify_SOURCES = utils/h16-tabify.cc instr.cc
 h16_tabify_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
 h16_asr_SOURCES = utils/h16-asr_app.cc utils/serial.cc utils/serial.hh \
-		utils/dummy_proc.cc utils/dummy_proc.hh \
-		asr.cc asr.hh tty_file.cc tty_file.hh stdtty.cc stdtty.hh
+		utils/dummy_proc.cc utils/dummy_proc.hpp \
+		asr.cc asr.hpp tty_file.cc tty_file.hpp stdtty.cc stdtty.hpp
 
 h16_pp_asr_SOURCES = utils/h16-pp-asr_app.cc \
-		utils/dummy_proc.cc utils/dummy_proc.hh \
-		asr.cc asr.hh tty_file.cc tty_file.hh stdtty.cc stdtty.hh \
+		utils/dummy_proc.cc utils/dummy_proc.hpp \
+		asr.cc asr.hpp tty_file.cc tty_file.hpp stdtty.cc stdtty.hpp \
 		utils/pp_channel.h utils/pp_channel.c
 h16_pp_asr_CXXFLAGS = -pthread -Wall -Werror
 h16_pp_asr_LDADD = -lpthread
 
 h16_depp_asr_SOURCES = utils/h16-depp-asr_app.cc \
-		utils/dummy_proc.cc utils/dummy_proc.hh \
-		asr.cc asr.hh tty_file.cc tty_file.hh stdtty.cc stdtty.hh \
+		utils/dummy_proc.cc utils/dummy_proc.hpp \
+		asr.cc asr.hpp tty_file.cc tty_file.hpp stdtty.cc stdtty.hpp \
 		utils/depp_channel.h utils/depp_channel.c
 h16_depp_asr_CFLAGS = -I/usr/local/include/digilent/adept -Wall -Werror
 h16_depp_asr_CXXFLAGS = -pthread -I/usr/local/include/digilent/adept -Wall -Werror

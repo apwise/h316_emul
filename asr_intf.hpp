@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 1999, 2004, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,18 +17,28 @@
  * MA  02111-1307 USA
  *
  */
-#ifndef _PTR_HH_
-#define _PTR_HH_
+
+#ifndef _ASR_INTF_HPP_
+#define _ASR_INTF_HPP_
+
+#include "iodev.hpp"
 
 class Proc;
+class ASR;
 class STDTTY;
 
-#include "tty_file.hh"
+enum ASR_ACTIVITY
+  {
+    ASR_ACTIVITY_NONE,
+    ASR_ACTIVITY_OUTPUT,
+    ASR_ACTIVITY_INPUT,
+    ASR_ACTIVITY_DUMMY
+  };
 
-class PTR : public IODEV
+class ASR_INTF : public IODEV
 {
 public:
-  PTR(Proc *p, STDTTY *stdtty);
+  ASR_INTF(Proc *p, STDTTY *stdtty);
   STATUS ina(unsigned short instr, signed short &data);
   STATUS ocp(unsigned short instr);
   STATUS sks(unsigned short instr);
@@ -36,34 +46,25 @@ public:
   STATUS smk(unsigned short mask);
 
   void event(int reason);
-  void set_filename(char *filename);
-
+  void set_filename(char *filename, bool asr_ptp);
+  void asr_ptr_on(char *filename);
+  void asr_ptp_on(char *filename);
+  bool special(char c);
+        
 private:
-  
   void master_clear(void);
-  void open_file(void);
-  void start_reader(void);
 
-  Proc *p;
-  STDTTY *stdtty;
+  unsigned short mask; // just set the one bit for this device
 
-  TTY_file tty_file;
-  bool pending_filename;
-  char *filename;
-
-  bool eot; // End Of Tape
-  unsigned int eot_counter;
-
-  unsigned short mask;
-  
-  bool tape_running;
+  int data_buf;
   bool ready;
-  unsigned char data_buf;
+  bool input_pending;
 
-  bool ignore_event;
-  int events_queued;
+  bool output_mode;
+  bool output_pending;
+  enum ASR_ACTIVITY activity;
 
-  int data_count;
+  ASR *asr;
 };
 
-#endif // _PTR_HH_
+#endif // _ASR_INTF_HPP_

@@ -18,13 +18,13 @@
  *
  */
 
-#ifndef __PROC_HH__
-#define __PROC_HH__
+#ifndef _PROC_HPP_
+#define _PROC_HPP_
 
 #include <vector>
 #include <cstdint>
-#include "instr.hh" // To get GENERIC_GROUP_A
-#include "event_queue.hh"
+#include "instr.hpp" // To get GENERIC_GROUP_A
+#include "event_queue.hpp"
 
 class STDTTY;
 class InstrTable;
@@ -400,4 +400,4 @@ public:
 #endif
 #endif
 
-#endif // __PROC_HH__
+#endif // _PROC_HPP_

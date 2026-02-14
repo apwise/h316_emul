@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 1999, 2004, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 1999, 2004, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,15 +17,15 @@
  * MA  02111-1307 USA
  *
  */
+#include "ptp.hpp"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "iodev.hh"
-#include "stdtty.hh"
-
-#include "proc.hh"
-#include "ptp.hh"
+#include "iodev.hpp"
+#include "stdtty.hpp"
+#include "proc.hpp"
 
 #define SPEED 110 // charcters per second
 #define SMK_MASK (1 << (16-10))

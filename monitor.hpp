@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1998, 2004, 2005  Adrian Wise
+ * Copyright (C) 1998, 2004, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,11 @@
  * MA  02111-1307 USA
  *
  */
+
+#ifndef _MONITOR_HPP_
+#define _MONITOR_HPP_
+
+#include <cstdio>
 
 class STDTTY;
 class Proc;
@@ -81,3 +86,4 @@ private:
   bool warranty(bool &run, int words, char **cmd);
 };
 
+#endif // _MONITOR_HPP_

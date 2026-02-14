@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 1999, 2004, 2005  Adrian Wise
+ * Copyright (C) 2004, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,18 +17,20 @@
  * MA  02111-1307 USA
  *
  */
-#ifndef _PTP_HH_
-#define _PTP_HH_
+
+#ifndef _LPT_HPP_
+#define _LPT_HPP_
+
+#include "iodev.hpp"
+#include <cstdio>
 
 class Proc;
 class STDTTY;
 
-#include "tty_file.hh"
-
-class PTP : public IODEV
+class LPT : public IODEV
 {
- public:
-  PTP(Proc *p, STDTTY *stdtty);
+public:
+  LPT(Proc *p, STDTTY *stdtty);
   STATUS ina(unsigned short instr, signed short &data);
   STATUS ocp(unsigned short instr);
   STATUS sks(unsigned short instr);
@@ -38,21 +40,25 @@ class PTP : public IODEV
   void event(int reason);
   void set_filename(char *filename);
 
- private:
+private:
   void master_clear(void);
-  void turn_power_on(void);
+  void open_file();
+  void next_line();
+  void deal_pending_nl();
 
   Proc *p;
   STDTTY *stdtty;
 
-  TTY_file tty_file;
+  FILE *fp;
   bool pending_filename;
+  bool pending_nl;
   char *filename;
   
-  bool ready;
-  bool power_on;
-  
   unsigned short mask;
+
+  int scan_counter;
+  char line[121];
+  int line_number;
 };
 
-#endif // _PTP_HH_
+#endif // _LPT_HPP_

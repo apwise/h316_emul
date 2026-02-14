@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2011  Adrian Wise
+ * Copyright (C) 2011, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,15 +17,16 @@
  * MA  02111-1307 USA
  *
  */
+#include "rtc.hpp"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "iodev.hh"
-#include "stdtty.hh"
+#include "iodev.hpp"
+#include "stdtty.hpp"
 
-#include "proc.hh"
-#include "rtc.hh"
+#include "proc.hpp"
 
 #define SMK_MASK (1 << (16-16))
 

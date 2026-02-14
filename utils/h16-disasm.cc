@@ -11,7 +11,7 @@
 #include <set>
 #include <map>
 
-#include "instr.hh"
+#include "instr.hpp"
 
 static InstrTable instr_table;
 

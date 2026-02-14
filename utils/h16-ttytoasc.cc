@@ -23,7 +23,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "tty_file.hh"
+#include "tty_file.hpp"
 
 #define USAGE "usage: %s [-h|--help] <TTY filename> <ASCII filename>\n"
 

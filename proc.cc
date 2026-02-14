@@ -20,6 +20,8 @@
  * the processor.
  */
 
+#include "proc.hpp"
+
 #include <cstdlib>
 #include <cstdio>
 #include <cassert>
@@ -28,19 +30,18 @@
 #ifdef RTL_SIM
 #define NO_GTK (1)
 #else
-#include "iodev.hh"
-#include "rtc.hh"
-#include "ptr.hh"
-#include "ptp.hh"
-#include "plt.hh"
-#include "asr_intf.hh"
-#include "stdtty.hh"
-#include "lpt.hh"
-#include "plt.hh"
+#include "iodev.hpp"
+#include "rtc.hpp"
+#include "ptr.hpp"
+#include "ptp.hpp"
+#include "plt.hpp"
+#include "asr_intf.hpp"
+#include "stdtty.hpp"
+#include "lpt.hpp"
+#include "plt.hpp"
 #endif
 
-#include "instr.hh"
-#include "proc.hh"
+#include "instr.hpp"
 
 #ifndef NO_GTK
 #include "gtk/fp.h"

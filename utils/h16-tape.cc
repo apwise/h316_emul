@@ -32,7 +32,7 @@
 #include <set>
 #include <map>
 
-#include "instr.hh"
+#include "instr.hpp"
 
 #define TAPE_INITIAL_BUFFER_SIZE 1024
 

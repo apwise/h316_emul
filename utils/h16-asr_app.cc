@@ -7,8 +7,8 @@
 #include <iostream>
 
 #include "dummy_proc.hh"
-#include "asr.hh"
-#include "stdtty.hh"
+#include "asr.hpp"
+#include "stdtty.hpp"
 #include "serial.hh"
 
 #define SOH  001 // Start of heading

@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include "dummy_proc.hh"
-#include "asr.hh"
-#include "stdtty.hh"
+#include "asr.hpp"
+#include "stdtty.hpp"
 #include "pp_channel.h"
 
 static bool call_special_chars(Proc *p, int k)

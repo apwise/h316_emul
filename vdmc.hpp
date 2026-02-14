@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2018  Adrian Wise
+ * Copyright (C) 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef _VDMC_HH_
-#define _VDMC_HH_
+#ifndef _VDMC_HPP_
+#define _VDMC_HPP_
 
 #include <bitset>
 
@@ -129,4 +129,4 @@ private:
   bool last_pending[NUM_CHANNELS];
 };
 
-#endif // _VDMC_HH_
+#endif // _VDMC_HPP_

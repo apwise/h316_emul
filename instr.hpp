@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef __INSTR_HH__
-#define __INSTR_HH__
+#ifndef _INSTR_HPP_
+#define _INSTR_HPP_
 
 #include <cstdint>
 
@@ -196,4 +196,4 @@ private:
 
 };
 
-#endif
+#endif // _INSTR_HPP_

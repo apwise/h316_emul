@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 #include <cstdint>
 #include <cinttypes>
 
-#include "stdtty.hh"
-#include "proc.hh"
-#include "instr.hh"
-#include "monitor.hh"
+#include "stdtty.hpp"
+#include "proc.hpp"
+#include "instr.hpp"
+#include "monitor.hpp"
 
 #include "config.h"
 

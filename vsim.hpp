@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2006, 2026  Adrian Wise
+ * Copyright (C) 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,17 +18,21 @@
  *
  */
 
-#include "dummy_proc.hh"
+#ifndef _VSIM_HPP_
+#define _VSIM_HPP_
 
-#include <cstdio>
-#include "asr.hpp"
+#include "iodev.hh"
 
-Proc::Proc(ASR *asr)
+class Proc;
+
+class VSIM : public IODEV
 {
-        this->asr = asr;
-}
+public:
+  VSIM(Proc *p);
+  
+  STATUS ota(unsigned short instr, signed short data);
 
-bool Proc::special(char k)
-{
-        return asr->special(k);
-}
+private:
+};
+
+#endif // _VSIM_HPP_

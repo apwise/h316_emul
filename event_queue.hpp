@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2011  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2017, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,27 +18,37 @@
  *
  */
 
+#ifndef _EVENT_QUEUE_HPP_
+#define _EVENT_QUEUE_HPP_
+
+#include <cstdint>
+#include <map>
+
+class IODEV;
+
 class Proc;
 
-class RTC : public IODEV
+class EventQueue
 {
 public:
-  RTC(Proc *p);
-  STATUS ina(unsigned short instr, signed short &data);
-  STATUS ocp(unsigned short instr);
-  STATUS sks(unsigned short instr);
-  STATUS ota(unsigned short instr, signed short data);
-  STATUS smk(unsigned short mask);
+  typedef uint_least64_t EventTime;
 
-  void event(int reason);
-  void rollover();
+  EventQueue(Proc *p);
 
+  void queue(EventTime event_time, IODEV *device = 0, int reason = 0);
+  bool call_devices(EventTime event_time);
+  void flush_events(EventTime &event_time);
+  void discard_events();
+  bool next_event_time(EventTime &event_time);
+  
 private:
-  void master_clear(void);
-
   Proc *p;
-
-  unsigned short mask;
-  bool running;
-  bool interrupting;
+  
+  typedef std::pair<IODEV *, int> Event;
+  typedef std::multimap<EventTime, Event> event_queue_t;
+  event_queue_t event_queue;
+  
+  static const unsigned int MAXIMUM_EVENTS = 10000;
 };
+
+#endif // _EVENT_QUEUE_HPP_

@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2004, 2005  Adrian Wise
+ * Copyright (C) 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,39 +18,20 @@
  *
  */
 
-class Proc;
-class STDTTY;
+#ifndef _SPI_DEV_HPP_
+#define _SPI_DEV_HPP_
 
-class LPT : public IODEV
-{
+#include <cstdint>
+#include <deque>
+
+class SpiDev {
+
 public:
-  LPT(Proc *p, STDTTY *stdtty);
-  STATUS ina(unsigned short instr, signed short &data);
-  STATUS ocp(unsigned short instr);
-  STATUS sks(unsigned short instr);
-  STATUS ota(unsigned short instr, signed short data);
-  STATUS smk(unsigned short mask);
-
-  void event(int reason);
-  void set_filename(char *filename);
+  virtual void write(bool wprot, std::deque<uint8_t> &command) = 0;
+  virtual uint8_t read() = 0;
 
 private:
-  void master_clear(void);
-  void open_file();
-  void next_line();
-  void deal_pending_nl();
-
-  Proc *p;
-  STDTTY *stdtty;
-
-  FILE *fp;
-  bool pending_filename;
-  bool pending_nl;
-  char *filename;
   
-  unsigned short mask;
-
-  int scan_counter;
-  char line[121];
-  int line_number;
 };
+
+#endif // _SPI_DEV_HPP_

@@ -12,7 +12,7 @@
 #include <sys/signal.h>
 #include <sys/types.h>
 
-#include "stdtty.hh"
+#include "stdtty.hpp"
 #include "serial.hh"
 
 typedef struct

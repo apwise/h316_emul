@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "instr.hh"
+#include "instr.hpp"
 
 /*
  * usage:

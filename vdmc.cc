@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2018  Adrian Wise
+ * Copyright (C) 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,11 +22,11 @@
 #include <cstring>
 #include <iostream>
 
-#include "iodev.hh"
-#include "stdtty.hh"
+#include "iodev.hpp"
+#include "stdtty.hpp"
 
-#include "proc.hh"
-#include "vdmc.hh"
+#include "proc.hpp"
+#include "vdmc.hpp"
 
 using namespace std;
 

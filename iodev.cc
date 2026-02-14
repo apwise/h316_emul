@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005, 2018  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,32 +17,30 @@
  * MA  02111-1307 USA
  *
  */
+#include "iodev.hpp"
+
 #include <stdlib.h>
 #include <stdio.h>
 
 #include "config.h"
 
-#include "stdtty.hh"
-#include "iodev.hh"
-
-#include "ptr.hh"
-#include "ptp.hh"
-#include "asr_intf.hh"
-#include "lpt.hh"
-#include "rtc.hh"
-#include "plt.hh"
-
+#include "ptr.hpp"
+#include "ptp.hpp"
+#include "asr_intf.hpp"
+#include "lpt.hpp"
+#include "rtc.hpp"
+#include "plt.hpp"
 #if ENABLE_VERIF
-#include "vdmc.hh"
-#include "vsim.hh"
+#include "vdmc.hpp"
+#include "vsim.hpp"
 #endif
-
 #if ENABLE_SPI
-#include "spi.hh"
-#include "fram.hh"
+#include "spi.hpp"
+#include "fram.hpp"
 #endif
 
-#include "proc.hh"
+#include "proc.hpp"
+#include "stdtty.hpp"
 
 IODEV::IODEV(Proc *p)
   : p(p)

@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2018, 2024  Adrian Wise
+ * Copyright (C) 2018, 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef _SPI_HH_
-#define _SPI_HH_
+#ifndef _SPI_HPP_
+#define _SPI_HPP_
 
 #include <cstdint>
 #include <deque>
@@ -301,4 +301,4 @@ private:
   friend std::ostream &operator<<(std::ostream &os, const SPI::SPI_STATE &state);
 };
 
-#endif // _SPI_HH_
+#endif // _SPI_HPP_
