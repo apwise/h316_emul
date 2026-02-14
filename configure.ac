@@ -7,14 +7,14 @@ AC_INIT([h16],[1.9.0],[apw@adrianwise.co.uk])
 AM_INIT_AUTOMAKE
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2020, 2024 Adrian Wise])
+AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2020, 2024, 2026 Adrian Wise])
 AC_CONFIG_SRCDIR([proc.cc])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_CXX
-AX_CXX_COMPILE_STDCXX_11(,[mandatory])
+AX_CXX_COMPILE_STDCXX([20],[noext],[mandatory])
 
 AC_ARG_ENABLE([gui],
               AS_HELP_STRING([--disable-gui],[Compile a text-only version with no GUI]),
