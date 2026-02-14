@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005, 2007, 2011  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2007, 2011, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ class Proc;
 
 InstrTable::Instr::Instr(const char *x_mnemonic,
                          INSTR_TYPE x_type,
-                         unsigned short x_opcode,
+                         uint16_t x_opcode,
                          const char *x_description,
                          ExecFunc_pt x_exec,
                          bool x_alloc)
@@ -59,10 +59,10 @@ InstrTable::Instr::~Instr()
   }
 }
 
-const char *InstrTable::Instr::disassemble(unsigned short addr,
-                                           unsigned short instr,
+const char *InstrTable::Instr::disassemble(uint16_t addr,
+                                           uint16_t instr,
                                            bool brk,
-                                           unsigned short y,
+                                           uint16_t y,
                                            bool y_valid)
 {
   static char str[64];
@@ -109,7 +109,7 @@ const char *InstrTable::Instr::disassemble(unsigned short addr,
   return str;
 }
 
-signed short InstrTable::Instr::ex_sc(unsigned short instr)
+signed short InstrTable::Instr::ex_sc(uint16_t instr)
 {
   signed short res = instr & 0x003f;
 
@@ -119,12 +119,12 @@ signed short InstrTable::Instr::ex_sc(unsigned short instr)
   return res;
 }
 
-const char *InstrTable::Instr::str_ea(unsigned short addr,
-                                      unsigned short instr,
-                                      unsigned short y,
+const char *InstrTable::Instr::str_ea(uint16_t addr,
+                                      uint16_t instr,
+                                      uint16_t y,
                                       bool y_valid)
 {
-  unsigned short ea;
+  uint16_t ea;
   static char str[64];
   char a[10];
   char b[10];
@@ -523,10 +523,10 @@ void InstrTable::build_instr_tables()
 }
 
 
-const char *InstrTable::disassemble(unsigned short addr,
-                                    unsigned short instr,
+const char *InstrTable::disassemble(uint16_t addr,
+                                    uint16_t instr,
                                     bool brk,
-                                    unsigned short y,
+                                    uint16_t y,
                                     bool y_valid)
 {
   return dispatch_table[instr]->disassemble(addr, instr, brk, y, y_valid);
@@ -556,11 +556,11 @@ void InstrTable::dump_dispatch_table() const
 }
 
 #if ((!defined(GENERIC_GROUP_A)) || defined(TEST_GENERIC_GROUP_A))
-#define LAST ((unsigned short) 0177777)
+#define LAST ((uint16_t) 0177777)
 
-unsigned short InstrTable::HLT_alias[] =
+uint16_t InstrTable::HLT_alias[] =
   { 0000000, 0000002, 0000012, LAST }; 
-unsigned short InstrTable::CMA_alias[] =
+uint16_t InstrTable::CMA_alias[] =
   {
     0140001, 0140003, 0140005, 0140007, 0140011, 0140013, 0140015, 0140017,
     0140021, 0140022, 0140023, 0140025, 0140026, 0140027, 0140031, 0140032,
@@ -569,41 +569,41 @@ unsigned short InstrTable::CMA_alias[] =
     0140421, 0140425, 0140431, 0140435, 0140501, 0140505, 0140511, 0140515,
     LAST
   };
-unsigned short InstrTable::CRA_alias[] =
+uint16_t InstrTable::CRA_alias[] =
   {
     0140002, 0140006, 0140040, 0140060, 0140102, 0140106, 0140440, 0140460,
     LAST
   };
-unsigned short InstrTable::SSM_alias[] =
+uint16_t InstrTable::SSM_alias[] =
   {
     0140004, 0140014, 0140104, 0140114, 0140404, 0140414, 0140500, 0140504,
     0140510, 0140514, LAST
   };
-unsigned short InstrTable::CHS_alias[] =
+uint16_t InstrTable::CHS_alias[] =
   {
     0140024, 0140034, 0140424, 0140434, LAST
   };
-unsigned short InstrTable::InstrTable::CAR_alias[] =
+uint16_t InstrTable::InstrTable::CAR_alias[] =
   {
     0140044, 0140064, 0140444, 0140464, LAST
   };
-unsigned short InstrTable::CAL_alias[] =
+uint16_t InstrTable::CAL_alias[] =
   {
     0140050, 0140070, 0140450, 0140470, LAST
   };
-unsigned short InstrTable::SSP_alias[] =
+uint16_t InstrTable::SSP_alias[] =
   {
     0140100, 0140110, LAST
   };
-unsigned short InstrTable::ICL_alias[] =
+uint16_t InstrTable::ICL_alias[] =
   {
     0140140, LAST
   };
-unsigned short InstrTable::ICR_alias[] =
+uint16_t InstrTable::ICR_alias[] =
   {
     0140240, 0140260, LAST
   };
-unsigned short InstrTable::RCB_alias[] =
+uint16_t InstrTable::RCB_alias[] =
   {
     0140200, 0140201, 0140203, 0140204, 0140205, 0140207, 0140210, 0140211,
     0140213, 0140214, 0140215, 0140217, 0140220, 0140221, 0140222, 0140223,
@@ -611,20 +611,20 @@ unsigned short InstrTable::RCB_alias[] =
     0140234, 0140235, 0140236, 0140237, 0140301, 0140303, 0140304, 0140305,
     0140307, 0140311, 0140313, 0140314, 0140315, 0140317, LAST
   };
-unsigned short InstrTable::CSA_alias[] =
+uint16_t InstrTable::CSA_alias[] =
   {
     0140320, 0140330, LAST
   };
-unsigned short InstrTable::TCA_alias[] =
+uint16_t InstrTable::TCA_alias[] =
   {
     0140403, 0140407, 0140422, 0140423, 0140426, 0140427, 0140503, 0140507,
     LAST
   };
-unsigned short InstrTable::ICA_alias[] =
+uint16_t InstrTable::ICA_alias[] =
   {
     0140340, LAST
   };
-unsigned short InstrTable::SCB_alias[] =
+uint16_t InstrTable::SCB_alias[] =
   {
     0140600, 0140601, 0140604, 0140605, 0140610, 0140611, 0140614, 0140615,
     0140620, 0140621, 0140624, 0140625, 0140630, 0140631, 0140634, 0140635,
@@ -632,139 +632,139 @@ unsigned short InstrTable::SCB_alias[] =
     0140720, 0140721, 0140724, 0140725, 0140730, 0140731, 0140734, 0140735,
     LAST
   };
-unsigned short InstrTable::AOA_alias[] =
+uint16_t InstrTable::AOA_alias[] =
   {
     0140202, 0140206, 0140302, 0140306, LAST
   };
-unsigned short InstrTable::AD1_alias[] =
+uint16_t InstrTable::AD1_alias[] =
   {
     0140042, 0140046,
     LAST
   };
-unsigned short InstrTable::AD1_15_alias[] =
+uint16_t InstrTable::AD1_15_alias[] =
   {
     0140443, 0140447, 0140462, 0140463, 0140466, 0140467,
     LAST
   };
-unsigned short InstrTable::ACA_alias[] =
+uint16_t InstrTable::ACA_alias[] =
   {
     0140212, 0140216, 0140312, 0140316, LAST
   };
-unsigned short InstrTable::ADC_alias[] =
+uint16_t InstrTable::ADC_alias[] =
   {
     0140052, 0140056, LAST
   };
-unsigned short InstrTable::ADC_15_alias[] =
+uint16_t InstrTable::ADC_15_alias[] =
   {
     0140453, 0140457, 0140472, 0140473, 0140476, 0140477, LAST
   };
-unsigned short InstrTable::CM1_alias[] =
+uint16_t InstrTable::CM1_alias[] =
   {
     0140012, 0140016, 0140112, 0140116, LAST
   };
-unsigned short InstrTable::LTR_alias[] =
+uint16_t InstrTable::LTR_alias[] =
   {
     0140144, 0140544, LAST
   };
-unsigned short InstrTable::BTR_alias[] =
+uint16_t InstrTable::BTR_alias[] =
   {
     0140141, 0140143, 0140145, 0140147, 0140151, 0140153, 0140154, 0140155,
     0140157, 0140541, 0140545, 0140551, 0140554, 0140555, LAST
   };
-unsigned short InstrTable::BTL_alias[] =
+uint16_t InstrTable::BTL_alias[] =
   {
     0140241, 0140243, 0140245, 0140247, 0140251, 0140253, 0140254, 0140255,
     0140257, 0140261, 0140262, 0140263, 0140265, 0140266, 0140267, 0140271,
     0140272, 0140273, 0140274, 0140275, 0140276, 0140277, LAST
   };
-unsigned short InstrTable::RTL_alias[] =
+uint16_t InstrTable::RTL_alias[] =
   {
     0140250, 0140270, LAST
   };
-unsigned short InstrTable::RCB_SSP_alias[] =
+uint16_t InstrTable::RCB_SSP_alias[] =
   {
     0140300, 0140310, LAST
   };
-unsigned short InstrTable::CPY_alias[] =
+uint16_t InstrTable::CPY_alias[] =
   {
     0140321, 0140322, 0140323, 0140324, 0140325, 0140326, 0140327, 0140331,
     0140332, 0140333, 0140334, 0140335, 0140336, 0140337, LAST
   };
-unsigned short InstrTable::BTB_alias[] =
+uint16_t InstrTable::BTB_alias[] =
   {
     0140341, 0140343, 0140345, 0140347, 0140351, 0140353, 0140354, 0140355,
     0140357, LAST
   };
-unsigned short InstrTable::BCL_alias[] =
+uint16_t InstrTable::BCL_alias[] =
   {
     0140150, LAST
   };
-unsigned short InstrTable::BCR_alias[] =
+uint16_t InstrTable::BCR_alias[] =
   {
     0140244, 0140264, LAST
   };
-unsigned short InstrTable::LD1_alias[] =
+uint16_t InstrTable::LD1_alias[] =
   {
     0140402, 0140406, 0140502, 0140506, LAST
   };
-unsigned short InstrTable::ISG_alias[] =
+uint16_t InstrTable::ISG_alias[] =
   {
     0140412, 0140416, 0140512, 0140516, LAST
   };
-unsigned short InstrTable::CMA_ACA_alias[] =
+uint16_t InstrTable::CMA_ACA_alias[] =
   {
     0140413, 0140417, 0140432, 0140433, 0140436, 0140437, 0140513, 0140517,
     LAST
   };
-unsigned short InstrTable::CMA_ACA_C_alias[] =
+uint16_t InstrTable::CMA_ACA_C_alias[] =
   {
     0140532, 0140533, 0140536, 0140537, LAST
   };
-unsigned short InstrTable::A2A_alias[] =
+uint16_t InstrTable::A2A_alias[] =
   {
     0140442, 0140446, LAST
   };
-unsigned short InstrTable::A2C_alias[] =
+uint16_t InstrTable::A2C_alias[] =
   {
     0140452, 0140456, LAST
   };
-unsigned short InstrTable::ICS_alias[] =
+uint16_t InstrTable::ICS_alias[] =
   {
     0140540, LAST
   };
-unsigned short InstrTable::SCB_A2A_alias[] =
+uint16_t InstrTable::SCB_A2A_alias[] =
   {
     0140602, 0140606, 0140702, 0140706, LAST
   };
-unsigned short InstrTable::SCB_AOA_alias[] =
+uint16_t InstrTable::SCB_AOA_alias[] =
   {
     0140603, 0140607, 0140622, 0140623, 0140626, 0140627, 0140703, 0140707,
     0140722, 0140723, 0140726, 0140727, LAST
   };
-unsigned short InstrTable::A2C_SCB_alias[] =
+uint16_t InstrTable::A2C_SCB_alias[] =
   {
     //0143612, 0140616, 0140712, 0140716, LAST
     0140612, 0140616, 0140712, 0140716, LAST
   };
-unsigned short InstrTable::ACA_SCB_alias[] =
+uint16_t InstrTable::ACA_SCB_alias[] =
   {
     0140613, 0140617, 0140632, 0140633, 0140636, 0140637, 0140713, 0140717,
     0140732, 0140733, 0140736, 0140737, LAST
   };
-unsigned short InstrTable::ICR_SCB_alias[] =
+uint16_t InstrTable::ICR_SCB_alias[] =
   {
     0140640, 0140660, LAST
   };
-unsigned short InstrTable::RTL_SCB_alias[] =
+uint16_t InstrTable::RTL_SCB_alias[] =
   {
     0140650, 0140670, LAST
   };
-unsigned short InstrTable::BTB_SCB_alias[] =
+uint16_t InstrTable::BTB_SCB_alias[] =
   {
     0140741, 0140745, 0140751, 0140754, 0140755, 0140761, 0140765, 0140771,
     0140774, 0140775, LAST
   };
-unsigned short InstrTable::NOA_alias[] =
+uint16_t InstrTable::NOA_alias[] =
   {
     0140000, 0140010, 0140020, 0140030, 0140041, 0140043, 0140045, 0140047,
     0140051, 0140053, 0140054, 0140055, 0140057, 0140061, 0140062, 0140063,
@@ -776,7 +776,7 @@ unsigned short InstrTable::NOA_alias[] =
 
 
 
-unsigned short *InstrTable::aliases[] = 
+uint16_t *InstrTable::aliases[] = 
   {
     HLT_alias,
     CMA_alias,
@@ -834,11 +834,11 @@ unsigned short *InstrTable::aliases[] =
 //
 #define B7 0001000
 
-void InstrTable::apply_one_alias( unsigned short alias[] )
+void InstrTable::apply_one_alias( uint16_t alias[] )
 {
   int a;
-  unsigned short limit;
-  unsigned short i, proper_i;
+  uint16_t limit;
+  uint16_t i, proper_i;
   char temp_mnemonic[256], temp_description[256];
   
   if ((alias[0] & 0140000) == 0140000)

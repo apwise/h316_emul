@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005  Adrian Wise
+ * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 
 #ifndef __INSTR_HH__
 #define __INSTR_HH__
+
+#include <cstdint>
 
 /*
  * Turn the following on to use just the common code for
@@ -54,27 +56,27 @@ public:
         IOG // IO instuction pretending to be Generic
       };
     
-    typedef void (Proc::*ExecFunc_pt)(unsigned short instr);
+    typedef void (Proc::*ExecFunc_pt)(uint16_t instr);
 
     Instr(const char *mnemonic=0,
           INSTR_TYPE type=UNDEFINED,
-          unsigned short opcode=0,
+          uint16_t opcode=0,
           const char *description=0,
           ExecFunc_pt exec=0,
           bool alloc=false);
     ~Instr();
     
-    const char *disassemble(unsigned short addr,
-                            unsigned short instr,
+    const char *disassemble(uint16_t addr,
+                            uint16_t instr,
                             bool brk,
-                            unsigned short y = 0,
+                            uint16_t y = 0,
                             bool y_valid = false);
 
-    static signed short ex_sc(unsigned short instr);
+    static signed short ex_sc(uint16_t instr);
 
     const char *get_mnemonic(){return mnemonic;};
     INSTR_TYPE get_type(){return type;};
-    unsigned short get_opcode(){return opcode;};
+    uint16_t get_opcode(){return opcode;};
     const char *get_description(){return description;};
     ExecFunc_pt get_exec(){return exec;};
     bool get_alloc(){return alloc;};
@@ -82,14 +84,14 @@ public:
   private:
     const char *   mnemonic;
     INSTR_TYPE     type;
-    unsigned short opcode;
+    uint16_t opcode;
     const char *   description;
     ExecFunc_pt    exec;
     bool           alloc; // storage allocated with "new" (else static)
 
-    static const char *str_ea(unsigned short addr,
-                              unsigned short instr,
-                              unsigned short y = 0,
+    static const char *str_ea(uint16_t addr,
+                              uint16_t instr,
+                              uint16_t y = 0,
                               bool y_valid = false);
   };
 
@@ -101,15 +103,15 @@ public:
   // dispatch returns a pointer to the appropriate function
   // to do the action of the instruction it is passed
   //
-  inline void (Proc::*dispatch(unsigned short instr))(unsigned short instr)
+  inline void (Proc::*dispatch(uint16_t instr))(uint16_t instr)
   { return dispatch_table[instr]->get_exec(); };
-  inline bool defined(unsigned short instr)
+  inline bool defined(uint16_t instr)
   { return dispatch_table[instr]->get_type() != Instr::UNDEFINED; };
 
-  const char *disassemble(unsigned short addr,
-                          unsigned short instr,
+  const char *disassemble(uint16_t addr,
+                          uint16_t instr,
                           bool brk,
-                          unsigned short y = 0,
+                          uint16_t y = 0,
                           bool y_valid = false);
 
   Instr *lookup(const char *mnemonic) const;
@@ -129,56 +131,56 @@ private:
   static Instr *instructions[];
 
 #if ((!defined(GENERIC_GROUP_A)) || defined(TEST_GENERIC_GROUP_A))
-  static unsigned short HLT_alias[];
-  static unsigned short CMA_alias[];
-  static unsigned short CRA_alias[];
-  static unsigned short SSM_alias[];
-  static unsigned short CHS_alias[];
-  static unsigned short CAR_alias[];
-  static unsigned short CAL_alias[];
-  static unsigned short SSP_alias[];
-  static unsigned short ICL_alias[];
-  static unsigned short ICR_alias[];
-  static unsigned short RCB_alias[];
-  static unsigned short CSA_alias[];
-  static unsigned short TCA_alias[];
-  static unsigned short ICA_alias[];
-  static unsigned short SCB_alias[];
-  static unsigned short AOA_alias[];
-  static unsigned short AD1_alias[];
-  static unsigned short AD1_15_alias[];
-  static unsigned short ACA_alias[];
-  static unsigned short ADC_alias[];
-  static unsigned short ADC_15_alias[];
-  static unsigned short CM1_alias[];
-  static unsigned short LTR_alias[];
-  static unsigned short BTR_alias[];
-  static unsigned short BTL_alias[];
-  static unsigned short RTL_alias[];
-  static unsigned short RCB_SSP_alias[];
-  static unsigned short CPY_alias[];
-  static unsigned short BTB_alias[];
-  static unsigned short BCL_alias[];
-  static unsigned short BCR_alias[];
-  static unsigned short LD1_alias[];
-  static unsigned short ISG_alias[];
-  static unsigned short CMA_ACA_alias[];
-  static unsigned short CMA_ACA_C_alias[];
-  static unsigned short A2A_alias[];
-  static unsigned short A2C_alias[];
-  static unsigned short ICS_alias[];
-  static unsigned short SCB_A2A_alias[];
-  static unsigned short SCB_AOA_alias[];
-  static unsigned short A2C_SCB_alias[];
-  static unsigned short ACA_SCB_alias[];
-  static unsigned short ICR_SCB_alias[];
-  static unsigned short RTL_SCB_alias[];
-  static unsigned short BTB_SCB_alias[];
-  static unsigned short NOA_alias[];
+  static uint16_t HLT_alias[];
+  static uint16_t CMA_alias[];
+  static uint16_t CRA_alias[];
+  static uint16_t SSM_alias[];
+  static uint16_t CHS_alias[];
+  static uint16_t CAR_alias[];
+  static uint16_t CAL_alias[];
+  static uint16_t SSP_alias[];
+  static uint16_t ICL_alias[];
+  static uint16_t ICR_alias[];
+  static uint16_t RCB_alias[];
+  static uint16_t CSA_alias[];
+  static uint16_t TCA_alias[];
+  static uint16_t ICA_alias[];
+  static uint16_t SCB_alias[];
+  static uint16_t AOA_alias[];
+  static uint16_t AD1_alias[];
+  static uint16_t AD1_15_alias[];
+  static uint16_t ACA_alias[];
+  static uint16_t ADC_alias[];
+  static uint16_t ADC_15_alias[];
+  static uint16_t CM1_alias[];
+  static uint16_t LTR_alias[];
+  static uint16_t BTR_alias[];
+  static uint16_t BTL_alias[];
+  static uint16_t RTL_alias[];
+  static uint16_t RCB_SSP_alias[];
+  static uint16_t CPY_alias[];
+  static uint16_t BTB_alias[];
+  static uint16_t BCL_alias[];
+  static uint16_t BCR_alias[];
+  static uint16_t LD1_alias[];
+  static uint16_t ISG_alias[];
+  static uint16_t CMA_ACA_alias[];
+  static uint16_t CMA_ACA_C_alias[];
+  static uint16_t A2A_alias[];
+  static uint16_t A2C_alias[];
+  static uint16_t ICS_alias[];
+  static uint16_t SCB_A2A_alias[];
+  static uint16_t SCB_AOA_alias[];
+  static uint16_t A2C_SCB_alias[];
+  static uint16_t ACA_SCB_alias[];
+  static uint16_t ICR_SCB_alias[];
+  static uint16_t RTL_SCB_alias[];
+  static uint16_t BTB_SCB_alias[];
+  static uint16_t NOA_alias[];
 
-  static unsigned short *aliases[];
+  static uint16_t *aliases[];
   
-  void apply_one_alias( unsigned short alias[]);
+  void apply_one_alias( uint16_t alias[]);
   void apply_aliases();
 #endif
 
