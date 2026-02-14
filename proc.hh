@@ -18,6 +18,9 @@
  *
  */
 
+#ifndef __PROC_HH__
+#define __PROC_HH__
+
 #include <vector>
 #include <cstdint>
 #include "instr.hh" // To get GENERIC_GROUP_A
@@ -396,3 +399,5 @@ public:
 #define PRIuLL "%llu"
 #endif
 #endif
+
+#endif // __PROC_HH__
