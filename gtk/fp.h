@@ -18,6 +18,10 @@
  *
  */
 
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
+
 enum RB
   {
     RB_X,
@@ -29,7 +33,7 @@ enum RB
     RB_NUM
   };
 
-enum CPU
+enum CPU_MODEL
   {
     CPU_H316,
     CPU_DDP516,
@@ -58,9 +62,9 @@ struct FP_INTF
   short addr_mask;
 
   /*
-   * (Boolean) sense switch values
+   * Sense switch values
    */
-  int *ssw[4];
+  bool *ssw[4];
 
   /*
    * (Boolean) Power fail action
@@ -99,10 +103,10 @@ struct FP_INTF
    * CPU options
    */
 
-  enum CPU cpu;
+  enum CPU_MODEL cpu_model;
 
   /*
-   * Carry a pointer (intended as a pointer to the Proc
+   * Carry a pointer (intended as a pointer to the CPU
    * to which this front-panel is connected).
    */
   void *data;

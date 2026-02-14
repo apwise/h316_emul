@@ -1,0 +1,259 @@
+/* Honeywell Series 16 emulator
+ *
+ * Copyright (C) 2004, 2005, 2026  Adrian Wise
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA  02111-1307 USA
+ */
+#include "lpt.hpp"
+
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+
+#include "iodev.hpp"
+#include "stdtty.hpp"
+
+#include "proc.hpp"
+
+//#include <iostream>
+#include <sstream>
+
+#define SMK_MASK (1 << (16-14))
+
+using namespace h16;
+
+LPT::LPT(IoToPIntf &p)
+  : IoDev(p) {
+  fp = NULL;
+  
+  line[120] = '\0';
+  
+  master_clear();
+}
+
+void LPT::master_clear() {
+  mask = 0;
+  
+  if (fp)
+    fclose(fp);
+  fp = NULL;
+  filename.clear();
+  line_number = 0;
+  pending_nl = false;
+}
+
+void LPT::open_file() {
+  std::string str;
+
+  while (!fp) {
+    if (filename.size() != 0) {
+      str = filename;
+    } else {
+      str = p.get_file_name("LPT", "txt", "");
+    }
+
+    if (str[0]=='&') {
+      str = str.substr(1);
+    }
+    
+    fp = fopen(str.c_str(), "w");
+    if (!fp) {
+      std::stringstream ss;
+      ss << "Could not open <" << str << "> for writing";
+
+      IoToPIntf::Level level = ((filename.size()) ? IoToPIntf::Level::FATAL : IoToPIntf::Level::ERROR);
+      
+      p.anomaly(level, ss.str());
+    }
+    line_number = 0;
+    
+    filename.clear();
+  }
+}
+
+IoStatus LPT::ota(uint16_t instr, int16_t data) {
+  bool r = false;
+  int d;
+  
+  switch(instr & 01700) {
+  case 00000:
+    
+    open_file();
+    
+    if (scan_counter < 119) {
+      d = (data >> 8) & 0x7f;
+      if (d == 0) d = ' ';
+      line[scan_counter] = d;
+      d = data & 0x7f;
+      if (d == 0) d = ' ';
+      line[scan_counter + 1] = d;
+      scan_counter += 2;
+    }
+    
+    if (scan_counter >= 120) {
+      for (d = 119; d >= 0; d--)
+        if (line[d] != ' ')
+          break;
+      d += 1;
+      line[d] = '\0';
+      fprintf(fp, "%s", line);
+      pending_nl = true;
+      line[d] = ' ';
+    }
+    
+    r = true;
+    break;
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
+#define LINES 66
+#define VTAB 3
+
+void LPT::next_line() {
+  line_number++;
+  if (line_number >= LINES) {
+    line_number = 0;
+    fprintf(fp, "\f");
+  }
+}
+
+void LPT::deal_pending_nl() {
+  if (pending_nl) {
+    fprintf(fp, "\n");
+    pending_nl = false;
+    next_line();
+  }
+}
+
+void LPT::ocp(uint16_t instr) {
+  switch(instr & 01700) {
+    case 01300:
+      /* Form feed */
+      open_file();
+      deal_pending_nl();
+      if (line_number != 0) {
+        /*
+          while (line_number != 0)
+          {
+          fprintf(fp, "\n");
+          next_line();
+          }
+        */
+        line_number = 0;
+        fprintf(fp, "\f");
+      }
+      break;
+      
+  case 01600:
+      /* Skip to vertical tab */
+    open_file();
+    deal_pending_nl();
+    while ((line_number % VTAB) != 0) {
+      fprintf(fp, "\n");
+      next_line();
+    }
+    break;
+    
+  case 01700:
+    /* Step one line */
+    open_file();
+    fprintf(fp, "\n");
+    next_line();
+    pending_nl = false;
+    break;
+    
+  case 00100: /* Start scan */
+    scan_counter = 0;
+    break;
+    
+    case 00200: /* stop scan */
+      
+      break;
+      
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+}
+
+IoStatus LPT::sks(unsigned short instr) {
+  bool r = 0;
+  
+  switch(instr & 01700) {
+  case 00000:
+    /* skip if ready */
+    r = false;
+    break;
+    
+  case 00200:
+    /* skip if not busy */
+    r = true;
+    break;
+    
+  case 00300:
+    /* skip if no alarm */
+    r = true;
+    break;
+    
+  case 00400:
+    /* skip if not shifting paper */
+    r = true;
+    break;
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
+void LPT::smk(unsigned short mask) {
+  bool ready = false;
+  
+  this->mask = mask & SMK_MASK;
+  
+  if (ready && this->mask)
+    p.set_interrupt(this->mask);
+  else
+    p.clear_interrupt(SMK_MASK);
+}
+
+void LPT::event(int reason)
+{
+  switch(reason) {
+  case EVENT_MASTER_CLEAR:
+    master_clear();
+    break;
+    
+  default:
+    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
+    break;
+  }
+}
+
+void LPT::set_filename(const std::string &filename, unsigned subdevice) {
+  master_clear();
+  this->filename = filename;
+}
+
+DEFINE_UNEXPECTED_INA(LPT)
+DEFINE_UNEXPECTED_DMC(LPT)
+
+DEFINE_STD_NAME(LPT)
