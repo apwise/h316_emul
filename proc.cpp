@@ -1443,7 +1443,7 @@ void Proc::do_LDA(uint16_t instr)
 
   addr = ea(instr);
 
-  if (dp) addr &= ((~0)<<1); // lose the LSB if double precision
+  if (dp) addr &= ((~0u)<<1); // lose the LSB if double precision
 
   a = read(addr);
 
@@ -1569,14 +1569,14 @@ void Proc::do_ADD(uint16_t instr)
 
       half_cycles += 2;
 
-      if (dp) addr &= ((~0)<<1); // lose the LSB
+      if (dp) addr &= ((~0u)<<1); // lose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
-        dm |= ((~0l) << 31);
+        dm |= ((~0ul) << 31);
 
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
-        da |= ((~0l) << 31);
+        da |= ((~0ul) << 31);
 
       v = ~(da ^ dm);        // Bit 30 is signs same
       da += dm;
@@ -1617,14 +1617,14 @@ void Proc::do_SUB(uint16_t instr)
 
       half_cycles += 2;
 
-      if (dp) addr &= ((~0)<<1); // lose the LSB
+      if (dp) addr &= ((~0u)<<1); // lose the LSB
       dm = ((read(addr) & 0xffff) << 15) | (read(addr | 1) & 0x7fff);
       if (dm & 0x40000000)
-        dm |= ((~0l) << 31);
+        dm |= ((~0ul) << 31);
 
       da = ((a & 0xffff) << 15) | (b & 0x7fff);
       if (da & 0x40000000)
-        da |= ((~0l) << 31);
+        da |= ((~0ul) << 31);
 
       dm = -dm;
 
@@ -2855,10 +2855,10 @@ static int divide(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc, bool
         a00ff = d01ff;
         a = ((d << 1) & 0xfffe) | ((e >> 14) & 1);
         if ((a >> 15) & 1)
-          a |= (-1 << 16);
+          a |= ((~0u) << 16);
         b = ((e << 1) & 0xfffe) | e00dj;
         if ((b >> 15) & 1)
-          b |= (-1 << 16);
+          b |= ((~0u) << 16);
       }
 
     } else if (lsc == -1) {
@@ -2866,7 +2866,7 @@ static int divide(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc, bool
       a00ff = d01ff;
       a = d;
       if ((a >> 15) & 1)
-        a |= (-1 << 16);
+        a |= ((~0u) << 16);
 
       if (remok && (!d01ff))
         madff = true;
@@ -2878,7 +2878,7 @@ static int divide(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc, bool
         //  a |= (-1 << 16);
         b = ((e << 1) & 0xfffe) | e00dj;
         if ((b >> 15) & 1)
-          b |= (-1 << 16);
+          b |= ((~0u) << 16);
 
         //if ((lsc == -1) && remok && (!d01ff))
         // madff = true;
@@ -2891,10 +2891,10 @@ static int divide(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc, bool
       if (remok) {
         a = e & 0xffff;
         if ((a >> 15) & 1)
-          a |= (-1 << 16);
+          a |= ((~0u) << 16);
         b = d & 0xffff;
         if ((b >> 15) & 1)
-          b |= (-1 << 16);
+          b |= ((~0u) << 16);
         madff = true;
         dogff = true;
       } else {
@@ -2944,7 +2944,7 @@ static int divide(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc, bool
 
   a = d & 0xffff;
   if ((a >> 15) & 1)
-    a |= (-1 << 16);
+    a |= ((~0u) << 16);
 
   /*
     printf("T4\n");
@@ -2989,8 +2989,8 @@ static long multiply(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc)
   int e = 0;
   long p, q;
 
-  if (m & 0x8000) m |= ((~0) << 16);
-  if (a & 0x8000) a |= ((~0) << 16);
+  if (m & 0x8000) m |= ((~0u) << 16);
+  if (a & 0x8000) a |= ((~0u) << 16);
 
   q = a * m;
 
@@ -3004,13 +3004,13 @@ static long multiply(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc)
 
     if (lsc != -8) {
       if (madff) {
-        b = ((((d & 1) != 0) ? ((~0) << 15) : 0) |
+        b = ((((d & 1) != 0) ? ((~0u) << 15) : 0) |
              ((a & 1) << 14) |
              ((e >> 2) & 0x3fff));
         b17 = ((e & 2) != 0);
         a = d >> 1;
       } else {
-        b = ((((d & 2) != 0) ? ((~0) << 15) : 0) |
+        b = ((((d & 2) != 0) ? ((~0u) << 15) : 0) |
              ((d & 1) << 14) |
              ((e >> 2) & 0x3fff));
         b17 = ((e & 2) != 0);
