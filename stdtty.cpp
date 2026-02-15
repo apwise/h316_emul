@@ -18,9 +18,8 @@
  *
  */
 
-#include "stdtty.hpp"
-
 #include "config.h"
+#include "stdtty.hpp"
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>

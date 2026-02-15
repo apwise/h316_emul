@@ -17,6 +17,8 @@
  * MA  02111-1307 USA
  *
  */
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -27,8 +29,6 @@
 #include "proc.hpp"
 #include "instr.hpp"
 #include "monitor.hpp"
-
-#include "config.h"
 
 #ifdef ENABLE_GUI
 #include "gtk/fp.h"

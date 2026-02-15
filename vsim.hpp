@@ -21,7 +21,7 @@
 #ifndef _VSIM_HPP_
 #define _VSIM_HPP_
 
-#include "iodev.hh"
+#include "iodev.hpp"
 
 class Proc;
 

@@ -17,12 +17,12 @@
  * MA  02111-1307 USA
  *
  */
+#include "config.h"
+
 #include "iodev.hpp"
 
 #include <stdlib.h>
 #include <stdio.h>
-
-#include "config.h"
 
 #include "ptr.hpp"
 #include "ptp.hpp"
