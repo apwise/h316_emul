@@ -21,12 +21,15 @@
 
 #include "monitor.hpp"
 
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <csignal>
+#include <cctype>
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <signal.h>
-#include <string.h>
-#include <ctype.h>
+#endif
 
 #include "proc.hpp"
 #include "stdtty.hpp"

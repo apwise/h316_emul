@@ -18,9 +18,15 @@
  *
  */
 
+#include "config.h"
+
+#include <cstdlib>
+#include <cstdio>
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
+#endif
+
 #include <iostream>
 
 #include "dummy_proc.hpp"

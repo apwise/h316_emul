@@ -22,7 +22,7 @@
  * into a library, removing spurious Fortran-IV End-Of-Job blocks
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <iostream>
 #include <ostream>

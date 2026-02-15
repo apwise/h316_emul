@@ -21,38 +21,27 @@
 #include "config.h"
 #include "stdtty.hpp"
 
-#ifdef HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
-
-#include <stdio.h>
-#include <stdarg.h>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <cstdarg>
+#include <csignal>
+#include <cerrno>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-
-#ifdef HAVE_ERRNO_H
-#include <errno.h>
-#endif
-
-#ifdef HAVE_STRING_H
-#include <string.h>
-#endif
-
-#include <fcntl.h>
-#include <termios.h>
-
-#include <signal.h>
-
-#include <iostream>
-
 #ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>
 #endif
 #ifdef HAVE_READLINE_HISTORY_H
 #include <readline/history.h>
 #endif
+
+#include <fcntl.h>
+#include <termios.h>
+
+#include <iostream>
 
 #define LF 012
 #define CR 015

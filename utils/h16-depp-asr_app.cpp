@@ -17,14 +17,19 @@
  * MA  02111-1307 USA
  */
 
+#include <cstdlib>
+#include <cstdio>
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
+#endif
+
 #include <iostream>
 
 #include "dummy_proc.hpp"
 #include "asr.hpp"
 #include "stdtty.hpp"
+
 #include "depp_channel.h"
 
 static bool call_special_chars(Proc *p, int k)

@@ -19,9 +19,9 @@
  */
 #include "instr.hpp"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
 #ifndef RTL_SIM
 #include "stdtty.hpp"
 #endif

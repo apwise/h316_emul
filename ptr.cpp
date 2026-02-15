@@ -19,9 +19,10 @@
  */
 #include "ptr.hpp"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+
 #include <iostream>
 #include <iomanip>
 

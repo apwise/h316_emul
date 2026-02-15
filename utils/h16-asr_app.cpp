@@ -17,13 +17,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
-#include <unistd.h>
+
+#include "config.h"
 
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <iostream>
 

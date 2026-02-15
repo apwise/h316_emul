@@ -18,11 +18,11 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <ctype.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstdio>
+#include <cerrno>
+#include <cctype>
+#include <cstring>
 
 #include "instr.hpp"
 

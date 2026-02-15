@@ -20,7 +20,7 @@
 #ifndef _FRAM_HPP_
 #define _FRAM_HPP_
 
-#include "spi_dev.hh" // provides <deque> and <cstdint>
+#include "spi_dev.hpp" // provides <deque> and <cstdint>
 
 class FRAM : public SpiDev {
 

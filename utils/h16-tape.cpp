@@ -19,10 +19,10 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
 
 #include <iostream>
 #include <fstream>

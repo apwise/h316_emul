@@ -12,9 +12,6 @@
 /* define if the compiler supports basic C++20 syntax */
 #undef HAVE_CXX20
 
-/* Define to 1 if you have the <errno.h> header file. */
-#undef HAVE_ERRNO_H
-
 /* Define to 1 if you have the 'floor' function. */
 #undef HAVE_FLOOR
 

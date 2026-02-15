@@ -25,8 +25,8 @@
 #include <deque>
 #include <ostream>
 
-#include "iodev.hh"
-#include "spi_dev.hh"
+#include "iodev.hpp"
+#include "spi_dev.hpp"
 
 class Proc;
 

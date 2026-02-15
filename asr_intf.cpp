@@ -20,8 +20,8 @@
 
 #include "asr_intf.hpp"
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 #include "stdtty.hpp"
 
 #include "proc.hpp"

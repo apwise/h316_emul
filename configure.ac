@@ -50,7 +50,7 @@ AC_CHECK_LIB([depp], [DeppEnable])
 AM_CONDITIONAL([ENABLE_DEPP], [test x$ac_cv_lib_depp_DeppEnable = xyes])
 
 # Checks for header files.
-AC_CHECK_HEADERS([stdlib.h string.h unistd.h errno.h readline/readline.h readline/history.h])
+AC_CHECK_HEADERS([unistd.h readline/readline.h readline/history.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
