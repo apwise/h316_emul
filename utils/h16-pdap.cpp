@@ -29,8 +29,6 @@
 
 #include <iostream>
 
-using namespace std;
-
 /*
  * TODO: Pop-up alternate forms for literals?
  */
@@ -249,7 +247,7 @@ class File;
 class Line
 {
  public:
-  Line(const string src_line, class File *file, int page);
+  Line(const std::string src_line, class File *file, int page);
   void analyze();
   void analyze_src();
   void render(FILE *fp, bool html_per_page, bool first);
@@ -267,7 +265,7 @@ class Line
     };
 
   LINE_TYPE get_type() const {return type;};
-  string get_src_line() const {return src_line;};
+  std::string get_src_line() const {return src_line;};
 
   enum SF_TYPE
     {
@@ -280,10 +278,10 @@ class Line
   
   int find_sub_field(int first, SF_TYPE type,
                      bool &symbol, bool &literal, int &num, bool &asterisk);
-  string render_link(Symbol *s, bool html_per_page);
+  std::string render_link(Symbol *s, bool html_per_page);
   
  private:
-  const string src_line;
+  const std::string src_line;
   int src_line_num;
 
   class File *file;
@@ -295,7 +293,7 @@ class Line
   bool indexed;
   Instr *instr;
 
-  map<int, Annotation *> annotations;
+  std::map<int, Annotation *> annotations;
 
   void render_char(FILE *fp, char c);
 };
@@ -304,7 +302,7 @@ class File
 {
  public:
   File(const char *filename, bool is_toc=false);
-  string read_line(FILE *fp, bool &ok);
+  std::string read_line(FILE *fp, bool &ok);
   bool get_end_read(){return end_read;};
   bool get_end_really_read(){return end_really_read;};
   bool get_is_toc(){return is_toc;};
@@ -313,19 +311,19 @@ class File
   void set_is_toc(){is_toc=true;};
   void render();
   void incr_pages(){pages++;};
-  Symbol *lookup(string name);
-  Symbol *lookup_local(string name);
-  Symbol *lookup_global(string name);
-  Symbol *define(string name);
+  Symbol *lookup(std::string name);
+  Symbol *lookup_local(std::string name);
+  Symbol *lookup_global(std::string name);
+  Symbol *define(std::string name);
   void redefine(Symbol *s);
-  Symbol *declare_local(string name, bool ext);
-  Symbol *declare_global(string name, Symbol *local);
-  Symbol *local_synonym(string name, Symbol *local);
+  Symbol *declare_local(std::string name, bool ext);
+  Symbol *declare_global(std::string name, Symbol *local);
+  Symbol *local_synonym(std::string name, Symbol *local);
   void define_symbol(Symbol *s);
-  string get_html_name(int page=0);
+  std::string get_html_name(int page=0);
   void file_title();
   void set_use_comment_as_title(bool tc);
-  void supply_title(string title);
+  void supply_title(std::string title);
 
   enum RENDER_STATE
     { RS_WAIT_HEAD,
@@ -337,10 +335,10 @@ class File
   void set_render_state(enum RENDER_STATE state){render_state = state;};
 
  private:
-  const string filename;
-  string title;
-  list<Line *> lines;
-  string heading_line;
+  const std::string filename;
+  std::string title;
+  std::list<Line *> lines;
+  std::string heading_line;
 
   bool end_really_read; // And lines with literals after END
   int pages;
@@ -348,31 +346,31 @@ class File
   bool use_comment_as_title;
   bool end_read;
   bool use_supplied_title;
-  string supplied_title;
+  std::string supplied_title;
 
-  string basename(string filename);
+  std::string basename(std::string filename);
   enum RENDER_STATE render_state;
 
-  map<string, Symbol *> symbol_table;
-  static map<string, Symbol *> global_symbol_table;
+  std::map<std::string, Symbol *> symbol_table;
+  static std::map<std::string, Symbol *> global_symbol_table;
 
-  string find_first_file_name(bool html_per_page, string &title_str);
-  string find_last_file_name(bool html_per_page, string &title_str);
-  string find_file_name(bool previous, bool html_per_page, int page, string &title_str);
+  std::string find_first_file_name(bool html_per_page, std::string &title_str);
+  std::string find_last_file_name(bool html_per_page, std::string &title_str);
+  std::string find_file_name(bool previous, bool html_per_page, int page, std::string &title_str);
   void links(FILE *fp, bool html_per_page, int page);
-  void link_button(FILE *fp, string filename, const char *str, const string &title_str);
+  void link_button(FILE *fp, std::string filename, const char *str, const std::string &title_str);
   void link_buttons(FILE *fp, bool html_per_page, int page);
   void file_start(FILE *fp, bool html_per_page, int page);
   void file_stop(FILE *fp, bool html_per_page, int page);
-  void quote_dollars(const string &in_str, string &out_str);
+  void quote_dollars(const std::string &in_str, std::string &out_str);
 };
 
 class Symbol 
 {
  public:
-  Symbol(string name, int page, File *file, bool ext=false, bool defined=true);
+  Symbol(std::string name, int page, File *file, bool ext=false, bool defined=true);
 
-  const string *get_name() const {return &name;};
+  const std::string *get_name() const {return &name;};
   int get_page();
   File *get_file() const {return file;};
   bool get_ext() const {return ext;};
@@ -387,7 +385,7 @@ class Symbol
   void md_step();
 
  private:
-  string name;
+  std::string name;
   int    page;
   File  *file;             /* 0 = local */
   bool   ext;              /* Symbol is EXT - lookup on global */
@@ -419,10 +417,10 @@ Annotation::Annotation(enum A type, int first, int len)
   
 }
 
-static char *get_substr(const string st, int n, int l)
+static char *get_substr(const std::string st, int n, int l)
 {
   int len;
-  string s;
+  std::string s;
   const char *str;
   char *r;
 
@@ -430,7 +428,7 @@ static char *get_substr(const string st, int n, int l)
 
   if (n < len)
     {
-      s = st.substr(n, (l==-1)?string::npos:l);
+      s = st.substr(n, (l==-1)?std::string::npos:l);
       str = s.c_str();
       r = new char [s.size() + 1];
       strcpy(r, str);
@@ -440,7 +438,7 @@ static char *get_substr(const string st, int n, int l)
     return 0;
 }
 
-static bool number(const string str,
+static bool number(const std::string str,
                    unsigned long &n,
                    int first, int length, int base)
 {
@@ -465,7 +463,7 @@ static bool number(const string str,
   return r;
 }
 
-Line::Line(const string src_line, File *file, int page)
+Line::Line(const std::string src_line, File *file, int page)
   : src_line(src_line),
     src_line_num(-1),
     file(file),
@@ -559,7 +557,7 @@ void Line::analyze()
                */
               Annotation *a;
               a = new Annotation(Annotation::A_SLN, SLN, SLN_LEN);
-              pair<int, Annotation *>pp(SLN, a);
+              std::pair<int, Annotation *>pp(SLN, a);
               annotations.insert(pp);
               
               if ((len > LBL) && (src_line[LBL] == '*'))
@@ -659,7 +657,7 @@ Annotation *Line::find_field(int pos, int len, Annotation::A annot)
     {
       if (annotations.count(f) == 0) {
         a = new Annotation(annot, f, l+1-f);
-        pair<int, Annotation *>pp(f, a);
+        std::pair<int, Annotation *>pp(f, a);
         annotations.insert(pp);
       } else {
         fprintf(stderr, "Annotation already exists at %d\n", f);
@@ -671,7 +669,7 @@ Annotation *Line::find_field(int pos, int len, Annotation::A annot)
 void Line::analyze_src()
 {
   Annotation *a, *a2;
-  string opcode;
+  std::string opcode;
   Symbol *multiply_defined = 0;
   bool not_assembled = true;
   
@@ -754,8 +752,8 @@ void Line::analyze_src()
    */
   if (a)
     {
-      string name = src_line.substr(a->get_first(),
-                                    a->get_len());
+      std::string name = src_line.substr(a->get_first(),
+                                         a->get_len());
       
       Symbol *s = file->lookup_local(name);
 
@@ -818,7 +816,7 @@ void Line::analyze_src()
   bool symbol, literal, asterisk;
   int num;
   bool comma = false;
-  string subr_args[2];
+  std::string subr_args[2];
   int subr_arg_count = 0;
 
   if (opcode != "EJCT") { // Special case this - often misused in assembler listing
@@ -836,7 +834,7 @@ void Line::analyze_src()
 
   while (j>i)
     {
-      string arg = src_line.substr(i,j-i);
+      std::string arg = src_line.substr(i,j-i);
       //printf("found arg <%s> symbol=%d, literal=%d, num=0x%04x asterisk=%d\n",
       //       arg.c_str(), symbol, literal, num, asterisk);
 
@@ -968,7 +966,7 @@ void Line::render(FILE *fp, bool html_per_page, bool first)
   int len = src_line.size();
   bool print_line=false;
   enum File::RENDER_STATE state=file->get_render_state();
-  map<int, Annotation *>::iterator ap;
+  std::map<int, Annotation *>::iterator ap;
   Annotation *a;
   Annotation::A a_type = Annotation::A_SLN;
   int a_first=0;
@@ -1033,7 +1031,7 @@ void Line::render(FILE *fp, bool html_per_page, bool first)
             }
           else
             {
-              string s;
+              std::string s;
               Symbol *sym = 0;
 
               switch(a_type)
@@ -1065,7 +1063,7 @@ void Line::render(FILE *fp, bool html_per_page, bool first)
                 case Annotation::A_OPC:
                   if (instr)
                     {
-                      string descr = instr->description;
+                      std::string descr = instr->description;
                       if (instr->type == MR)
                         {
                           if (indexed)
@@ -1154,10 +1152,10 @@ void Line::render(FILE *fp, bool html_per_page, bool first)
   file->set_render_state(state);
 }
 
-string Line::render_link(Symbol *s, bool html_per_page)
+std::string Line::render_link(Symbol *s, bool html_per_page)
 {
-  string r="";
-  ostringstream n;
+  std::string r="";
+  std::ostringstream n;
   File *target = s->get_file();
 
   if ((target != file) ||
@@ -1553,7 +1551,7 @@ int Line::find_sub_field(int first, SF_TYPE type,
   return i;
 }
 
-map<string, Symbol *> File::global_symbol_table;
+std::map<std::string, Symbol *> File::global_symbol_table;
 
 File::File(const char *filename, bool is_toc)
   : filename(filename),
@@ -1565,7 +1563,7 @@ File::File(const char *filename, bool is_toc)
     use_supplied_title(false)
 {
   FILE *fp;
-  string str;
+  std::string str;
   Line *line;
 
   if (!is_toc)
@@ -1574,7 +1572,7 @@ File::File(const char *filename, bool is_toc)
       
       if (!fp)
         {
-          cerr << "Could not open <" << filename << "> for reading" << endl;
+          std::cerr << "Could not open <" << filename << "> for reading" << std::endl;
           exit(1);
         }
       
@@ -1593,13 +1591,13 @@ File::File(const char *filename, bool is_toc)
   render_state = RS_WAIT_HEAD;
 }
 
-string File::basename(string filename)
+std::string File::basename(std::string filename)
 {
   int i;
   size_t j;
   int len = filename.size();
 
-  j = string::npos;
+  j = std::string::npos;
   i = len-1;
   while (i>=0)
     {
@@ -1613,10 +1611,10 @@ string File::basename(string filename)
   return filename.substr(0, j);
 }
 
-string File::get_html_name(int page)
+std::string File::get_html_name(int page)
 {
-  string r = basename(filename);
-  ostringstream n;
+  std::string r = basename(filename);
+  std::ostringstream n;
   if (page > 0)
     {
       n << page;
@@ -1626,13 +1624,13 @@ string File::get_html_name(int page)
   return r;
 }
 
-string File::find_first_file_name(bool html_per_page, string &title_str)
+std::string File::find_first_file_name(bool html_per_page, std::string &title_str)
 {
   title_str = files[0]->title;
   return files[0]->get_html_name((html_per_page && (!files[0]->is_toc)) ? 1 : 0);
 }
 
-string File::find_last_file_name(bool html_per_page, string &title_str)
+std::string File::find_last_file_name(bool html_per_page, std::string &title_str)
 {
   int i;
   i = 0;
@@ -1644,12 +1642,12 @@ string File::find_last_file_name(bool html_per_page, string &title_str)
   return files[i]->get_html_name((html_per_page) ? (files[i]->pages) : 0);
 }
 
-string File::find_file_name(bool previous, bool html_per_page, int page, string &title_str)
+std::string File::find_file_name(bool previous, bool html_per_page, int page, std::string &title_str)
 {
   int i, j, p;
   i = 0;
   j = -1;
-  string r;
+  std::string r;
   File *f=0;
 
   /*
@@ -1724,7 +1722,7 @@ string File::find_file_name(bool previous, bool html_per_page, int page, string 
     return f->get_html_name(0);
 }
 
-void File::link_button(FILE *fp, string filename, const char *str, const string &title_str)
+void File::link_button(FILE *fp, std::string filename, const char *str, const std::string &title_str)
 {
   if (filename.size()>0)
     fprintf(fp, "%s <a href=\"%s\" title=\"%s\">%s</a> %s\n",
@@ -1735,8 +1733,8 @@ void File::link_button(FILE *fp, string filename, const char *str, const string 
 
 void File::links(FILE *fp, bool html_per_page, int page)
 {
-  string l_filename;
-  string title_str;
+  std::string l_filename;
+  std::string title_str;
 
   l_filename = find_file_name(true, html_per_page, page, title_str);
   if (l_filename.size()>0)
@@ -1781,7 +1779,7 @@ void File::links(FILE *fp, bool html_per_page, int page)
 
 void File::link_buttons(FILE *fp, bool html_per_page, int page)
 {
-  string title_str;
+  std::string title_str;
 
   fprintf(fp, "%s\n", TABLE_START);
 
@@ -1816,9 +1814,9 @@ void File::link_buttons(FILE *fp, bool html_per_page, int page)
 void File::file_title()
 {
   char *c_comment;
-  string comment;
+  std::string comment;
 
-  list<Line *>::iterator i = lines.begin();
+  std::list<Line *>::iterator i = lines.begin();
   
   while ( (i!=lines.end()) && (*i) &&
           ( ((*i)->get_type() == Line::LINE_BLANK) ||
@@ -1831,7 +1829,7 @@ void File::file_title()
   
   if ((lp) && (lp->get_type() == Line::LINE_COMMENT))
     {
-      string s = lp->get_src_line();
+      std::string s = lp->get_src_line();
       int j = LBL;
       if (s[j]=='*') j++;
       while (s[j]==' ') j++;
@@ -1848,7 +1846,7 @@ void File::file_title()
     {
       if (comment.size() > 0)
         {
-          string s = get_substr(comment, 0, heading_line.size());
+          std::string s = get_substr(comment, 0, heading_line.size());
           if (s == heading_line)
             title = comment;
           else
@@ -1867,9 +1865,9 @@ void File::file_title()
 
 }
 
-void File::quote_dollars(const string &in_str, string &out_str)
+void File::quote_dollars(const std::string &in_str, std::string &out_str)
 {
-  string::const_iterator i;
+  std::string::const_iterator i;
   out_str.clear();
   for (i=in_str.begin(); i!=in_str.end(); i++) {
     if ((*i) == '$') {
@@ -1886,7 +1884,7 @@ void File::file_start(FILE *fp, bool html_per_page, int page)
 {
   time_t t;
   char buf[100];
-  string dollars_quoted;
+  std::string dollars_quoted;
   quote_dollars(title, dollars_quoted);
 
   // TODO - quote dollar signs
@@ -1925,8 +1923,8 @@ void File::file_stop(FILE *fp, bool html_per_page, int page)
 
 void File::render()
 {
-  string out_filename = basename(filename)+".m4h";
-  string out_filename2;
+  std::string out_filename = basename(filename)+".m4h";
+  std::string out_filename2;
   char buf[12];
 
   FILE *fp = fopen(out_filename.c_str(), "w");
@@ -1951,9 +1949,9 @@ void File::render()
       int i;
       for (i=1; i<n_files; i++)
         {
-          string single_filename = files[i]->get_html_name(0);
-          string multi_filename = files[i]->get_html_name(1);
-          string title_str = files[i]->title;
+          std::string single_filename = files[i]->get_html_name(0);
+          std::string multi_filename = files[i]->get_html_name(1);
+          std::string title_str = files[i]->title;
 
           fprintf(fp, "%s", TOC_ROW_START);
           fprintf(fp, "<td>%s</td>", title_str.c_str());
@@ -1966,7 +1964,7 @@ void File::render()
     }
   else
     {
-      list<Line *>::iterator i = lines.begin();
+      std::list<Line *>::iterator i = lines.begin();
       
       while (i!=lines.end())
         {
@@ -2011,9 +2009,9 @@ void File::render()
   fclose(fp);
 }
 
-string File::read_line(FILE *fp, bool &ok)
+std::string File::read_line(FILE *fp, bool &ok)
 {
-  string res;
+  std::string res;
   int c = getc(fp);
 
   if (c == EOF)
@@ -2028,12 +2026,12 @@ string File::read_line(FILE *fp, bool &ok)
   return res;
 }
 
-Symbol *File::lookup_local(string name)
+Symbol *File::lookup_local(std::string name)
 {
   int len = name.size();
-  string str = name.substr(0, (len>4)?4:len);
+  std::string str = name.substr(0, (len>4)?4:len);
 
-  map<string, Symbol *>::iterator p;
+  std::map<std::string, Symbol *>::iterator p;
 
   p = symbol_table.find(str);
   if (p != symbol_table.end())
@@ -2042,12 +2040,12 @@ Symbol *File::lookup_local(string name)
     return 0;
 }
 
-Symbol *File::lookup_global(string name)
+Symbol *File::lookup_global(std::string name)
 {
   int len = name.size();
-  string str = name.substr(0, (len>6)?6:len);
+  std::string str = name.substr(0, (len>6)?6:len);
 
-  map<string, Symbol *>::iterator p;
+  std::map<std::string, Symbol *>::iterator p;
 
   p = global_symbol_table.find(str);
   if (p != global_symbol_table.end())
@@ -2056,7 +2054,7 @@ Symbol *File::lookup_global(string name)
     return 0;
 }
 
-Symbol *File::lookup(string name)
+Symbol *File::lookup(std::string name)
 {
   Symbol *s = lookup_local(name);
   if ((!s) || (s->get_ext()))
@@ -2064,13 +2062,13 @@ Symbol *File::lookup(string name)
   return s;
 }
 
-Symbol *File::define(string name)
+Symbol *File::define(std::string name)
 {
   int len = name.size();
-  string str = name.substr(0, (len>4)?4:len);
+  std::string str = name.substr(0, (len>4)?4:len);
   Symbol *s = new Symbol(name, pages, this);
   
-  pair<string, Symbol *> pp(str, s);
+  std::pair<std::string, Symbol *> pp(str, s);
   symbol_table.insert(pp);
 
   //printf("Defined <%s> on page %d\n", name.c_str(), pages);
@@ -2088,17 +2086,17 @@ void File::define_symbol(Symbol *s)
   s->set_defined(true);
 }
 
-Symbol *File::declare_local(string name, bool ext)
+Symbol *File::declare_local(std::string name, bool ext)
 {
   int len = name.size();
-  string str = name.substr(0, (len>4)?4:len);
+  std::string str = name.substr(0, (len>4)?4:len);
   Symbol *s = lookup_local(name);
 
   if (!s)
     {
       s = new Symbol(name, pages, this, ext, false);
       
-      pair<string, Symbol *> pp(str, s);
+      std::pair<std::string, Symbol *> pp(str, s);
       symbol_table.insert(pp);
       
       //printf("Declared %s local <%s> on page %d\n", (ext) ? "ext" : "", name.c_str(), pages);
@@ -2106,15 +2104,15 @@ Symbol *File::declare_local(string name, bool ext)
   return s;
 }
 
-Symbol *File::declare_global(string name, Symbol *local)
+Symbol *File::declare_global(std::string name, Symbol *local)
 {
   int len = name.size();
-  string str = name.substr(0, (len>6)?6:len);
+  std::string str = name.substr(0, (len>6)?6:len);
   Symbol *s = lookup_global(name);
 
   if (!s)
     {
-      pair<string, Symbol *> pp(str, local);
+      std::pair<std::string, Symbol *> pp(str, local);
       global_symbol_table.insert(pp);
       
       //printf("Declared global <%s>\n", name.c_str());
@@ -2126,15 +2124,15 @@ Symbol *File::declare_global(string name, Symbol *local)
   return local;
 }
 
-Symbol *File::local_synonym(string name, Symbol *local)
+Symbol *File::local_synonym(std::string name, Symbol *local)
 {
   int len = name.size();
-  string str = name.substr(0, (len>4)?4:len);
+  std::string str = name.substr(0, (len>4)?4:len);
   Symbol *s = lookup_local(name);
 
   if (!s)
     {
-      pair<string, Symbol *> pp(str, local);
+      std::pair<std::string, Symbol *> pp(str, local);
       symbol_table.insert(pp);
       
       //printf("Declared local synonym <%s>\n", name.c_str());
@@ -2147,7 +2145,7 @@ void File::set_use_comment_as_title(bool tc)
   use_comment_as_title = tc;
 }
 
-void File::supply_title(string title)
+void File::supply_title(std::string title)
 {
   use_supplied_title = true;
   supplied_title = title;
@@ -2155,7 +2153,7 @@ void File::supply_title(string title)
 
 int Symbol::next_serial_number = 0;
 
-Symbol::Symbol(string name, int page, File *file, bool ext, bool defined)
+Symbol::Symbol(std::string name, int page, File *file, bool ext, bool defined)
   : name(name),
     page(page),
     file(file),
@@ -2171,7 +2169,7 @@ Symbol::Symbol(string name, int page, File *file, bool ext, bool defined)
 
 void Symbol::redefine(int new_page)
 {
-  md_list.push_back(make_pair(page, serial_number));
+  md_list.push_back(std::make_pair(page, serial_number));
   multiply_defined = true;
 
   page = new_page;
@@ -2201,7 +2199,7 @@ void Symbol::md_step()
       ++md_itrt;
     } else {
       // Push the last definition onto the list
-      md_list.push_back(make_pair(page, serial_number));
+      md_list.push_back(std::make_pair(page, serial_number));
       md_itrt = md_list.begin();
       md_iterating = true;
     }
@@ -2230,7 +2228,7 @@ int main (int argc, char **argv)
         {
           if ((strncmp(argv[a], "-h", 2) == 0) || (strncmp(argv[a], "--h", 3) == 0))
             {
-              cerr << "Usage : " << argv[0] << " [-h|--help] [-q<l>,<r>] [[-t <title>] -i <TOC-name>] ([-tc|-t <title>] <filename>)*" << endl;
+              std::cerr << "Usage : " << argv[0] << " [-h|--help] [-q<l>,<r>] [[-t <title>] -i <TOC-name>] ([-tc|-t <title>] <filename>)*" << std::endl;
             }
           else if (strncmp(argv[a], "-q", 2) == 0)
             {
@@ -2254,9 +2252,9 @@ int main (int argc, char **argv)
 
               if ((strlen(l)>MAX_LEN_QUOTE) || (strlen(r)>MAX_LEN_QUOTE))
                 {
-                  cerr << "Quote chars <" << ((l)?l:"[none]") << ">, <"
+                  std::cerr << "Quote chars <" << ((l)?l:"[none]") << ">, <"
                        << ((r)?r:"[none]") << "> are too long. (Max: "
-                       << MAX_LEN_QUOTE << "characters)" << endl;
+                       << MAX_LEN_QUOTE << "characters)" << std::endl;
                   exit(1);
                 }
 
@@ -2278,7 +2276,7 @@ int main (int argc, char **argv)
             {
               if (n_files > 0)
                 {
-                  cerr << "-i must occur before other filenames" << endl;
+                  std::cerr << "-i must occur before other filenames" << std::endl;
                   exit(1);
                 }
               a++;

@@ -47,8 +47,6 @@
 #include "gtk/fp.h"
 #endif
 
-using namespace std;
-
 #define DEBUG 0
 #define CORE_SIZE 32768
 #define TRACE_BUF (1024*1024)

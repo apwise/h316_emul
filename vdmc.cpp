@@ -28,8 +28,6 @@
 #include "proc.hpp"
 #include "vdmc.hpp"
 
-using namespace std;
-
 VDMC::VDMC(Proc *p, unsigned int cc_addr)
   : IODEV(p)
   , cc_addr(cc_addr)

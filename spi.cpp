@@ -30,9 +30,7 @@
 #include "stdtty.hpp"
 #include "proc.hpp"
 
-using namespace std;
-
-ostream &operator<<(ostream &os, const SPI::SPI_STATE &state)  
+std::ostream &operator<<(std::ostream &os, const SPI::SPI_STATE &state)  
 {
   const char *const s = 
     ((state == SPI::STATE_POWR) ? "POWR" :
@@ -312,7 +310,7 @@ void SPI::event(int reason)
     break;
 
   default:
-    cerr << "Unexpected event = " << reason << endl;
+    std::cerr << "Unexpected event = " << reason << std::endl;
   }
 }
 
@@ -824,7 +822,7 @@ unsigned int SPI::Inner::write(unsigned int data)
       cycles /= 2;
       break;
     default:
-      cerr << "Unexpected inner command = " << (data & 0x0f) << endl;
+      std::cerr << "Unexpected inner command = " << (data & 0x0f) << std::endl;
     }
   } else {
     // Regular write data

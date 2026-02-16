@@ -21,8 +21,6 @@
 #include "proc.hpp"
 #include "vsim.hpp"
 
-using namespace std;
-
 VSIM::VSIM(Proc *p)
   : IODEV(p)
 {
