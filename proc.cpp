@@ -640,8 +640,7 @@ struct FP_INTF *Proc::fp_intf()
  * Add setting the carry bit to overflow
  * Weird, I know but that's the way it works on a series 16
  *****************************************************************/
-static int16_t short_add(int16_t a, int16_t m,
-                         bool &c)
+int16_t Proc::short_add(int16_t a, int16_t m, bool &c)
 {
   long aa, mm, rr;
   int16_t r;
@@ -657,8 +656,7 @@ static int16_t short_add(int16_t a, int16_t m,
   return r;
 }
 
-static int16_t short_sub(int16_t a, int16_t m,
-                         bool &c)
+int16_t Proc::short_sub(int16_t a, int16_t m, bool &c)
 {
   long aa, mm, rr;
   int16_t r;
@@ -677,8 +675,7 @@ static int16_t short_sub(int16_t a, int16_t m,
 /*****************************************************************
  * Add, with the C bit added in
  *****************************************************************/
-static int16_t short_adc(int16_t a, int16_t m,
-                         bool &c)
+int16_t Proc::short_adc(int16_t a, int16_t m, bool &c)
 {
   int16_t r, v;
 
@@ -687,6 +684,264 @@ static int16_t short_adc(int16_t a, int16_t m,
   v &= (r ^ m);      // if signs were same and now differ
   c = (v >> 15) & 1; // set overflow
   return r;
+}
+
+int32_t Proc::multiply(int16_t &ra, int16_t &rb, int16_t rm, int16_t &sc)
+{
+  int m = rm;
+  int a = ra;
+  int b = rb;
+  int lsc = -8;
+  bool b17, madff=false;
+  int g, h;
+  int d = 0;
+  int e = 0;
+  int32_t p, q;
+
+  if (m & 0x8000) m |= ((~0u) << 16);
+  if (a & 0x8000) a |= ((~0u) << 16);
+
+  q = a * m;
+
+  b = a;
+  b17 = 0;
+  a = 0;
+
+  g = h = 0;
+
+  while (lsc < 0) {
+
+    if (lsc != -8) {
+      if (madff) {
+        b = ((((d & 1) != 0) ? ((~0u) << 15) : 0) |
+             ((a & 1) << 14) |
+             ((e >> 2) & 0x3fff));
+        b17 = ((e & 2) != 0);
+        a = d >> 1;
+      } else {
+        b = ((((d & 2) != 0) ? ((~0u) << 15) : 0) |
+             ((d & 1) << 14) |
+             ((e >> 2) & 0x3fff));
+        b17 = ((e & 2) != 0);
+        a = d >> 2;
+      }
+    }
+
+    lsc++;
+
+    if ((b & 1) == b17) {
+      madff = true;
+      g = (a >> 1);
+      if ((b & 2) != 0) { // B15 == 0?
+        // No
+        if (b17) {
+          h = 0;
+        } else {
+          h = -m;
+        }
+      } else {
+        // Yes (B15 == 0)
+        if (b17) {
+          h = m;
+        } else {
+          h = 0;
+        }
+      }
+    } else {
+      madff = false;
+      g = a;
+      if ((b & 2) != 0) { // B15 == 0?
+        // No
+        h = -m;
+      } else {
+        // Yes (B15 == 0)
+        h = m;
+      }
+    }
+
+    d = g + h;
+    e = b;
+
+  }
+
+  if (madff) {
+    b = (((a & 1) << 14) |
+         ((e >> 2) & 0x3fff));
+    a = d;
+  } else {
+    b = (((d & 1) << 14) |
+         ((e >> 2) & 0x3fff));
+    a = d >> 1;
+  }
+
+  p = (a << 15) | (b & 0x7fff);
+
+  assert(p == q);
+
+  ra = a;
+  rb = b;
+  sc = e & 0x3f;
+
+  return p;
+}
+
+unsigned Proc::divide(int16_t &ra, int16_t &rb, int16_t rm, int16_t &sc, bool &cbitf)
+{
+  int d, e;
+  bool azzzz, a00ff, m01ff, d01ff, remok;
+  bool e00dj;
+
+  int m = rm;
+  int a = ra;
+  int b = rb;
+
+  bool c = true;
+  int lsc = -17;
+  unsigned count = 0;
+
+  bool madff = false;
+  bool dogff = false;
+
+  // T1
+  a00ff = azzzz = (a < 0);
+  m01ff = (m < 0);
+
+  d = a;
+  e = b;
+
+  while (!dogff) {
+    // T2
+
+    // Some intermediate signals...
+    d01ff = (d >> 15) & 1;
+    remok = (d == 0) || (d01ff == azzzz);
+
+    /* printf("lsc = %d, madff=%d, remok=%d, d01ff=%d\n",
+       lsc, madff, remok, d01ff); */
+
+    e00dj = (d01ff ^ m01ff ^ 1) & 1;
+
+    if (lsc == -17) {
+      // Essentially nothing happens
+    } else if (lsc < -1) {
+
+      if ((lsc == -16) &&
+          (d01ff != azzzz))
+        c = false;
+
+      if (!c) {
+        a00ff = d01ff;
+        a = ((d << 1) & 0xfffe) | ((e >> 14) & 1);
+        if ((a >> 15) & 1)
+          a |= ((~0u) << 16);
+        b = ((e << 1) & 0xfffe) | e00dj;
+        if ((b >> 15) & 1)
+          b |= ((~0u) << 16);
+      }
+
+    } else if (lsc == -1) {
+
+      a00ff = d01ff;
+      a = d;
+      if ((a >> 15) & 1)
+        a |= ((~0u) << 16);
+
+      if (remok && (!d01ff))
+        madff = true;
+
+      if (!c) {
+        //a00ff = d01ff;
+        //a = d;
+        //if ((a >> 15) & 1)
+        //  a |= (-1 << 16);
+        b = ((e << 1) & 0xfffe) | e00dj;
+        if ((b >> 15) & 1)
+          b |= ((~0u) << 16);
+
+        //if ((lsc == -1) && remok && (!d01ff))
+        // madff = true;
+      }
+
+    } else { // lsc == 0
+
+      a00ff = d01ff;
+
+      if (remok) {
+        a = e & 0xffff;
+        if ((a >> 15) & 1)
+          a |= ((~0u) << 16);
+        b = d & 0xffff;
+        if ((b >> 15) & 1)
+          b |= ((~0u) << 16);
+        madff = true;
+        dogff = true;
+      } else {
+        a = d & 0xffff;
+      }
+    }
+
+    /* printf("  a = %06d:%06o b = %06d:%06o a0=%d c=%d\n",
+       a, (a & 0xffff),
+       b, (b & 0xffff),
+       a00ff, c); */
+
+    if (lsc != 0)
+      lsc++;
+
+    // TLATE
+
+    if (madff) {
+      if ((a00ff != m01ff) &&
+          (dogff))
+        d = a + 1;
+      else
+        d = a;
+    } else {
+      if (a00ff == m01ff)
+        d = a - m;
+      else
+        d = a + m;
+      //printf("a00ff = %d, m01ff = %d\n", a00ff, m01ff);
+    }
+    e = b;
+
+    /*
+      printf("   d = %06d:%07o e = %06d:%06o\n",
+      d, (d & 0x1ffff),
+      e, (e & 0xffff));
+    */
+
+    count++;
+    assert(count < 20);
+  }
+
+  // T4
+  if ((((d >> 15) & 3) != 0) &&
+      (((d >> 15) & 3) != 3))
+    c = 1;
+
+  a = d & 0xffff;
+  if ((a >> 15) & 1)
+    a |= ((~0u) << 16);
+
+  /*
+    printf("T4\n");
+    printf("  a = %06d:%06o b = %06d:%06o a0=%d c=%d\n",
+    a, (a & 0xffff),
+    b, (b & 0xffff),
+    a00ff, c);
+  */
+
+  ra = a;
+  rb = b;
+  cbitf = c;
+  sc = e & 0x3f;
+
+  //printf("divide() count = %d\n", count);
+
+  assert((count == 18) || (count == 19));
+
+  return count+1;
 }
 
 /*****************************************************************
@@ -2800,165 +3055,6 @@ void Proc::do_DBL(uint16_t instr UNUSED)
   dp = 1;
 }
 
-static int divide(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc, bool &cbitf)
-{
-  int d, e;
-  bool azzzz, a00ff, m01ff, d01ff, remok;
-  bool e00dj;
-
-  int m = rm;
-  int a = ra;
-  int b = rb;
-
-  bool c = true;
-  int lsc = -17;
-  int count = 0;
-
-  bool madff = false;
-  bool dogff = false;
-
-  // T1
-  a00ff = azzzz = (a < 0);
-  m01ff = (m < 0);
-
-  d = a;
-  e = b;
-
-  while (!dogff) {
-    // T2
-
-    // Some intermediate signals...
-    d01ff = (d >> 15) & 1;
-    remok = (d == 0) || (d01ff == azzzz);
-
-    /* printf("lsc = %d, madff=%d, remok=%d, d01ff=%d\n",
-       lsc, madff, remok, d01ff); */
-
-    e00dj = (d01ff ^ m01ff ^ 1) & 1;
-
-    if (lsc == -17) {
-      // Essentially nothing happens
-    } else if (lsc < -1) {
-
-      if ((lsc == -16) &&
-          (d01ff != azzzz))
-        c = false;
-
-      if (!c) {
-        a00ff = d01ff;
-        a = ((d << 1) & 0xfffe) | ((e >> 14) & 1);
-        if ((a >> 15) & 1)
-          a |= ((~0u) << 16);
-        b = ((e << 1) & 0xfffe) | e00dj;
-        if ((b >> 15) & 1)
-          b |= ((~0u) << 16);
-      }
-
-    } else if (lsc == -1) {
-
-      a00ff = d01ff;
-      a = d;
-      if ((a >> 15) & 1)
-        a |= ((~0u) << 16);
-
-      if (remok && (!d01ff))
-        madff = true;
-
-      if (!c) {
-        //a00ff = d01ff;
-        //a = d;
-        //if ((a >> 15) & 1)
-        //  a |= (-1 << 16);
-        b = ((e << 1) & 0xfffe) | e00dj;
-        if ((b >> 15) & 1)
-          b |= ((~0u) << 16);
-
-        //if ((lsc == -1) && remok && (!d01ff))
-        // madff = true;
-      }
-
-    } else { // lsc == 0
-
-      a00ff = d01ff;
-
-      if (remok) {
-        a = e & 0xffff;
-        if ((a >> 15) & 1)
-          a |= ((~0u) << 16);
-        b = d & 0xffff;
-        if ((b >> 15) & 1)
-          b |= ((~0u) << 16);
-        madff = true;
-        dogff = true;
-      } else {
-        a = d & 0xffff;
-      }
-    }
-
-    /* printf("  a = %06d:%06o b = %06d:%06o a0=%d c=%d\n",
-       a, (a & 0xffff),
-       b, (b & 0xffff),
-       a00ff, c); */
-
-    if (lsc != 0)
-      lsc++;
-
-    // TLATE
-
-    if (madff) {
-      if ((a00ff != m01ff) &&
-          (dogff))
-        d = a + 1;
-      else
-        d = a;
-    } else {
-      if (a00ff == m01ff)
-        d = a - m;
-      else
-        d = a + m;
-      //printf("a00ff = %d, m01ff = %d\n", a00ff, m01ff);
-    }
-    e = b;
-
-    /*
-      printf("   d = %06d:%07o e = %06d:%06o\n",
-      d, (d & 0x1ffff),
-      e, (e & 0xffff));
-    */
-
-    count++;
-    assert(count < 20);
-  }
-
-  // T4
-  if ((((d >> 15) & 3) != 0) &&
-      (((d >> 15) & 3) != 3))
-    c = 1;
-
-  a = d & 0xffff;
-  if ((a >> 15) & 1)
-    a |= ((~0u) << 16);
-
-  /*
-    printf("T4\n");
-    printf("  a = %06d:%06o b = %06d:%06o a0=%d c=%d\n",
-    a, (a & 0xffff),
-    b, (b & 0xffff),
-    a00ff, c);
-  */
-
-  ra = a;
-  rb = b;
-  cbitf = c;
-  sc = e & 0x3f;
-
-  //printf("divide() count = %d\n", count);
-
-  assert((count == 18) || (count == 19));
-
-  return count+1;
-}
-
 void Proc::do_DIV(uint16_t instr)
 {
 #if (DEBUG)
@@ -2968,105 +3064,6 @@ void Proc::do_DIV(uint16_t instr)
   const int16_t rm = (int16_t) read(ea(instr));
 
   half_cycles += divide(a, b, rm, sc, c);
-}
-
-static long multiply(int16_t &ra, int16_t &rb, const int16_t &rm, int16_t &sc)
-{
-  int m = rm;
-  int a = ra;
-  int b = rb;
-  int lsc = -8;
-  bool b17, madff=false;
-  int g, h;
-  int d = 0;
-  int e = 0;
-  long p, q;
-
-  if (m & 0x8000) m |= ((~0u) << 16);
-  if (a & 0x8000) a |= ((~0u) << 16);
-
-  q = a * m;
-
-  b = a;
-  b17 = 0;
-  a = 0;
-
-  g = h = 0;
-
-  while (lsc < 0) {
-
-    if (lsc != -8) {
-      if (madff) {
-        b = ((((d & 1) != 0) ? ((~0u) << 15) : 0) |
-             ((a & 1) << 14) |
-             ((e >> 2) & 0x3fff));
-        b17 = ((e & 2) != 0);
-        a = d >> 1;
-      } else {
-        b = ((((d & 2) != 0) ? ((~0u) << 15) : 0) |
-             ((d & 1) << 14) |
-             ((e >> 2) & 0x3fff));
-        b17 = ((e & 2) != 0);
-        a = d >> 2;
-      }
-    }
-
-    lsc++;
-
-    if ((b & 1) == b17) {
-      madff = true;
-      g = (a >> 1);
-      if ((b & 2) != 0) { // B15 == 0?
-        // No
-        if (b17) {
-          h = 0;
-        } else {
-          h = -m;
-        }
-      } else {
-        // Yes (B15 == 0)
-        if (b17) {
-          h = m;
-        } else {
-          h = 0;
-        }
-      }
-    } else {
-      madff = false;
-      g = a;
-      if ((b & 2) != 0) { // B15 == 0?
-        // No
-        h = -m;
-      } else {
-        // Yes (B15 == 0)
-        h = m;
-      }
-    }
-
-    d = g + h;
-    e = b;
-
-  }
-
-  if (madff) {
-    b = (((a & 1) << 14) |
-         ((e >> 2) & 0x3fff));
-    a = d;
-  } else {
-    b = (((d & 1) << 14) |
-         ((e >> 2) & 0x3fff));
-    a = d >> 1;
-  }
-
-  p = (a << 15) | (b & 0x7fff);
-
-  assert(p == q);
-
-  ra = a;
-  rb = b;
-  sc = e & 0x3f;
-
-  return p;
 }
 
 void Proc::do_MPY(uint16_t instr)

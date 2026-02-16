@@ -249,6 +249,12 @@ private:
   void increment_p(uint16_t n = 1);
   void write_prt(unsigned int n, uint16_t v);
 
+  static int16_t short_add(int16_t a, int16_t m, bool &c);
+  static int16_t short_sub(int16_t a, int16_t m, bool &c);
+  static int16_t short_adc(int16_t a, int16_t m, bool &c);
+  static int32_t multiply(int16_t &ra, int16_t &rb, int16_t rm, int16_t &sc);
+  static unsigned divide(int16_t &ra, int16_t &rb, int16_t rm, int16_t &sc, bool &cbitf);
+  
   /* These routines are public in order that the instruction
      tables can refer to them. */
 public:
