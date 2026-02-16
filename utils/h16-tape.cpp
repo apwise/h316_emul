@@ -16,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #include <cstdlib>
@@ -52,8 +51,6 @@ private:
   void add_to_buffer(unsigned char c);
 };
 
-// {{{ Tape::Tape(char *filename)
-
 Tape::Tape(char *filename)
   : buffer(0),
     buffer_size(0),
@@ -65,18 +62,11 @@ Tape::Tape(char *filename)
     read_file(filename);
 }
 
-// }}}
-// {{{ Tape::~Tape()
-
 Tape::~Tape()
 {
   if (buffer)
     delete [] buffer;
 }
-
-// }}}
-
-// {{{ void Tape::double_buffer_size()
 
 void Tape::double_buffer_size()
 {
@@ -97,9 +87,6 @@ void Tape::double_buffer_size()
   buffer = new_buffer;
 }
 
-// }}}
-// {{{ void Tape::add_to_buffer(unsigned char c)
-
 void Tape::add_to_buffer(unsigned char c)
 {
   if (buffer_used >= buffer_size)
@@ -107,9 +94,6 @@ void Tape::add_to_buffer(unsigned char c)
 
   buffer[buffer_used++] = c;
 }
-
-// }}}
-// {{{ void Tape::read_file(char *filename)
 
 void Tape::read_file(char *filename)
 {
@@ -121,11 +105,7 @@ void Tape::read_file(char *filename)
   ifs.close();
 }
 
-// }}}
-
 static InstrTable *instr_table;
-
-// {{{ static int gc(FILE *fp)
 
 static int gc(FILE *fp)
 {
@@ -141,16 +121,10 @@ static int gc(FILE *fp)
   return c&0xff;
 }
 
-// }}}
-// {{{ static unsigned short read_8_8(FILE *fp)
-
-static unsigned short read_8_8(FILE *fp)
+static uint16_t read_8_8(FILE *fp)
 {
   return (gc(fp) << 8) | gc(fp);
 }
-
-// }}}
-// {{{ static void skip_leader(FILE *fp)
 
 static void skip_leader(FILE *fp)
 {
@@ -162,13 +136,10 @@ static void skip_leader(FILE *fp)
   ungetc(c, fp);
 }
 
-// }}}
-// {{{ static int read_8_8_block(FILE *fp, unsigned short *buffer)
-
-static int read_8_8_block(FILE *fp, unsigned short *buffer)
+static int read_8_8_block(FILE *fp, uint16_t *buffer)
 {
   int i=0;
-  unsigned short n;
+  uint16_t n;
 
   skip_leader(fp);
 
@@ -180,9 +151,6 @@ static int read_8_8_block(FILE *fp, unsigned short *buffer)
     }
   return i;
 }
-
-// }}}
-// {{{ static void read_expected(FILE *fp, int expect)
 
 static void read_expected(FILE *fp, int expect)
 {
@@ -196,9 +164,6 @@ static void read_expected(FILE *fp, int expect)
     }
   /*printf("read %03o OK\n", c);*/
 } 
-
-// }}}
-// {{{ static int translate(int c, bool &xof)
 
 static int translate(int c, bool &xof)
 {
@@ -232,13 +197,10 @@ static int translate(int c, bool &xof)
   return n;
 }
 
-// }}}
-// {{{ static unsigned short read_silent(FILE *fp, bool &zero_flag, bool &xof)
-
-static unsigned short read_silent(FILE *fp, bool &zero_flag, bool &xof)
+static uint16_t read_silent(FILE *fp, bool &zero_flag, bool &xof)
 {
   int c;
-  unsigned short n;
+  uint16_t n;
 
   c = gc(fp);
   //printf("read_silent(): c = %03o\n", c);
@@ -273,21 +235,17 @@ static unsigned short read_silent(FILE *fp, bool &zero_flag, bool &xof)
   return n;
 }
 
-// }}}
-
-static unsigned short core_low = 0xffff;
-static unsigned short core_high = 0;
-
-// {{{ static int read_silent_block(FILE *fp, int find_start,
+static uint16_t core_low = 0xffff;
+static uint16_t core_high = 0;
 
 static int read_silent_block(FILE *fp, int find_start,
-                             unsigned short *core,
-                             unsigned short bc)
+                             uint16_t *core,
+                             uint16_t bc)
 {
-  unsigned short addr, a, n;
+  uint16_t addr, a, n;
   bool zero_flag, xof;
-  unsigned short checksum = bc;
-  unsigned short old_checksum = checksum;
+  uint16_t checksum = bc;
+  uint16_t old_checksum = checksum;
   int wc = 0;
   int i, c;
   skip_leader(fp);
@@ -369,9 +327,6 @@ static int read_silent_block(FILE *fp, int find_start,
   return 1;
 }
 
-// }}}
-// {{{ static unsigned char asr_char(unsigned char c)
-
 static unsigned char asr_char(unsigned char c)
 {
   if ((c >= 0240) && (c <= 0337))
@@ -382,10 +337,7 @@ static unsigned char asr_char(unsigned char c)
     return 0;
 }
 
-// }}}
-// {{{ static char *printable(unsigned short instr)
-
-static char *printable(unsigned short instr)
+static char *printable(uint16_t instr)
 {
   static char temp[5];
   
@@ -401,13 +353,9 @@ static char *printable(unsigned short instr)
   return temp;
 }
 
-// }}}
-
 static bool verilog = false;
 
-// {{{ static void dissassemble_block(unsigned short *block, int size, int addr)
-
-static void dissassemble_block(unsigned short *block, int size, int addr)
+static void dissassemble_block(uint16_t *block, int size, int addr)
 {
   int i;
 
@@ -435,8 +383,6 @@ static void dissassemble_block(unsigned short *block, int size, int addr)
   if (!verilog)
     printf("}\n");
 }
-
-// }}}
 
 #define K64 (1 << 16)
 #define K32 (1 << 15)
@@ -498,24 +444,19 @@ int main(int argc, char **argv)
 {
   FILE *fp;
   int bootstrap_length;
-  unsigned short bootstrap[256];
+  uint16_t bootstrap[256];
   int loader_length, loader_addr;
-  unsigned short loader[256];
+  uint16_t loader[256];
   //int palap = 0;
   int expect_at_least;
 
-  unsigned short *core;
+  uint16_t *core;
   int i;
   int bc=0;
 
-  //debug = (struct INSTR **) malloc(sizeof(struct INSTR *) * K64);
-  //dispatch = (void (proc::**)(unsigned short))
-  //malloc(sizeof(void (proc::*)(unsigned short)) * K64);
-
-  //instr_table.build_instr_tables();
   instr_table = new InstrTable;
 
-  core = (unsigned short *) malloc(sizeof(unsigned short) * K32);
+  core = new uint16_t[K32];
   for (i=0; i<K32; i++)
     core[i] = 0;
 
