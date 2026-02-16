@@ -214,8 +214,8 @@ private:
   /*
    * the core memory 
    */
-  int16_t *core;
-  bool *modified;
+  std::vector<uint16_t> core;
+  std::vector<bool> modified;
 
   bool run;     // flag to say we're still running
   bool fetched; // flag to say that an instruction has been fetched

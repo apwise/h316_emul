@@ -159,23 +159,18 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
   : prt(64)
   , extend_allowed(HasEa)
   , addr_mask((HasEa) ? 0x7fff : 0x3fff)
-  , exit_code(0)
+  , core(addr_mask+1)
+  , modified(addr_mask+1)  , exit_code(0)
   , exit_called(false)
   , instr_table()
 #ifndef RTL_SIM
   , event_queue(this)
 #endif
 {
-  long i;
+  const unsigned core_size = addr_mask + 1;
+  unsigned i;
 
-  /*
-   * Core memory
-   * and flags to record which words get written
-   */
-  core = (int16_t *) malloc(sizeof(int16_t) * CORE_SIZE);
-  modified = (bool *) malloc(sizeof(bool) * CORE_SIZE);
-
-  for (i=0; i<CORE_SIZE; i++) {
+  for (i=0; i<core_size; i++) {
     core[i] = 0;
     modified[i] = 0;
   }
