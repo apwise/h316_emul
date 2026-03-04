@@ -1564,13 +1564,13 @@ void Proc::flush_events()
 
 void Proc::set_filename(IoDispatch::DEVICE dev, const std::string &filename, int subdevice) {
 #ifndef RTL_SIM
-  // call via io_dispatch
+  ioDispatch.set_filename(dev, filename, subdevice);
 #endif
 }
   
 void Proc::send_event(IoDispatch::DEVICE dev, unsigned reason) {
 #ifndef RTL_SIM
-  // call via io_dispatch
+  ioDispatch.event(dev, reason);
 #endif
 }
 
