@@ -63,3 +63,4 @@ void Mfm::event(int reason) {
   }
 }
 
+DEF_NULL_SET_FILENAME(Mfm)
