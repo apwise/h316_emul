@@ -31,19 +31,14 @@
 #define SMK_MASK (1 << (16-16))
 
 #define RATE 60 /* Ticks per second */
+#define iEvent(x) static_cast<int>(Event::x)
 
-enum RTC_REASON {
-  RTC_REASON_TICK,  
-  RTC_REASON_NUM
-};
+const char *RTC::name() {
+  return "RTC";
+}
 
-static const char *rtc_reason[RTC_REASON_NUM] __attribute__ ((unused)) =
-{
-  "tick"
-};
-
-RTC::RTC(Proc *p)
-  : IODEV(p)
+RTC::RTC(IoToPIntf &p)
+  : IoDev(p)
 {
   this->p = p;
 
@@ -56,38 +51,38 @@ void RTC::master_clear()
   mask = 0;
 };
 
-RTC::STATUS RTC::ina(unsigned short instr, signed short &data)
+RTC::Status RTC::ina(uint16_t instr, int16_t &data)
 {
   bool r = false;
+
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
  
   return status(r);
 }
 
-RTC::STATUS RTC::ocp(unsigned short instr)
+void RTC::ocp(uint16_t instr)
 {
   switch(instr & 0700) {
   case 0000: /* Reset interrupt request and start clock */
     interrupting = false;
-    p->clear_interrupt(SMK_MASK);
+    p.clear_interrupt(SMK_MASK);
     if (!running)
-      p->queue((1000000 / RATE), this, RTC_REASON_TICK );
+      p.queue((1000000 / RATE), *this, static_cast<int>(RTC::Event::TICK));
     running = true;
     break;
     
   case 0200: /* Reset interrupt request and stop clock */
     interrupting = false;
-    p->clear_interrupt(SMK_MASK);
+    p.clear_interrupt(SMK_MASK);
     running = false;
     break;
     
   default:
-    fprintf(stderr, "RTC: OCP '%04o\n", instr&0x3ff);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   }
-  return STATUS_READY;
 }
 
-RTC::STATUS RTC::sks(unsigned short instr)
+RTC::Status RTC::sks(uint16_t instr)
 {
   bool r = false;
 
@@ -95,60 +90,57 @@ RTC::STATUS RTC::sks(unsigned short instr)
   case 0000: r = !(interrupting && mask); break;
     
   default:
-    fprintf(stderr, "RTC: SKS '%04o\n", instr&0x3ff);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   }
   
   return status(r);
 }
 
-RTC::STATUS RTC::ota(unsigned short instr, signed short data)
+RTC::Status RTC::ota(uint16_t instr, int16_t data)
 {
-  fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-  p->abort();
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
 
-  return STATUS_READY;
+  return Status::WAIT;
 }
 
-RTC::STATUS RTC::smk(unsigned short mask)
+void RTC::smk(uint16_t mask)
 {
   this->mask = mask & SMK_MASK;
 
   if (interrupting && this->mask)
-    p->set_interrupt(this->mask);
+    p.set_interrupt(this->mask);
   else
-    p->clear_interrupt(SMK_MASK);
-
-  return STATUS_READY;
+    p.clear_interrupt(SMK_MASK);
 }
 
 void RTC::event(int reason)
 {
-  switch(reason) {
-  case REASON_MASTER_CLEAR:
+  Event event {static_cast<Event>(reason)};
+
+  switch(event) {
+  case Event::MASTER_CLEAR:
     master_clear();
     break;
     
-  case RTC_REASON_TICK:
+  case Event::TICK:
     if (running) {
-      p->queue((1000000 / RATE), this, RTC_REASON_TICK );
+      p.queue((1000000 / RATE), *this, iEvent(TICK) );
       /* Request a single execution cycle on CPU */
-      p->set_rtclk(true);
+      p.set_break(0);
     }
-
+    break;
+    
+  case Event::ROLLOVER:
+    interrupting = true;
+    
+    if (interrupting && this->mask)
+      p.set_interrupt(this->mask);
     break;
     
   default:
-    fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
     break;
   }
 }
 
-void RTC::rollover()
-{
-  interrupting = true;
- 
-  if (interrupting && this->mask)
-    p->set_interrupt(this->mask);
-}
+DEF_NULL_SET_FILENAME(RTC)

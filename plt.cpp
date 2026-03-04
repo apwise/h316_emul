@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2008, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,22 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 #include "plt.hpp"
 
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <sstream>
 
 #include "iodev.hpp"
 #include "stdtty.hpp"
 #include "proc.hpp"
-
-const char *PLT::plt_reason[PLT_REASON_NUM] __attribute__ ((unused)) =
-{
-  "Not busy"
-};
 
 const char *PLT::pd_names[16] = {
   "(null)", "E",       "W",  "(error)",
@@ -56,14 +52,10 @@ bool PLT::is_limit() {
 }
 
 
-PLT::PLT(Proc *p, STDTTY *stdtty)
-  : IODEV(p),
-    p(p),
-    stdtty(stdtty),
+PLT::PLT(IoToPIntf &p)
+  : IoDev(p),
     fp(NULL),
     ascii_file(false),
-    pending_filename(false),
-    filename(NULL),
     phase(LIMIT),
     x_pos(INITIAL_X_POS),
     y_pos(0),
@@ -87,7 +79,7 @@ void PLT::master_clear()
 
   fp = NULL;
   ascii_file = false;
-  pending_filename = false;
+  filename.clear();
   phase = LIMIT;
 
   // Reset pen and notional y position,
@@ -104,50 +96,46 @@ void PLT::master_clear()
   not_busy = true;
 };
 
-PLT::STATUS PLT::ina(unsigned short instr, signed short &data)
+PLT::Status PLT::ina(uint16_t instr, int16_t &data)
 {
-  fprintf(stderr, "%s Input from plotter\n", __PRETTY_FUNCTION__);
-  p->abort();
-  return STATUS_READY;
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr, "Input from plotter"));
+  return Status::WAIT;
 }
 
-PLT::STATUS PLT::ota(unsigned short instr, signed short data)
+PLT::Status PLT::ota(uint16_t instr, int16_t data)
 {
-  fprintf(stderr, "%s Output to plotter\n", __PRETTY_FUNCTION__);
-  p->abort();
-  return STATUS_READY;
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr, "Output to plotter"));
+  return Status::WAIT;
 }
 
 void PLT::ensure_file_open()
 {
-  char buf[256];
-  char *cp;
+  std::string str;
+
   if (!fp) {
     while (!fp) {
-      if (pending_filename)
-        strcpy(buf, filename);
-      else
-        stdtty->get_input("PLT: Filename>", buf, 256, 0);
-         
-      cp = buf;
-      if (buf[0]=='&') {
-        ascii_file = 1;
-        cp++;
+      if (filename.size() != 0) {
+        str = filename;
+      } else {
+        str = p.get_file_name("PLT", "plt", "");
       }
-        
-      fp = fopen(cp, ((ascii_file) ? "w" : "wb") );
+      
+      if (str[0]=='&') {
+        ascii_file = true;
+        str = str.substr(1);
+      }
+    
+      fp = fopen(str.c_str(), ((ascii_file) ? "w" : "wb") );
       if (!fp) {
-        fprintf(((pending_filename) ? stderr : stdout),
-                "Could not open <%s> for writing\n", cp);
-        if (pending_filename)
-          p->abort();
-      }
+        std::stringstream ss;
+        ss << "Could not open <" << str << "> for writing";
         
-      if (pending_filename) {
-        free(filename);
+        IoToPIntf::Level level = ((filename.size()) ? IoToPIntf::Level::FATAL : IoToPIntf::Level::ERROR);
+        
+        p.anomaly(level, ss.str());
       }
 
-      pending_filename = false;
+      filename.clear();
     }
   }
 }
@@ -192,7 +180,7 @@ void PLT::plot_data()
   }
 }
 
-PLT::STATUS PLT::ocp(unsigned short instr)
+void PLT::ocp(uint16_t instr)
 {
   // Don't really need to do this here, but
   // it's better to ask for the filename at the start
@@ -248,75 +236,71 @@ PLT::STATUS PLT::ocp(unsigned short instr)
       abort();
     }
 
-    unsigned long microseconds = is_pen(direction) ?
-      PEN_TIME * 1000 :
-      (1000000 / SPEED);
+    unsigned long microseconds = (is_pen(direction) ?
+                                  PEN_TIME * 1000 : (1000000 / SPEED));
 
     not_busy = false;
-    if (mask)
-      p->clear_interrupt(SMK_MASK);
-    p->queue(microseconds, this, PLT_REASON_NOT_BUSY );
+    if (mask) {
+      p.clear_interrupt(SMK_MASK);
+    }
+    
+    p.queue(microseconds, *this, static_cast<int>(Event::NOT_BUSY) );
   } else {
-    fprintf(stderr, "PLT: OCP '%04o\n", instr & 0x3ff);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   }
-  return STATUS_READY;
 }
 
-PLT::STATUS PLT::sks(unsigned short instr)
+PLT::Status PLT::sks(uint16_t instr)
 {
   bool r = 0;
   
-  switch(instr & 0700)
-    {
-    case 0100: r = not_busy; break;
-    case 0200: r = !is_limit(); break;
-    case 0400: r = !(not_busy && mask); break;
-      
-    default:
-      fprintf(stderr, "PLT: SKS '%04o\n", instr&0x3ff);
-      p->abort();
-    }
+  switch(instr & 0700) {
+  case 0100: r = not_busy; break;
+  case 0200: r = !is_limit(); break;
+  case 0400: r = !(not_busy && mask); break;
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
   
   return status(r);
 }
 
-PLT::STATUS PLT::smk(unsigned short new_mask)
+void PLT::smk(uint16_t new_mask)
 {
   mask = new_mask & SMK_MASK;
   
   if (not_busy && mask)
-    p->set_interrupt(mask);
+    p.set_interrupt(mask);
   else
-    p->clear_interrupt(SMK_MASK);
-
-  return STATUS_READY;
+    p.clear_interrupt(SMK_MASK);
 }
 
 void PLT::event(int reason)
 {
-  switch(reason)
-    {
-    case REASON_MASTER_CLEAR:
-      master_clear();
-      break;
+  const Event event {static_cast<Event>(reason)};
+
+  switch(event) {
+  case Event::MASTER_CLEAR:
+    master_clear();
+    break;
       
-    case PLT_REASON_NOT_BUSY:
-      not_busy = true;
-      if (mask)
-        p->set_interrupt(mask);
-      break;
-                        
-    default:
-      fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      p->abort();
-      break;
+  case Event::NOT_BUSY:
+    not_busy = true;
+    if (mask) {
+      p.set_interrupt(mask);
     }
+    break;
+    
+  default:
+    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
+    break;
+  }
 }
 
-void PLT::set_filename(char *filename)
-{
+void PLT::set_filename(const std::string &filename, unsigned subdevice) {
   master_clear();
-  this->filename = strdup(filename);
-  pending_filename = true;
+  this->filename = filename;
 }
+
+DEF_STD_NAME(PLT)

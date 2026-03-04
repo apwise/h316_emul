@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2004, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,44 +16,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #ifndef _LPT_HPP_
 #define _LPT_HPP_
 
+#include "p_to_io_intf.hpp"
 #include "iodev.hpp"
-#include <cstdio>
 
-class Proc;
-class STDTTY;
-
-class LPT : public IODEV
+class LPT : public PToIoIntf, public IoDev
 {
 public:
-  LPT(Proc *p, STDTTY *stdtty);
-  STATUS ina(unsigned short instr, signed short &data);
-  STATUS ocp(unsigned short instr);
-  STATUS sks(unsigned short instr);
-  STATUS ota(unsigned short instr, signed short data);
-  STATUS smk(unsigned short mask);
+  LPT(IoToPIntf &p);
+
+  Status ina(uint16_t instr, int16_t &data);
+  Status sks(uint16_t instr);
+  Status ota(uint16_t instr, int16_t data);
+  void ocp(uint16_t instr);
+  void smk(uint16_t mask);
 
   void event(int reason);
-  void set_filename(char *filename);
+  void set_filename(const std::string &filename, unsigned subdevice); 
 
 private:
+
+  const char *name();
   void master_clear(void);
   void open_file();
   void next_line();
   void deal_pending_nl();
 
-  Proc *p;
-  STDTTY *stdtty;
-
   FILE *fp;
-  bool pending_filename;
   bool pending_nl;
-  char *filename;
+  std::string filename;
   
   unsigned short mask;
 

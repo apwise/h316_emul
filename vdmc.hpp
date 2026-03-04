@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,31 +16,37 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #ifndef _VDMC_HPP_
 #define _VDMC_HPP_
 
+#include "p_to_io_intf.hpp"
+#include "p_to_dmc_intf.hpp"
+#include "iodev.hpp"
+
 #include <bitset>
 
 class Proc;
 
-class VDMC : public IODEV
+class VDMC : public PToIoIntf, public PToDmcIntf, public IoDev
 {
 public:
-  VDMC(Proc *p, unsigned int cc_addr);
-  
-  STATUS ina(unsigned short instr, signed short &data);
-  STATUS ocp(unsigned short instr);
-  STATUS sks(unsigned short instr);
-  STATUS ota(unsigned short instr, signed short data);
-  STATUS smk(unsigned short mask);
+  VDMC(IoToPIntf &p, unsigned cc_addr);
+
+  Status ina(uint16_t instr, int16_t &data);
+  Status sks(uint16_t instr);
+  Status ota(uint16_t instr, int16_t data);
+  void ocp(uint16_t instr);
+  void smk(uint16_t mask);
 
   void event(int reason);
-  void dmc(signed short &data, bool erl);
+  void set_filename(const std::string &filename, unsigned subdevice);
+
+  void dmc(unsigned dmc_dev, int16_t &data, bool erl);
 
 private:
+  const char *name();
   void master_clear(void);
 
   bool is_central(unsigned short instr)
@@ -96,21 +103,23 @@ private:
 
   static const unsigned int NUM_CHANNELS = 16;
   
-  enum VDMC_REASON {
-    VDMC_REASON_TIMER = 0,
+  enum class Event {
+    MASTER_CLEAR = EVENT_MASTER_CLEAR,
+    TIMER = 0,
     
-    VDMC_REASON_NUM = VDMC_REASON_TIMER + NUM_CHANNELS
+    NUM = TIMER + NUM_CHANNELS
   };
 
-  enum VDMC_ERROR_BITS {
+  enum class ErrorBits {
     MISSING_EOR,
     UNEXPECTED_EOR,
     DATA_MISMATCH,
 
-    NUM_ERROR_BITS
+    NUM
   };
   
   const unsigned int cc_addr; // Device address of central controller
+  static const unsigned int numErrorBits = static_cast<unsigned>(ErrorBits::NUM);
 
   bool intr_mask;
   unsigned int channel;
@@ -121,7 +130,7 @@ private:
   unsigned short time_prng[NUM_CHANNELS];
   unsigned short time_ctrl[NUM_CHANNELS];
   std::bitset<NUM_CHANNELS> unexpected_trfr;
-  std::bitset<NUM_ERROR_BITS> error_bits[NUM_CHANNELS];
+  std::bitset<numErrorBits> error_bits[NUM_CHANNELS];
   std::bitset<NUM_CHANNELS> input_mode;
   unsigned short checksum[NUM_CHANNELS];
   unsigned short trfr_cntr[NUM_CHANNELS];

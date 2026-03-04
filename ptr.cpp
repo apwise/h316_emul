@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 1997, 1998, 1999, 2004, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 #include "ptr.hpp"
 
@@ -50,25 +50,9 @@
  *
  */
 
-enum PTR_REASON
-  {
-    PTR_REASON_CHARACTER,
-
-    PTR_REASON_NUM
-  };
-
-static const char *ptr_reason[PTR_REASON_NUM] __attribute__ ((unused)) =
+PTR::PTR(IoToPIntf &p)
+  : IoDev(p)
 {
-  "Character ready"
-
-};
-
-PTR::PTR(Proc *p, STDTTY *stdtty)
-  : IODEV(p)
-{
-  this->p = p;
-  this->stdtty = stdtty;
-
   master_clear();
 }
 
@@ -77,7 +61,6 @@ void PTR::master_clear()
   mask = 0;
 
   tty_file.close();
-  pending_filename = false;
 
   eot = false;
   eot_counter = 0;
@@ -91,14 +74,14 @@ void PTR::master_clear()
   data_count = 0;
 };
 
-PTR::STATUS PTR::ina(unsigned short instr, signed short &data)
+PTR::Status PTR::ina(uint16_t instr, int16_t &data)
 {
   bool r = ready;
 
   if (ready) {
     data = data_buf;
     ready = false;
-    p->clear_interrupt(SMK_MASK);
+    p.clear_interrupt(SMK_MASK);
     data_count ++;
     //printf("\nPTR: Read character (%d) %d\n", data_buf, data_count);
   } else if (eot) {
@@ -138,36 +121,33 @@ PTR::STATUS PTR::ina(unsigned short instr, signed short &data)
 
 void PTR::open_file(void)
 {
-  char buf[256];
-  char *cp;
+  std::string str;
   bool ascii_file = false;
   
   while (!tty_file.is_open()) {
-    if (pending_filename)
-      strcpy(buf, filename);
-    else
-      stdtty->get_input("PTR: Filename>", buf, 256, 0);
-    
-    cp = buf;
-    if (buf[0]=='&') {
-      ascii_file = 1;
-      cp++;
+    if (filename.size() != 0) {
+      str = filename;
+    } else {
+      str = p.get_file_name("PTR", "ptp", "");
     }
     
-    tty_file.open(cp, (ascii_file ? TTY_file::READ_ASCII :
-                       TTY_file::READ_BINARY));
+    if (str[0]=='&') {
+      ascii_file = true;
+      str = str.substr(1);
+    }
+    
+    tty_file.open(str.c_str(), ((ascii_file) ? TTY_file::READ_ASCII : TTY_file::READ_BINARY));
     
     if (!tty_file.is_open()) {
-      fprintf(((pending_filename) ? stderr : stdout),
-              "Could not open <%s> for reading\n", cp);
-      if (pending_filename)
-        p->abort();
+      std::stringstream ss;
+      ss << "Could not open <" << str << "> for reading";
+
+      IoToPIntf::Level level = ((filename.size()) ? IoToPIntf::Level::FATAL : IoToPIntf::Level::ERROR);
+      
+      p.anomaly(level, ss.str());
     }
-    
-    if (pending_filename)
-      free(filename);
-    
-    pending_filename = 0;
+
+    filename.clear();
   }
   
   eot = false;
@@ -176,12 +156,12 @@ void PTR::open_file(void)
 
 void PTR::start_reader(void)
 {
-  p->queue((1000000 / SPEED), this, PTR_REASON_CHARACTER );
+  p.queue((1000000 / SPEED), *this, Event::CHARACTER );
   events_queued++;
   tape_running = true;
 }
 
-PTR::STATUS PTR::ocp(unsigned short instr)
+void PTR::ocp(uint16_t instr)
 {
   switch(instr & 0700) {
   case 0000:
@@ -212,13 +192,11 @@ PTR::STATUS PTR::ocp(unsigned short instr)
     break;
     
   default:
-    fprintf(stderr, "PTR: OCP '%04o\n", instr&0x3ff);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   }
-  return STATUS_READY;
 }
 
-PTR::STATUS PTR::sks(unsigned short instr)
+PTR::Status PTR::sks(uint16_t instr)
 {
   bool r = 0;
   
@@ -227,59 +205,49 @@ PTR::STATUS PTR::sks(unsigned short instr)
   case 0400: r = !(ready && mask); break;
     
   default:
-    fprintf(stderr, "PTR: SKS '%04o\n", instr&0x3ff);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   }
   
   return status(r);
 }
 
-PTR::STATUS PTR::ota(unsigned short instr, signed short data)
+PTR::Status PTR::ota(uint16_t instr, int16_t data)
 {
-  fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-  p->abort();
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr, "Output to reader"));
   
-  return STATUS_READY;
+  return Status::WAIT;
 }
 
-PTR::STATUS PTR::smk(unsigned short mask)
+void PTR::smk(uint16_t mask)
 {
   this->mask = mask & SMK_MASK;
   
   if (ready && this->mask)
-    p->set_interrupt(this->mask);
+    p.set_interrupt(this->mask);
   else
-    p->clear_interrupt(SMK_MASK);
-  
-  return STATUS_READY;
+    p.clear_interrupt(SMK_MASK);
 }
 
 void PTR::event(int reason)
 {
-  int c;
+  const Event event {static_cast<Event>(reason)};
 
-  switch(reason) {
-  case REASON_MASTER_CLEAR:
+  switch(event) {
+  case Event::MASTER_CLEAR:
     master_clear();
     break;
     
-  case PTR_REASON_CHARACTER:
-    
+  case Event::CHARACTER:
     events_queued--;
     
     if (!ignore_event) {
       if (ready) {
-        std::cerr << __PRETTY_FUNCTION__ << " "
-                  << std::dec << p->get_half_cycles()
-                  << " Character overrun" << std::endl;
-        /*
-        fprintf(stderr,
-                "%s " PRIu64 " Character overrun\n",
-                __PRETTY_FUNCTION__, p->get_half_cycles());
-        */
+        std::stringstream ss;
+        ss << std::dec << p.get_half_cycles() << " Character overrun";
+        p.anomaly(IoToPIntf::Level::WARNING, message(ss.str()));
       }
-
-      c = tty_file.getc();
+      
+      int c = tty_file.getc();
 
       if (c == EOF) {
         eot = true;
@@ -287,8 +255,8 @@ void PTR::event(int reason)
       } else {
         data_buf = c & 0xff;
         ready = true;
-        p->set_interrupt(mask);
-        p->queue((1000000 / SPEED), this, PTR_REASON_CHARACTER );
+        p.set_interrupt(mask);
+        p.queue((1000000 / SPEED), *this, Event::CHARACTER );
         events_queued++;
       }
     }
@@ -297,16 +265,13 @@ void PTR::event(int reason)
     break;
     
   default:
-    fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
     break;
   }
 }
 
-void PTR::set_filename(char *filename)
-{
+void PTR::set_filename(const std::string &filename, unsigned subdevice) {
   tty_file.close();
-  pending_filename = false;
 
   eot = false;
   eot_counter = 0;
@@ -314,6 +279,7 @@ void PTR::set_filename(char *filename)
   tape_running = false;
   ready = false;
 
-  this->filename = strdup(filename);
-  pending_filename = 1;
+  this->filename = filename;
 }
+
+DEF_STD_NAME(PTR)

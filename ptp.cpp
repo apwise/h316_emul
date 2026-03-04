@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 1997, 1998, 1999, 2004, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,40 +16,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 #include "ptp.hpp"
 
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
+//#include <cstdlib>
+//#include <cstdio>
+//#include <cstring>
+#include <sstream>
 
 #include "iodev.hpp"
 #include "stdtty.hpp"
 #include "proc.hpp"
 
-#define SPEED 110 // charcters per second
+#define SPEED 110 // characters per second
 #define SMK_MASK (1 << (16-10))
 
-enum PTP_REASON
-  {
-    PTP_REASON_CHARACTER,
-
-    PTP_REASON_NUM
-  };
-
-static const char *ptp_reason[PTP_REASON_NUM] __attribute__ ((unused)) =
+PTP::PTP(IoToPIntf &p)
+  : IoDev(p)
 {
-  "Character ready"
-
-};
-
-PTP::PTP(Proc *p, STDTTY *stdtty)
-  : IODEV(p)
-{
-  this->p = p;
-  this->stdtty = stdtty;
-
   master_clear();
 }
 
@@ -57,20 +42,19 @@ void PTP::master_clear()
   mask = 0;
 
   tty_file.close();
-  pending_filename = 0;
+  filename.clear();
 
   power_on = false;
   ready = false;
 };
 
-PTP::STATUS PTP::ina(unsigned short instr, signed short &data)
+PTP::Status PTP::ina(uint16_t instr, int16_t &data)
 {
-  fprintf(stderr, "%s Input from punch\n", __PRETTY_FUNCTION__);
-  p->abort();
-  return STATUS_READY;
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr, "Input from punch"));
+  return Status::WAIT;
 }
 
-PTP::STATUS PTP::ota(unsigned short instr, signed short data)
+PTP::Status PTP::ota(uint16_t instr, int16_t data)
 {
   bool r = false;
   
@@ -86,13 +70,12 @@ PTP::STATUS PTP::ota(unsigned short instr, signed short data)
       
       ready = false;
       
-      p->queue((1000000 / SPEED), this, PTP_REASON_CHARACTER );
+      p.queue((1000000 / SPEED), *this, Event::CHARACTER );
     }
     break;
     
   default:
-    fprintf(stderr, "PTP: OTA '%04o\n", instr&0x3ff);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   }
   
   return status(r);
@@ -100,47 +83,60 @@ PTP::STATUS PTP::ota(unsigned short instr, signed short data)
 
 void PTP::turn_power_on()
 {
-  char buf[256];
-  char *cp;
+  std::string str;
   bool ascii_file = false;
   
   while (!tty_file.is_open()) {
     
-    if (pending_filename)
-      strcpy(buf, filename);
-    else
-      stdtty->get_input("PTP: Filename>", buf, 256, 0);
-    
-    cp = buf;
-    if (buf[0]=='&') {
-      ascii_file = 1;
-      cp++;
+    if (filename.size()) {
+      str = filename;
+    } else {
+      str = p.get_file_name("PTP", "ptp", "");
     }
 
-    tty_file.open(cp, (ascii_file ? TTY_file::WRITE_ASCII :
-                       TTY_file::WRITE_BINARY));
+    if (str[0]=='&') {
+      ascii_file = true;
+      str = str.substr(1);
+    }
+    
+    tty_file.open(str.c_str(), ((ascii_file) ? TTY_file::WRITE_ASCII : TTY_file::WRITE_BINARY));
 
     if (!tty_file.is_open()) {
-      fprintf(((pending_filename) ? stderr : stdout),
-              "Could not open <%s> for writing\n", cp);
-      if (pending_filename)
-        p->abort();
+      std::stringstream ss;
+      ss << "Could not open <" << str << "> for writing";
+
+      IoToPIntf::Level level = ((filename.size()) ? IoToPIntf::Level::FATAL : IoToPIntf::Level::ERROR);
+      
+      p.anomaly(level, ss.str());
     }
-    
-    if (pending_filename)
-      delete filename;
-    
-    pending_filename = 0;
+
+    filename.clear();
   }
 
   if (!power_on) {
     // 5 second turn-on delay
-    p->queue(5000000, this, PTP_REASON_CHARACTER );
+    p.queue(5000000, *this, Event::CHARACTER );
     power_on = true;
   }   
 }
 
-PTP::STATUS PTP::ocp(unsigned short instr)
+PTP::Status PTP::sks(uint16_t instr)
+{
+  bool r = 0;
+  
+  switch(instr & 0700) {
+  case 0000: r = ready; break;
+  case 0100: r = power_on; break;
+  case 0400: r = !(ready && mask); break;
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
+void PTP::ocp(uint16_t instr)
 {
   switch(instr & 0700) {
   case 0000:
@@ -161,62 +157,42 @@ PTP::STATUS PTP::ocp(unsigned short instr)
     break;
     
   default:
-    fprintf(stderr, "PTP: OCP '%04o\n", instr&0x3ff);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   }
-  return STATUS_READY;
 }
 
-PTP::STATUS PTP::sks(unsigned short instr)
-{
-  bool r = 0;
-  
-  switch(instr & 0700) {
-  case 0000: r = ready; break;
-  case 0100: r = power_on; break;
-  case 0400: r = !(ready && mask); break;
-    
-  default:
-    fprintf(stderr, "PTP: SKS '%04o\n", instr&0x3ff);
-    p->abort();
-  }
-  
-  return status(r);
-}
-
-PTP::STATUS PTP::smk(unsigned short mask)
+void PTP::smk(uint16_t mask)
 {
   this->mask = mask & SMK_MASK;
   
   if (ready && this->mask)
-    p->set_interrupt(this->mask);
+    p.set_interrupt(this->mask);
   else
-    p->clear_interrupt(SMK_MASK);
-
-  return STATUS_READY;
+    p.clear_interrupt(SMK_MASK);
 }
 
 void PTP::event(int reason)
 {
-  switch(reason) {
-  case REASON_MASTER_CLEAR:
+  const Event event {static_cast<Event>(reason)};
+
+  switch(event) {
+  case Event::MASTER_CLEAR:
     master_clear();
     break;
     
-    case PTP_REASON_CHARACTER:
-      ready = true;
-      break;
-      
+  case Event::CHARACTER:
+    ready = true;
+    break;
+    
   default:
-    fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-    p->abort();
+    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
     break;
   }
 }
 
-void PTP::set_filename(char *filename)
-{
+void PTP::set_filename(const std::string &filename, unsigned subdevice) {
   master_clear();
-  this->filename = strdup(filename);
-  pending_filename = 1;
+  this->filename = filename;
 }
+
+DEF_STD_NAME(PTP)

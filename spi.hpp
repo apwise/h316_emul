@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2018, 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #ifndef _SPI_HPP_
@@ -25,12 +25,12 @@
 #include <deque>
 #include <ostream>
 
+#include "p_to_io_intf.hpp"
+#include "p_to_dmc_intf.hpp"
 #include "iodev.hpp"
 #include "spi_dev.hpp"
 
-class Proc;
-
-class SPI : public IODEV
+class SPI : public PToIoIntf, public PToDmcIntf, public IoDev
 {
 public:
   // Constants for constructor
@@ -44,7 +44,7 @@ public:
   static const unsigned int BOOT_CTRL =      0x000; // Dual-SM, 8 dummy
   static const unsigned int BOOT_ADDR = 0x00000000; // Address in SPI Flash
 
-  SPI(Proc *p,
+  SPI(IoToPIntf &p,
       SpiDev *devices[CHIP_SELECTS],
       
       unsigned int smk_bit   = SMK_BIT,
@@ -56,14 +56,17 @@ public:
       );
   ~SPI();
   
-  STATUS ina(unsigned short instr, signed short &data);
-  STATUS ocp(unsigned short instr);
-  STATUS sks(unsigned short instr);
-  STATUS ota(unsigned short instr, signed short data);
-  STATUS smk(unsigned short mask);
+  Status ina(uint16_t instr, int16_t &data);
+  Status sks(uint16_t instr);
+  Status ota(uint16_t instr, int16_t data);
+  void ocp(uint16_t instr);
+  void smk(uint16_t mask);
 
   void event(int reason);
-  void dmc(signed short &data, bool erl);
+  void set_filename(const std::string &filename, unsigned subdevice);
+
+  void dmc(unsigned dmc_dev, int16_t &data, bool erl);
+
 
 private:
   class Inner
@@ -152,9 +155,9 @@ private:
   static cui_t OTA_ARGL   = 007; // Output address register low
 
 
-  enum SPI_REASON {
-    SPI_REASON_STATE = 0,
-    SPI_REASON_NUM
+  enum class Event {
+    MASTER_CLEAR = EVENT_MASTER_CLEAR,    
+    STATE = 0,
   };
 
   enum SPI_STATE {
@@ -241,6 +244,7 @@ private:
   bool event_pending;
   bool dmc_pending;
   
+  const char *name();
   void master_clear(void);
   bool spi_pilXX();
   bool ready();

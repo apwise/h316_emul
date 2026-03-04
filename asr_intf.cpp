@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #include "asr_intf.hpp"
@@ -33,32 +33,23 @@
 
 #define STOP_CODE 0023
 
-enum ASR_REASON
-  {
-    ASR_REASON_DUMMY_CYCLE,
-    ASR_REASON_OUTPUT,
-    ASR_REASON_INPUT,
+#define iEvent(x) static_cast<int>(Event::x)
+#define MILLISECONDS_CHAR ((1000000*11)/ BAUD)
+#define MILLISECONDS_START ((1000000*2)/ BAUD)
 
-    ASR_REASON_NUM
-  };
-
-static const char *asr_reason[ASR_REASON_NUM] __attribute__ ((unused)) =
+AsrIntf::AsrIntf(IoToPIntf &p)
+  : IoDev(p)
 {
-  "Dummy cycle",
-  "Output",
-  "Input"
-};
-
-ASR_INTF::ASR_INTF(Proc *p, STDTTY *stdtty)
-  : IODEV(p)
-{
-  this->p = p;
-  asr = new ASR(stdtty);
+  asr = new Asr(p);
 
   master_clear();
 }
 
-void ASR_INTF::master_clear()
+const char *AsrIntf::name() {
+  return "ASR";
+}
+
+void AsrIntf::master_clear()
 {
   mask = 0;
 
@@ -68,10 +59,10 @@ void ASR_INTF::master_clear()
 
   output_mode = false;
   output_pending = false;
-  activity = ASR_ACTIVITY_NONE;
+  activity = Activity::NONE;
 }
 
-ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
+AsrIntf::Status AsrIntf::ina(uint16_t instr, int16_t &data)
 {
   char c;
   bool r = ready;
@@ -83,13 +74,12 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
         case 0004: data = data_buf; break;
         case 0204: data = data_buf & 0x3f; break;
         default:
-          fprintf(stderr, "ASR_INTF: INA '%04o\n", instr&0x3ff);
-          p->abort();
+          p.anomaly(IoToPIntf::Level::ERROR, message(instr));
         }
                         
       input_pending = false;
       ready = false;
-      p->clear_interrupt(SMK_MASK);
+      p.clear_interrupt(SMK_MASK);
     }
   else
     {
@@ -99,10 +89,10 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
             {
               data_buf = c & 0xff;
                                                         
-              activity = ASR_ACTIVITY_INPUT;
+              activity = Activity::INPUT;
               input_pending = true;
 
-              p->queue(((1000000*11)/ BAUD), this, ASR_REASON_INPUT );
+              p.queue(MILLISECONDS_CHAR, *this, iEvent(INPUT));
             }
         }
     }
@@ -110,59 +100,53 @@ ASR_INTF::STATUS ASR_INTF::ina(unsigned short instr, signed short &data)
   return status(r);
 }
 
-ASR_INTF::STATUS ASR_INTF::ocp(unsigned short instr)
+void AsrIntf::ocp(uint16_t instr)
 {
   switch(instr & 0700)
     {
     case 0000:
                                                 
       output_mode = 0;
-      activity = ASR_ACTIVITY_NONE;
+      activity = Activity::NONE;
       ready = false;
-      p->clear_interrupt(SMK_MASK);
+      p.clear_interrupt(SMK_MASK);
       break;
 
     case 0100:
                                                 
       output_mode = 1;
-      activity = ASR_ACTIVITY_DUMMY;
+      activity = Activity::DUMMY;
       ready = 1;
-      p->set_interrupt(mask);
+      p.set_interrupt(mask);
 
-      p->queue((1000000 / BAUD), this, ASR_REASON_DUMMY_CYCLE );
+      p.queue(MILLISECONDS_START, *this, iEvent(DUMMY_CYCLE) );
                         
       break;
                         
     default:
-      fprintf(stderr, "ASR_INTF: OCP '%04o\n", instr&0x3ff);
-      p->abort();
+      p.anomaly(IoToPIntf::Level::ERROR, message(instr));
     }
-  return STATUS_READY;
 }
 
-ASR_INTF::STATUS ASR_INTF::sks(unsigned short instr)
+AsrIntf::Status AsrIntf::sks(uint16_t instr)
 {
   bool r = false;
 
   switch(instr & 0700)
     {
     case 0000: r = ready; break;
-    case 0100: r = (activity == ASR_ACTIVITY_NONE); break;
+    case 0100: r = (activity == Activity::NONE); break;
     case 0400: r = !(ready && mask); break;
     case 0500: r = ((!output_mode) && ready &&
                     ((data_buf & 0x7f) == STOP_CODE)); break;
     default:
-      fprintf(stderr, "ASR_INTF: SKS '%04o\n", instr&0x3ff);
-      p->abort();
+      p.anomaly(IoToPIntf::Level::ERROR, message(instr));
     }
-
-  //if (( (instr & 0x03ff) == 0004) && r)
-  //    Printf("%s %04o r=%d\n",  __PRETTY_FUNCTION__, instr & 0x03ff, r);
 
   return status(r);
 }
 
-ASR_INTF::STATUS ASR_INTF::ota(unsigned short instr, signed short data)
+AsrIntf::Status AsrIntf::ota(uint16_t instr, int16_t data)
 {
   bool r = ready;
 
@@ -177,103 +161,109 @@ ASR_INTF::STATUS ASR_INTF::ota(unsigned short instr, signed short data)
             (data & 0x3f);
           break;
         default:
-          fprintf(stderr, "ASR_INTF: OTA '%04o\n", instr&0x3ff);
-          p->abort();
+          p.anomaly(IoToPIntf::Level::ERROR, message(instr));
         }
                         
       ready = 0;
-      p->clear_interrupt(SMK_MASK);
+      p.clear_interrupt(SMK_MASK);
 
-      if (activity == ASR_ACTIVITY_DUMMY)
+      if (activity == Activity::DUMMY)
         output_pending = true;
       else
         {
-          activity = ASR_ACTIVITY_OUTPUT;
-          p->queue(((1000000*11) / BAUD), this, ASR_REASON_OUTPUT );
+          activity = Activity::OUTPUT;
+          p.queue(MILLISECONDS_CHAR, *this, iEvent(OUTPUT) );
         }
     }
 
   return status(r);
 }
 
-ASR_INTF::STATUS ASR_INTF::smk(unsigned short mask)
+void AsrIntf::smk(uint16_t mask)
 {
   this->mask = mask & SMK_MASK;
 
   if (ready && this->mask)
-    p->set_interrupt(this->mask);
+    p.set_interrupt(this->mask);
   else
-    p->clear_interrupt(SMK_MASK);
-  return STATUS_READY;
+    p.clear_interrupt(SMK_MASK);
 }
 
-void ASR_INTF::event(int reason)
+void AsrIntf::event(int reason)
 {
-  switch (reason)
-    {
-    case REASON_MASTER_CLEAR:
-      master_clear();
-      break;
+  const Event event {static_cast<Event>(reason)};
 
-    case ASR_REASON_DUMMY_CYCLE:
-      if (activity == ASR_ACTIVITY_DUMMY)
-        {
-          if (output_pending)
-            {
-              activity = ASR_ACTIVITY_OUTPUT;
-              p->queue(((1000000*11) / BAUD), this, ASR_REASON_OUTPUT );
-              output_pending = false;
-            }
-          else
-            activity = ASR_ACTIVITY_NONE;
-        }
-      break;
-
-    case ASR_REASON_OUTPUT:
-      if (activity == ASR_ACTIVITY_OUTPUT)
-        {
-          activity = ASR_ACTIVITY_NONE;
-          ready = 1;
-          p->set_interrupt(mask);
-
-          //Printf("ASR out=<0x%0x>\n", data_buf);
-          asr->put_asrch(data_buf);
-        }
-      break;
-
-    case ASR_REASON_INPUT:
-      if (activity == ASR_ACTIVITY_INPUT)
-        {
-          activity = ASR_ACTIVITY_NONE;
-          input_pending = false;
-          ready = true;
-          p->set_interrupt(mask);
-        }
-      break;
-
-    default:
-      fprintf(stderr, "Unexpected reason: %d\n", reason);
-      p->abort();
+  switch (event) {
+    
+  case Event::MASTER_CLEAR:
+    master_clear();
+    break;
+    
+  case Event::DUMMY_CYCLE:
+    if (activity == Activity::DUMMY) {
+      if (output_pending) {
+        activity = Activity::OUTPUT;
+        p.queue(MILLISECONDS_CHAR, *this, iEvent(OUTPUT) );
+        output_pending = false;
+      } else {
+        activity = Activity::NONE;
+      }
     }
-
+    break;
+    
+  case Event::OUTPUT:
+    if (activity == Activity::OUTPUT) {
+      activity = Activity::NONE;
+      ready = 1;
+      p.set_interrupt(mask);
+      
+      asr->put_asrch(data_buf);
+    }
+    break;
+    
+  case Event::INPUT:
+    if (activity == Activity::INPUT) {
+      activity = Activity::NONE;
+      input_pending = false;
+      ready = true;
+        p.set_interrupt(mask);
+    }
+    break;
+    
+  case Event::PTR_ON:
+    break;
+    
+  case Event::PTP_ON:
+    break;
+    
+  default:
+    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
+  }
 }
 
-void ASR_INTF::set_filename(char *filename, bool asr_ptp)
+void AsrIntf::set_filename(const std::string &filename, unsigned subdevice) {
+  // Forward to the ASR
+  asr->set_filename(filename, subdevice);
+}
+
+/*
+void AsrIntf::set_filename(char *filename, bool asr_ptp)
 {
   asr->set_filename(filename, asr_ptp);
 }
  
-void ASR_INTF::asr_ptr_on(char *filename)
+void AsrIntf::asr_ptr_on(char *filename)
 {
   asr->asr_ptr_on(filename);
 }
  
-void ASR_INTF::asr_ptp_on(char *filename)
+void AsrIntf::asr_ptp_on(char *filename)
 {
   asr->asr_ptp_on(filename);
 }
- 
-bool ASR_INTF::special(char c)
+*/
+
+bool AsrIntf::special(char c)
 {
   return asr->special(c);
 }

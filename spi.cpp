@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2018, 2024, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #include "spi.hpp"
@@ -57,7 +57,7 @@ std::ostream &operator<<(std::ostream &os, const SPI::SPI_STATE &state)
   return os;  
 }
 
-SPI::SPI(Proc *p, SpiDev *devices[CHIP_SELECTS],
+SPI::SPI(IoToPIntf &p, SpiDev *devices[CHIP_SELECTS],
          unsigned int smk_bit,
          unsigned int pwr_dly,
          unsigned int dmc_chn,
@@ -65,7 +65,7 @@ SPI::SPI(Proc *p, SpiDev *devices[CHIP_SELECTS],
          unsigned int boot_ctrl,
          unsigned int boot_addr
          )
-  : IODEV(p)
+  : IoDev(p)
   , smk_mask(1 << (16-smk_bit))
   , pwr_dly(pwr_dly)
   , dmc_chn(dmc_chn)
@@ -81,6 +81,10 @@ SPI::~SPI()
 {
 }
 
+const char *SPI::name() {
+  return "SPI";
+}
+
 void SPI::master_clear()
 {
   intr_mask = false;
@@ -94,7 +98,7 @@ void SPI::master_clear()
   last      = false;
   last_w    = false;
   
-  reset_time = p->get_half_cycles();
+  reset_time = p.get_half_cycles();
   state = STATE_POWR;
 
   wprot_ll  = true;
@@ -116,7 +120,7 @@ bool SPI::check_power()
   bool r = true;
   
   if (state == STATE_POWR) {
-    long long time = p->get_half_cycles();
+    long long time = p.get_half_cycles();
     if ((time - reset_time) >= pwr_dly) {
       state = STATE_IDLE;
       r = false;
@@ -127,11 +131,11 @@ bool SPI::check_power()
   return r;
 }
 
-SPI::STATUS SPI::ina(unsigned short instr, signed short &data)
+SPI::Status SPI::ina(uint16_t instr, int16_t &data)
 {
   bool skip = false;
   
-  if (check_power()) return STATUS_WAIT;
+  if (check_power()) return Status::WAIT;
   
   switch(function_code(instr)) {
   case INA_RDAT: case INA_CDAT: 
@@ -157,10 +161,10 @@ SPI::STATUS SPI::ina(unsigned short instr, signed short &data)
   default: skip = false; break;
   }
 
-  return (skip) ? STATUS_READY : STATUS_WAIT;
+  return (skip) ? Status::READY : Status::WAIT;
 }
 
-SPI::STATUS SPI::ocp(unsigned short instr)
+void SPI::ocp(uint16_t instr)
 {
   switch(function_code(instr)) {
   case OCP_BOOT:
@@ -206,15 +210,13 @@ SPI::STATUS SPI::ocp(unsigned short instr)
     break;
   default: /* Do nothing */ break;
   }
-  
-  return STATUS_READY;
 }
 
-SPI::STATUS SPI::sks(unsigned short instr)
+SPI::Status SPI::sks(uint16_t instr)
 {
   bool skip = false;
   
-  if (check_power()) return STATUS_WAIT;
+  if (check_power()) return Status::WAIT;
 
   switch(function_code(instr)) {
   case SKS_RDY:   skip = (ready() && (!mode_dmc)); break;
@@ -224,14 +226,14 @@ SPI::STATUS SPI::sks(unsigned short instr)
   case SKS_NINTR: skip = !spi_pilXX(); break;
   default:        skip = false; break;
   }
-  return (skip) ? STATUS_READY : STATUS_WAIT;
+  return (skip) ? Status::READY : Status::WAIT;
 }
 
-SPI::STATUS SPI::ota(unsigned short instr, signed short data)
+SPI::Status SPI::ota(uint16_t instr, int16_t data)
 {
   bool skip = false;
 
-  if (check_power()) return STATUS_WAIT;
+  if (check_power()) return Status::WAIT;
 
   switch(function_code(instr)) {
   case OTA_WDAT:
@@ -263,15 +265,14 @@ SPI::STATUS SPI::ota(unsigned short instr, signed short data)
   default: skip = false; break;
   }
   
-  return (skip) ? STATUS_READY : STATUS_WAIT;
+  return (skip) ? Status::READY : Status::WAIT;
 }
 
-SPI::STATUS SPI::smk(unsigned short mask)
+void SPI::smk(uint16_t mask)
 {
-  return STATUS_WAIT;
 }
 
-void SPI::dmc(signed short &data, bool erl)
+void SPI::dmc(unsigned dmc_dev, int16_t &data, bool erl)
 {
   dmc_pending = false;
   if (mode_out) {
@@ -295,13 +296,15 @@ void SPI::dmc(signed short &data, bool erl)
 
 void SPI::event(int reason)
 {
-  switch (reason) {
+  const Event event {static_cast<Event>(reason)};
 
-  case REASON_MASTER_CLEAR:
+  switch (event) {
+
+  case Event::MASTER_CLEAR:
     master_clear();
     break;
     
-  case SPI_REASON_STATE:
+  case Event::STATE:
     event_pending = false;
     if (inner.rd_valid()) {
       service_read_data();
@@ -350,7 +353,7 @@ void SPI::service_read_data()
       data_l   = true;
     }
     if (data_l && (data_h || (!mode_16)) && mode_dmc && (!dmc_pending)) {
-      p->set_dmcreq(1 << dmc_chn);
+      p.set_break(dmc_chn + 1);
       dmc_pending = true;
     }
   }
@@ -679,7 +682,7 @@ void SPI::state_machine(bool strt_cmnd)
           } else {
             stepping = false;
             if (mode_dmc && (!dmc_pending)) {
-              p->set_dmcreq(1 << dmc_chn);
+              p.set_break(dmc_chn + 1);
               dmc_pending = true;
             }
           }
@@ -747,7 +750,7 @@ void SPI::state_machine(bool strt_cmnd)
   
   if ((half_cycles != 0) && (state != STATE_IDLE)) {
     assert(!event_pending);
-    p->queue_hc(half_cycles, this, SPI_REASON_STATE);
+    p.queue_hc(half_cycles, *this, static_cast<int>(Event::STATE));
     event_pending = true;
   }
 }
@@ -870,3 +873,5 @@ bool SPI::Inner::resp_idle()
   idle = false;
   return r;
 }
+
+DEF_NULL_SET_FILENAME(SPI)

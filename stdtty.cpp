@@ -47,7 +47,7 @@
 #define CR 015
 #define ESCAPE 0x1b
 
-#define FCNTL_EXIT 2
+#define PERROR_EXIT 2
 #define EOF_EXIT   2
 
 /*
@@ -83,124 +83,141 @@
  * purpose.
  *
  */
+#include <mutex>
 
-/* Use this variable to remember original terminal attributes. */
-struct termios *STDTTY::saved_attributes = NULL;
-bool STDTTY::cannonical;
+/*
+ * Saved state is stored via an opaque pointer to avoid having
+ * headers defining these structures included everywhere.
+ */
+struct SavedState {
+  struct termios t;
+  struct sigaction sa;
+  int flags;
+};
 
-Proc *STDTTY::p;
-bool (*STDTTY::call_special_chars)(Proc *p, int k);
+StdTty *StdTty::pStdTty{nullptr};
 
-STDTTY::STDTTY()
+StdTty &StdTty::getInstance()
 {
-  p = NULL;
-  if (!saved_attributes)
-    {
-      save_input_mode();
-      if (isatty(STDIN_FILENO))
-          install_handler();
+  static std::mutex mutex;
+  if (pStdTty == nullptr) {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (pStdTty == nullptr) {
+      pStdTty = new StdTty();
     }
-
-  tty_input = 0;
-  pending = 0;
-  escape = 0;
-
-  last_was_cr = false;
-  last_was_lf = false;
-
-  cannonical = 1;
-  set_non_cannonical();
-
+  }
+  return *pStdTty;
 }
 
-void STDTTY::set_proc(Proc *p, bool (*call_special_chars)(Proc *p, int k))
+StdTty::StdTtyDestructor::~StdTtyDestructor() {
+  if (StdTty::pStdTty) {
+    delete StdTty::pStdTty;
+    StdTty::pStdTty = nullptr;
+  }
+};
+
+void StdTty::catch_sigio(int sig) {
+  pStdTty->tty_input = true;
+};
+
+
+StdTty::StdTty()
+  : savedState(nullptr)
+  , cannonical(true)
+  , tty_input(false)
+  , pending(false)
+  , escape(false)
+  , last_was_cr(false)
+  , last_was_lf(false)
+  , p(nullptr)
+  , call_special_chars(nullptr)
+{
+  savedState = new SavedState;
+  
+  if (isatty(STDIN_FILENO)) {
+    // Install a signal handler to catch SIGIO
+    struct sigaction sa {};
+    sa.sa_handler = catch_sigio;
+
+    tty_input = false;
+    
+    int res = sigaction(SIGIO, &sa, &savedState->sa);
+    perror(res, "StdTty: sigaction()");
+
+    // Save current stdin flags
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    perror(flags, "StdTty: sigaction()");
+    
+    savedState->flags = flags; // Save to restore at exit
+    
+    flags |= O_NONBLOCK;
+    
+    res = fcntl(STDIN_FILENO, F_SETFL, flags);
+    perror(res, "StdTty: fcntl(F_SETFL)");
+
+    // Save the current terminal attributes
+    res = tcgetattr(STDIN_FILENO, &savedState->t);
+    perror(res, "StdTty: tcgetattr()");
+  }
+  
+  set_cannonical(false);
+}
+
+StdTty::~StdTty() {
+  set_cannonical(true); // Restore terminal characteristics
+  if (isatty(STDIN_FILENO)) {
+    
+    // Restore original stdin flags 
+    int res = fcntl(STDIN_FILENO, F_SETFL, saved_flags);
+    perror(res, "~StdTty: fcntl(F_SETFL)");
+
+    // Restore the original action on SIGIO
+    res = sigaction(SIGIO, &savedState->sa, nullptr);
+    perror(res, "~StdTty: sigaction()");
+  }
+  if (savedState) {
+    delete savedState;
+  }
+}
+
+void StdTty::set_proc(Proc *p, bool (*call_special_chars)(Proc *p, int k))
 {
   this->p = p;
   this->call_special_chars = call_special_chars;
 }
 
-/*
- * The input mode is saved in order that it can be reinstated
- * after leaving the program. Otherwise they remain in force
- * and this is very likely to confuse the shell!
- */
-void STDTTY::save_input_mode()
+void StdTty::set_cannonical(bool c)
 {
-  saved_attributes = new termios;
+  int res;
+  tty_input = false;
+  pending = false;
 
-  /* Make sure stdin is a terminal. */
-  if (isatty (STDIN_FILENO)) {
+  if ((c != cannonical) && isatty(STDIN_FILENO)) {
 
-    /* Save the terminal attributes so we can restore them later. */
-    tcgetattr (STDIN_FILENO, saved_attributes);
-    atexit (STDTTY::reset_input_mode);
-  }
-}
+    if (c) {
+      // non-cannonical to cannonical
+      
+      res = tcsetattr(STDIN_FILENO, TCSAFLUSH, &savedState->t);
+      perror(res, "StdTty::set_cannonical(true): tcsetattr()");
+    } else {
+      // cannonical to non-cannonical
 
-void STDTTY::reset_input_mode (void)
-{
-  tcsetattr (STDIN_FILENO, TCSANOW, saved_attributes);
-}
-
-/*
- * set the non-cannonical mode.
- */
-
-void STDTTY::set_non_cannonical()
-{
-  struct termios tattr;
-
-  //cout << __PRETTY_FUNCTION__ << "\n";
-
-  if (cannonical && isatty(STDIN_FILENO))
-    {
-      tty_input = 0;
-      pending = 0;
-
-      tcgetattr (STDIN_FILENO, &tattr);
-      tattr.c_lflag &= ~(ICANON|ECHO); //Clear ICANON and ECHO.
-      tattr.c_iflag |= INLCR;          //Allow CR characters
-      tattr.c_iflag &= ~IGNCR;
-      tattr.c_iflag &= ~ICRNL;
-      tattr.c_iflag &= ~INLCR;
-
-      //tattr.c_oflag &= ~ONLCR;
+      struct termios tattr;
+      res = tcgetattr (STDIN_FILENO, &tattr);
+      perror(res, "StdTty::set_cannonical(false): tcgetattr()");
+      
+      tattr.c_lflag &= ~(ICANON|ECHO);
+      tattr.c_iflag &= ~(IGNCR | ICRNL | INLCR);
       tattr.c_oflag |= ONLCR;
       tattr.c_cc[VMIN] = 0;
       tattr.c_cc[VTIME] = 0;
-      tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
-
-      cannonical = 0;
+      
+      res = tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
+      perror(res, "StdTty::set_cannonical(false): tcsetattr()");
     }
-}
-
-/*
- * set the cannonical mode.
- */
-
-void STDTTY::set_cannonical()
-{
-  struct termios tattr;
-
-  //cout << __PRETTY_FUNCTION__ << "\n";
-
-  if (!cannonical)
-    {
-      tty_input = 0;
-      pending = 0;
-
-      /* Set the funny terminal modes. */
-      tcgetattr (STDIN_FILENO, &tattr);
-      tattr.c_lflag |= ICANON|ECHO; /* Set ICANON and ECHO. */
-      tattr.c_iflag &= ~INLCR;      // Disallow CR charcters
-      tattr.c_iflag |= ICRNL;
-      tattr.c_oflag |= ONLCR;
-      tattr.c_cc[VERASE] = '\010';  // Make backspace delete
-      tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
-
-      cannonical = 1;
-    }
-
+    
+    cannonical = c;
+  }
 }
 
 /*
@@ -208,30 +225,27 @@ void STDTTY::set_cannonical()
  * and send individual characters from keyboard and
  * to printer.
  */
-bool STDTTY::got_char(char &c)
+bool StdTty::got_char(char &c)
 {
   bool r;
   
-  if (pending)
-    {
-      r = 1;
-      pending = 0;
-      c = pending_char;
+  if (pending) {
+    r = 1;
+    pending = 0;
+    c = pending_char;
+  } else {
+    r = (read(STDIN_FILENO, &c, 1) == 1);
+    
+    if ((! isatty(STDIN_FILENO)) && (c == '\n')) {
+      // If input redirected from a file (or pipe) then translate
+      // a line-end to a carriage-return, as if typed on keyboard.
+      c = '\r';
     }
-  else
-    {
-      r = (read(STDIN_FILENO, &c, 1) == 1);
-
-      if ((! isatty(STDIN_FILENO)) && (c == '\n')) {
-        // If input redirected from a file (or pipe) then translate
-        // a line-end to a carriage-return, as if typed on keyboard.
-        c = '\r';
-      }
-
-      if (r)
-        r = !special_action(c);
-    }
-
+    
+    if (r)
+      r = !special_action(c);
+  }
+  
   return r;
 }
 
@@ -247,48 +261,43 @@ bool STDTTY::got_char(char &c)
  * version of this emulator did that) however this means
  * that messages from the emulator (generated with printf() or
  * cout) don't behave properly because the CR is missing
- * (/n is LF).
- * So instead this routine replaces CR-LF or LF-CR sequences
+ * (\n is LF).
+ * So instead, this routine replaces CR-LF or LF-CR sequences
  * by the newline (\n) character. Isolated CR or LF characters
  * are passed unchanged.
+ *
+ * TODO: Look at the cr-xoff-rubout-lf sequence
  */
-void STDTTY::putch(const char &c)
+void StdTty::putch(const char c)
 {
   bool send = true;
   char ch = c;
   bool send_cr_or_lf = false;
 
-  if (last_was_cr)
-    {
-      if ((ch & 0x7f) == LF)
-        ch = '\n'; // CR-LF sequence
-      else
-        send_cr_or_lf = true;
-
-      last_was_cr = false;
-    }
-  else if (last_was_lf)
-    {
-      if ((ch & 0x7f) == CR)
-        ch = '\n'; // LF-CR sequence
-      else
-        send_cr_or_lf = true;
-
-      last_was_lf = false;
-    }
-  else if ((ch & 0x7f) == CR)
-    {
-      last_was_cr = true;
-      send = false;
-      cr_or_lf = ch;
-    }
-  else if ((ch & 0x7f) == LF)
-    {
-      last_was_lf = true;
-      send = false;
-      cr_or_lf = ch;
-    }
-
+  if (last_was_cr) {
+    if ((ch & 0x7f) == LF)
+      ch = '\n'; // CR-LF sequence
+    else
+      send_cr_or_lf = true;
+    
+    last_was_cr = false;
+  } else if (last_was_lf) {
+    if ((ch & 0x7f) == CR)
+      ch = '\n'; // LF-CR sequence
+    else
+      send_cr_or_lf = true;
+    
+    last_was_lf = false;
+  } else if ((ch & 0x7f) == CR) {
+    last_was_cr = true;
+    send = false;
+    cr_or_lf = ch;
+  } else if ((ch & 0x7f) == LF) {
+    last_was_lf = true;
+    send = false;
+    cr_or_lf = ch;
+  }
+  
   if (send_cr_or_lf || send) {
     ssize_t n;
     do {
@@ -307,7 +316,7 @@ void STDTTY::putch(const char &c)
 
 #ifndef HAVE_LIBREADLINE
 
-#define NRL_BUFLEN 256
+//#define NRL_BUFLEN 256
 
 static char *no_readline(const char *prompt)
 {
@@ -329,12 +338,12 @@ static char *no_readline(const char *prompt)
 }
 #endif
 
-void STDTTY::get_input(const char *prompt, char *str, unsigned len, bool more)
+void StdTty::get_input(const char *prompt, char *str, unsigned len, bool more)
 {
   unsigned n;
   char *ptr;
 
-  set_cannonical();
+  set_cannonical(true);
 
 #ifdef HAVE_LIBREADLINE
   ptr = readline(prompt);
@@ -378,96 +387,45 @@ void STDTTY::get_input(const char *prompt, char *str, unsigned len, bool more)
 #endif
 
   if (!more)
-    set_non_cannonical();
+    set_cannonical(false);
 }
 
 /*
  * Terminal signal handler stuff...
  */
 
-int STDTTY::fcntl_perror(char *prefix, int fildes, int cmd, int arg)
-{
-  int res;
-
-  res = fcntl(fildes, cmd, arg);
-  if (res == -1)
-    {
-      perror(prefix);
-      exit(FCNTL_EXIT);
-    }
-  return res;
+void StdTty::perror(int res, const char *prefix) {
+  if (res == -1) {
+    ::perror(prefix);
+    exit(PERROR_EXIT);
+  }
 }
 
-int STDTTY::saved_flags;
-
-void STDTTY::install_handler()
-{
-  int flags;
-
-  signal (SIGIO, catch_sigio);
-
-  flags = fcntl_perror(const_cast<char *>("STDTTY::install_handler() F_GETFL"),
-                       STDIN_FILENO, F_GETFL, 0);
-
-  saved_flags = flags; // Save to restore at exit
-
-  flags |= O_NONBLOCK;
-
-  (void) fcntl_perror(const_cast<char *>("STDTTY::install_handler() F_SETFL"),
-                      STDIN_FILENO, F_SETFL, flags);
-
-  // Don't think this SETOWN is needed...
-  // flags = fcntl (STDIN_FILENO, F_SETOWN, getpid());
-
-  tty_input = 0;
-  atexit(STDTTY::uninstall_handler);
-}
-
-void STDTTY::uninstall_handler()
-{
-  (void) fcntl_perror(const_cast<char *>("STDTTY::uninstall_handler() F_SETFL"),
-                      STDIN_FILENO, F_SETFL, saved_flags);
-}
-
-char STDTTY::pending_char;
-bool STDTTY::pending;
-bool STDTTY::tty_input;
-bool STDTTY::escape;
-
-void STDTTY::catch_sigio(int sig)
-{
-  tty_input = 1;
-  signal (sig, catch_sigio);
-}
-
-void STDTTY::service_tty_input()
+void StdTty::service_tty_input()
 {
   bool r;
 
   tty_input = 0;
 
-  if ((!cannonical) && isatty(0))
-    {
-      while ((r = read (STDIN_FILENO, &pending_char, 1)) == 1)
-        {
-          /*
-           * if pending is already set then at this point
-           * we drop data. Unfortunate, but we have to move
-           * on else the special processing will not happen for
-           * the queued characters.
-           */
-          if (pending)
-            {
-              putc(0x07, stdout);
-              fflush(stdout);
-            }
-          if (r)
-            pending = !special_action(pending_char);
+  if ((!cannonical) && isatty(0)) {
+      while ((r = read (STDIN_FILENO, &pending_char, 1)) == 1) {
+        /*
+         * if pending is already set then at this point
+         * we drop data. Unfortunate, but we have to move
+         * on else the special processing will not happen for
+         * the queued characters.
+         */
+        if (pending) {
+          putc(0x07, stdout);
+          fflush(stdout);
         }
-    }
+        if (r)
+          pending = !special_action(pending_char);
+      }
+  }
 }
 
-bool STDTTY::special_action(char c)
+bool StdTty::special_action(char c)
 {
   // cout << __PRETTY_FUNCTION__ << "\n";
   bool r=0;
@@ -477,19 +435,22 @@ bool STDTTY::special_action(char c)
      be set. However, not all terminals do this. In particular,
      the gnome-terminal sends ESC folowed by <c>. */
 
-  if (k == ESCAPE)
-    {
-      escape = true;
-      return true; // Don't want ESC to become pending
-    }
+  if (k == ESCAPE) {
+    escape = true;
+    return true; // Don't want ESC to become pending
+  }
 
-  if (escape)
+  if (escape) {
     k |= 0x80; // try putting on the top bit
+  }
 
-  if ( k & 0x80 )
+  if ( k & 0x80 ) {
     r = (*call_special_chars)(p, k);
-
+  }
+  
   escape = false;
-
+  
   return r;
 }
+
+

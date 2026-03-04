@@ -21,26 +21,32 @@
 #define _ASR_HPP_
 
 #include "tty_file.hpp"
+#include "io_to_p_intf.hpp"
+#include "iodev.hpp"
 
-class STDTTY;
+class StdTty;
 
 #define ASR_PTR 0
 #define ASR_PTP 1
 
-class ASR
+class Asr : public IoDev
 {
 public:
-  ASR(STDTTY *stdtty);
+  Asr(IoToPIntf &p);
   bool get_asrch(char &c, bool local_echo=true);
   void put_asrch(char c);
-  void set_filename(const char *filename, bool asr_ptp);
-  void asr_ptp_on(const char *filenamep);
-  void asr_ptr_on(const char *filenamep);
+  void set_filename(const std::string &filename, unsigned subdevice);
+  void ptp_on();
+  void ptr_on();
+
   bool file_input(){return (running[ASR_PTR]);};
 
   bool special(char c);
+  
+  const char *name();
+
 private:
-  STDTTY *stdtty;
+  StdTty &stdTty;
 
   TTY_file tty_file[2];
   char *filename[2];
@@ -63,7 +69,6 @@ private:
   void get_filename(bool asr_ptp);
   void close_file(bool asr_ptp);
   void echo_asrch(char c, bool from_serial);
-
 };
 
 #endif // _ASR_HPP_

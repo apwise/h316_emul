@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2008, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,29 +16,27 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 #ifndef _PLT_HPP_
 #define _PLT_HPP_
 
+#include "p_to_io_intf.hpp"
 #include "iodev.hpp"
 #include <cstdio>
 
-class Proc;
-class STDTTY;
-
-class PLT : public IODEV
+class PLT : public PToIoIntf, public IoDev
 {
  public:
-  PLT(Proc * const p, STDTTY * const stdtty);
-  STATUS ina(unsigned short instr, signed short &data);
-  STATUS ocp(unsigned short instr);
-  STATUS sks(unsigned short instr);
-  STATUS ota(unsigned short instr, signed short data);
-  STATUS smk(unsigned short new_mask);
+  PLT(IoToPIntf &p);
+
+  Status ina(uint16_t instr, int16_t &data);
+  Status sks(uint16_t instr);
+  Status ota(uint16_t instr, int16_t data);
+  void ocp(uint16_t instr);
+  void smk(uint16_t mask);
 
   void event(int reason);
-  void set_filename(char *filename);
+  void set_filename(const std::string &filename, unsigned subdevice); 
 
  private:
   static const int SPEED = 300; // steps per second
@@ -46,10 +45,9 @@ class PLT : public IODEV
   static const int INITIAL_X_POS = 42;
   static const int X_LIMIT = 3400;
 
-  enum PLT_REASON {
-    PLT_REASON_NOT_BUSY,
-    
-    PLT_REASON_NUM
+  enum class Event {
+    MASTER_CLEAR = EVENT_MASTER_CLEAR,
+    NOT_BUSY
   };
   
   enum PHASE {
@@ -74,9 +72,9 @@ class PLT : public IODEV
     PD_NUM
   };
 
-  static const char *plt_reason[PLT_REASON_NUM];
   static const char *pd_names[16];
 
+  const char *name();
   void master_clear(void);
   void turn_power_on(void);
 
@@ -86,13 +84,9 @@ class PLT : public IODEV
   void ensure_file_open();
   void plot_data();
 
-  Proc * const p;
-  STDTTY * const stdtty;
-
   FILE *fp;
   bool ascii_file;
-  bool pending_filename;
-  char *filename;
+  std::string filename;
 
   PHASE phase;
 

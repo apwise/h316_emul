@@ -1,6 +1,6 @@
 /* Honeywell Series 16 emulator
  *
- * Copyright (C) 2018, 2026  Adrian Wise
+ * Copyright (C) 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,48 +16,50 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
+ *
  */
 
+#include "mfm.hpp"
+#include "iodev.hpp"
 #include "proc.hpp"
-#include "vsim.hpp"
 
-VSIM::VSIM(IoToPIntf &p)
-  : IoDev(p)
-{
+const char *Mfm::name() {
+  return "MFM";
 }
 
-const char *VSIM::name() {
-  return "VSIM";
+Mfm::Mfm(IoToPIntf &p)
+  : IoDev(p) {
 }
 
-PToIoIntf::Status VSIM::ota(uint16_t instr, int16_t data)
-{
+PToIoIntf::Status Mfm::ina(uint16_t instr, int16_t &data) {
   p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   return Status::WAIT;
 }
 
-PToIoIntf::Status VSIM::ina(uint16_t instr, int16_t &data) {
+void Mfm::ocp(uint16_t instr) {
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+}
+
+PToIoIntf::Status Mfm::sks(uint16_t instr) {
   p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   return Status::WAIT;
 }
 
-PToIoIntf::Status VSIM::sks(uint16_t instr) {
+PToIoIntf::Status Mfm::ota(uint16_t instr, int16_t data) {
   p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   return Status::WAIT;
 }
 
-void VSIM::ocp(uint16_t instr) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+void Mfm::smk(uint16_t mask) {
+  p.anomaly(IoToPIntf::Level::ERROR, message("SMK"));
 }
 
-void VSIM::smk(uint16_t mask) {
-  // Just ignore
-}
-
-void VSIM::event(int reason) {
-  if (reason != EVENT_MASTER_CLEAR) {
+void Mfm::event(int reason) {
+  Proc *proc = dynamic_cast<Proc *>(&p);
+  if (proc) {
+    proc->event(reason);
+  } else {
     p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
   }
 }
 
-DEF_NULL_SET_FILENAME(VSIM)

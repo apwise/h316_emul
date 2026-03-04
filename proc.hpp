@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 1997, 1998, 2005, 2010, 2011, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #ifndef _PROC_HPP_
@@ -25,18 +25,18 @@
 #include <cstdint>
 #include "instr.hpp" // To get GENERIC_GROUP_A
 #include "event_queue.hpp"
+#include "io_to_p_intf.hpp"
+#include "io_dispatch.hpp"
+#include "mfm.hpp"
 
-class STDTTY;
-class InstrTable;
-class IODEV;
+class StdTty;
+class IoDev;
 struct Btrace;
 struct FP_INTF;
-class MFM;
 
-class Proc{
-
+class Proc : public IoToPIntf {
 public:
-  Proc(STDTTY *stdtty, bool HasEa);
+  Proc(bool HasEa);
   ~Proc();
 
   void exit(int code);
@@ -93,11 +93,6 @@ public:
   
   uint64_t get_half_cycles(void){return half_cycles;}
 
-  void set_interrupt(uint16_t bit);
-  void clear_interrupt(uint16_t bit);
-  void set_rtclk(bool v);
-
-  void set_dmcreq(uint16_t bit);
   unsigned int get_dmc_dev(){return dmc_dev;}
   
   void dump_memory();
@@ -113,6 +108,10 @@ public:
   
   const char *dis();
   void flush_events();
+  
+  void set_filename(IoDispatch::DEVICE dev, const std::string &filename, int subdevice = 0); 
+  void send_event(IoDispatch::DEVICE dev, unsigned reason);
+
   void set_ptr_filename(char *filename);
   void set_ptp_filename(char *filename);
   void set_plt_filename(char *filename);
@@ -132,26 +131,33 @@ public:
 
   int get_wrt_info(uint16_t addr[2], uint16_t data[2]);
 
-  void queue(unsigned long microseconds, IODEV *device, int reason)
+  /* IoToPIntf */
+  void set_interrupt(uint16_t mask);
+  void clear_interrupt(uint16_t mask);
+  void set_break(unsigned n);
+  void queue(uint64_t microseconds, PToIoIntf &device, int reason) {
+    uint64_t half_cycles = (half_cycles_per_microsecond * microseconds);
+    queue_hc(half_cycles, device, reason);
+  }
+  void queue_hc(uint64_t half_cycles, PToIoIntf &device, int reason)
   {
 #ifndef RTL_SIM
-    EventQueue::EventTime event_time = (half_cycles +
-                                        (half_cycles_per_microsecond * microseconds));
+    uint64_t event_time = this->half_cycles + half_cycles;
     event_queue.queue(event_time, device, reason);
 #endif
   }
   
-  void queue_hc(uint64_t half_cycles, IODEV *device, int reason)
-  {
-#ifndef RTL_SIM
-    EventQueue::EventTime event_time = this->half_cycles + half_cycles;
-    event_queue.queue(event_time, device, reason);
-#endif
-  }
+  std::string get_file_name(const std::string &device_name,
+                                    const std::string &extension,
+                                    const std::string &description);
+
+  virtual void anomaly(Level level, const std::string &message);
+  /* end IoToPIntf */
+
   void event(int reason);
   
 private:
-  MFM *mfm;
+  Mfm *mfm;
 
   /*
    * the following are the machine registers
@@ -230,14 +236,13 @@ private:
   InstrTable instr_table;
 
   /*
-   * devices
+   * Devices dispatch
    */
-  IODEV **devices;
-  IODEV **dmc_devices;
+  IoDispatch ioDispatch;
 #ifndef RTL_SIM
   EventQueue event_queue;
 #endif
-  EventQueue::EventTime half_cycles;
+  uint64_t half_cycles;
   static constexpr double cycle_time = 1.60; // Microseconds
   static constexpr double half_cycles_per_microsecond = (2.0 / cycle_time);
   /*

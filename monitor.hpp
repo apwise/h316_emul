@@ -23,23 +23,22 @@
 
 #include <cstdio>
 
-class STDTTY;
 class Proc;
-
+class StdTty;
 struct CmdTab;
 
 class Monitor
 {
 public:
-  Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv);
+  Monitor(Proc &p, int argc, char **argv);
   void do_commands(bool &run, FILE **fp);
   void sig_handler(int signo);
   
 private:
-  Proc *p;
-  STDTTY *stdtty;
+  Proc &p;
   int argc;
   char **argv;
+  StdTty &stdTty;
   
   bool first_time;
   bool doing_commands;

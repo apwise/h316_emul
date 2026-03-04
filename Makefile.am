@@ -1,32 +1,41 @@
-bin_PROGRAMS = 	h16 \
-		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
-		h16-tabify h16-asr h16-tape h16-ppl h16-plt2ps \
-		h16-lib h16-pp-asr h16-disasm h16-leader
+bin_PROGRAMS = 	h16
+
+#		h16-tabs h16-pdap h16-asctotty h16-ttytoasc \
+#		h16-tabify h16-asr h16-tape h16-ppl h16-plt2ps \
+#		h16-lib h16-pp-asr h16-disasm h16-leader
+#
 
 if ENABLE_DEPP
   bin_PROGRAMS += h16-depp-asr 
 endif
 
-h16_SOURCES = 	asr_intf.cpp \
+h16_SOURCES = 	dum.cpp \
+		asr_intf.cpp \
 		emul.cpp \
 		event_queue.cpp \
 		instr.cpp \
-		iodev.cpp \
-		lpt.cpp \
+		io_dispatch.cpp \
 		monitor.cpp \
 		proc.cpp \
-		ptp.cpp \
-		ptr.cpp \
+		iodev.cpp \
+		mfm.cpp \
 		asr.cpp \
 		stdtty.cpp \
-		plt.cpp \
 		tty_file.cpp \
 		rtc.cpp \
 		gpl.c \
+		dum.hpp \
 		asr.hpp \
 		event_queue.hpp \
+		io_to_p_intf.hpp \
+		io_to_p_intf.cpp \
+		p_to_io_intf.hpp \
+		p_to_io_intf.cpp \
+		p_to_dmc_intf.hpp \
 		iodev.hpp \
+		io_dispatch.hpp \
 		monitor.hpp \
+		mfm.hpp \
 		ptp.hpp \
 		stdtty.hpp \
 		plt.hpp \
@@ -37,6 +46,10 @@ h16_SOURCES = 	asr_intf.cpp \
 		proc.hpp \
 		ptr.hpp \
 		rtc.hpp \
+		lpt.cpp \
+		ptp.cpp \
+		ptr.cpp \
+		plt.cpp \
 		gpl.h
 
 AM_CXXFLAGS = -Wall -Werror
@@ -86,49 +99,49 @@ version.h: $(h16_SOURCES)
 	@echo "#define COPYRIGHT \"`grep ^Copyright.*Wise$$ $(srcdir)/configure`\"" >> $@
 	@echo "#define DATE \"`date`\"" >> $@
 
-h16_tabs_SOURCES = utils/h16-tabs.c
+# h16_tabs_SOURCES = utils/h16-tabs.c
 
-h16_pdap_SOURCES = utils/h16-pdap.cpp
+# h16_pdap_SOURCES = utils/h16-pdap.cpp
 
-h16_ppl_SOURCES = utils/h16-ppl.c
+# h16_ppl_SOURCES = utils/h16-ppl.c
 
-h16_asctotty_SOURCES = utils/h16-asctotty.cpp tty_file.cpp tty_file.hpp
+# h16_asctotty_SOURCES = utils/h16-asctotty.cpp tty_file.cpp tty_file.hpp
 
-h16_ttytoasc_SOURCES = utils/h16-ttytoasc.cpp tty_file.cpp tty_file.hpp
+# h16_ttytoasc_SOURCES = utils/h16-ttytoasc.cpp tty_file.cpp tty_file.hpp
 
-h16_tabify_SOURCES = utils/h16-tabify.cpp instr.cpp
-h16_tabify_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
+# h16_tabify_SOURCES = utils/h16-tabify.cpp instr.cpp
+# h16_tabify_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
-h16_asr_SOURCES = utils/h16-asr_app.cpp utils/serial.cpp utils/serial.hpp \
-		utils/dummy_proc.cpp utils/dummy_proc.hpp \
-		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp
+# h16_asr_SOURCES = utils/h16-asr_app.cpp utils/serial.cpp utils/serial.hpp \
+# 		utils/dummy_proc.cpp utils/dummy_proc.hpp \
+# 		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp
 
-h16_pp_asr_SOURCES = utils/h16-pp-asr_app.cpp \
-		utils/dummy_proc.cpp utils/dummy_proc.hpp \
-		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp \
-		utils/pp_channel.h utils/pp_channel.c
-h16_pp_asr_CXXFLAGS = -pthread -Wall -Werror
-h16_pp_asr_LDADD = -lpthread
+# h16_pp_asr_SOURCES = utils/h16-pp-asr_app.cpp \
+# 		utils/dummy_proc.cpp utils/dummy_proc.hpp \
+# 		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp \
+# 		utils/pp_channel.h utils/pp_channel.c
+# h16_pp_asr_CXXFLAGS = -pthread -Wall -Werror
+# h16_pp_asr_LDADD = -lpthread
 
-h16_depp_asr_SOURCES = utils/h16-depp-asr_app.cpp \
-		utils/dummy_proc.cpp utils/dummy_proc.hpp \
-		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp \
-		utils/depp_channel.h utils/depp_channel.c
-h16_depp_asr_CFLAGS = -I/usr/local/include/digilent/adept -Wall -Werror
-h16_depp_asr_CXXFLAGS = -pthread -I/usr/local/include/digilent/adept -Wall -Werror
-h16_depp_asr_LDADD = -lpthread -L/usr/local/lib64/digilent/adept -ldmgr -ldepp
+# h16_depp_asr_SOURCES = utils/h16-depp-asr_app.cpp \
+# 		utils/dummy_proc.cpp utils/dummy_proc.hpp \
+# 		asr.cpp asr.hpp tty_file.cpp tty_file.hpp stdtty.cpp stdtty.hpp \
+# 		utils/depp_channel.h utils/depp_channel.c
+# h16_depp_asr_CFLAGS = -I/usr/local/include/digilent/adept -Wall -Werror
+# h16_depp_asr_CXXFLAGS = -pthread -I/usr/local/include/digilent/adept -Wall -Werror
+# h16_depp_asr_LDADD = -lpthread -L/usr/local/lib64/digilent/adept -ldmgr -ldepp
 
-h16_tape_SOURCES = utils/h16-tape.cpp instr.cpp
-h16_tape_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
+# h16_tape_SOURCES = utils/h16-tape.cpp instr.cpp
+# h16_tape_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
-h16_plt2ps_SOURCES = utils/h16-plt2ps.cpp
+# h16_plt2ps_SOURCES = utils/h16-plt2ps.cpp
 
-h16_lib_SOURCES = utils/h16-lib.cpp
+# h16_lib_SOURCES = utils/h16-lib.cpp
 
-h16_disasm_SOURCES = utils/h16-disasm.cpp instr.cpp
-h16_disasm_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
+# h16_disasm_SOURCES = utils/h16-disasm.cpp instr.cpp
+# h16_disasm_CXXFLAGS = -DNO_DO_PROCS -Wall -Werror
 
-h16_leader_SOURCES = utils/h16-leader.c
+# h16_leader_SOURCES = utils/h16-leader.c
 
 EXTRA_DIST = 	data/m4h_defines.m4 \
 		data/main.css \

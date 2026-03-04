@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 1997, 1998, 2005, 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,81 +16,69 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 #ifndef _IODEV_HPP_
 #define _IODEV_HPP_
 
-class Proc;
-class STDTTY;
+#include <cstdint>
+#include <string>
 
-class IODEV
+#include "config.h"
+#include "p_to_io_intf.hpp"
+#include "io_to_p_intf.hpp"
+
+class IoDev
 {
 public:
-  enum DEVICE
-    {
-      PTR_DEVICE = 001, // Paper-tape reader
-      PTP_DEVICE = 002, // Paper-tape punch
-      LPT_DEVICE = 003, // Lineprinter
-      ASR_DEVICE = 004, // ASR (teletype)
+  enum class Device {
+      PTR = 001, // Paper-tape reader
+      PTP = 002, // Paper-tape punch
+      LPT = 003, // Lineprinter
+      ASR = 004, // ASR (teletype)
 #if ENABLE_SPI
-      SPI_DEVICE = 007, // SPI flash controller
+      SPI = 007, // SPI flash controller
 #endif
-      RTC_DEVICE = 020, // Real-time clock
-      PLT_DEVICE = 027, // Incremental plotter
+      RTC = 020, // Real-time clock
+      PLT = 027, // Incremental plotter
 
 #if ENABLE_VERIF
-      DUM_DEVICE = 034, // Any unused device (to pick up dummy)
-      
       // Devices for verification purposes
-      VSM_DEVICE = 035, // Simulation exit code
-      VD1_DEVICE = 036, // DMC verification - channel
-      VD2_DEVICE = 037, // DMC verification - central controller
-#else
-      DUM_DEVICE = 037, // Any unused device (to pick up dummy)
+      VSM = 035, // Simulation exit code
+      VD1 = 036, // DMC verification - channel
+      VD2 = 037, // DMC verification - central controller
 #endif
     };
 
-  enum STATUS
-    {
-      STATUS_WAIT,  // Instruction complete I/O not yet ready
-      STATUS_READY, // Instruction complete I/O ready (for INA, OTA, SKS)
-      STATUS_INCOMPLETE // Instruction incomplete - go to GUI
-    };
-
-  IODEV(Proc *p);
-  virtual ~IODEV();
-
-  virtual STATUS ina(unsigned short instr, signed short &data);
-  virtual STATUS ocp(unsigned short instr);
-  virtual STATUS sks(unsigned short instr);
-  virtual STATUS ota(unsigned short instr, signed short data);
-  virtual STATUS smk(unsigned short mask);
-
-  virtual void dmc(signed short &data, bool erl);
-  
-  virtual void event(int reason);
-  
-  static IODEV **dispatch_table(Proc *p, STDTTY *stdtty);
-  static IODEV **dmc_dispatch_table(Proc *p, STDTTY *stdtty, IODEV **dt);
-  static void master_clear_devices(IODEV **dt);
-  static void set_mask(IODEV **dt, unsigned short mask);
-
-  static STATUS status(bool b){return (b)?STATUS_READY:STATUS_WAIT;};
-
 protected:
-  Proc *p;
-  static const int REASON_MASTER_CLEAR = -1;
+  IoToPIntf &p;
 
-  static unsigned short device_addr(unsigned short instr)
-  {
+  IoDev(IoToPIntf &p)
+    : p(p) {
+  }
+  virtual ~IoDev() {
+  }
+
+  virtual const char *name() = 0;
+
+  static uint16_t device_addr(uint16_t instr) {
     return instr & 077;
   }
-  static unsigned short function_code(unsigned short instr)
-  {
+
+  static uint16_t function_code(uint16_t instr) {
     return (instr >> 6) & 017;
   }
+
+  static PToIoIntf::Status status(bool b) {
+    return (b) ? PToIoIntf::Status::READY : PToIoIntf::Status::WAIT;
+  };
+
+  std::string message(const std::string &text);
+  std::string message(uint16_t instr, const std::string &additional="");
+  std::string uxReason(int n);
   
 };
+
+#define DEF_STD_NAME(ClassName) const char *ClassName::name() { return #ClassName; }
+
 
 #endif //_IODEV_HPP_

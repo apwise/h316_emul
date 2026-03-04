@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 1997, 1998, 1999, 2005, 2010, 2011, 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,8 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
  *
- * This file constitutes the main simulation kernel of
- * the processor.
+ * This file constitutes the main simulation kernel of the processor.
  */
 
 #include "proc.hpp"
@@ -26,6 +26,7 @@
 #include <cstdio>
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 #ifdef RTL_SIM
 #define NO_GTK (1)
@@ -134,35 +135,40 @@ static uint16_t keyin[] =
  * Dummy IODEV that can be used for non-device time events
  * (MFM = mainframe)
  */
-class MFM : public IODEV
+
+#if 0
+// Needs sorting once Proc derives from PToIIntf
+class MFM : public Proc, public IoDev
 {
 public:
-  MFM(Proc *p)
-    : IODEV(p)
+  MFM(IoToPIntf &p)
+    : IoDev(p)
   {}
 
   ~MFM() {}
 
   void event(int reason)
   {
-    p->event(reason);
+    p.event(reason);
   }
 };
+#endif
 #endif
 #define MFM_REASON_LIMIT 0
 #define MFM_REASON_START_DOWN 1 // Start-button interrupt
 #define MFM_REASON_START_UP   2 // Start-button interrupt
 
-Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
+Proc::Proc(bool HasEa)
   : prt(64)
   , extend_allowed(HasEa)
   , addr_mask((HasEa) ? 0x7fff : 0x3fff)
   , core(addr_mask+1)
-  , modified(addr_mask+1)  , exit_code(0)
+  , modified(addr_mask+1)
+  , exit_code(0)
   , exit_called(false)
-  , instr_table()
 #ifndef RTL_SIM
-  , event_queue(this)
+  , ioDispatch(*this)
+  , event_queue(*this)
 #endif
 {
   const unsigned core_size = addr_mask + 1;
@@ -184,12 +190,15 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
     ss[i] = 0;
 
   /*
-   * We count in half-cycles, since some instructions
-   * take something-and-a-half cycles.
+   * Count in half-cycles, since some instructions take
+   * something-and-a-half cycles.
    *
-   * This counter can and does roll-over. For a 316
-   * with a 1.6us cycle time this is approximately
-   * once every 1 hour of simulated time.
+   * Since a 64-bit variable is used, this counter can't
+   * roll-over in practice. For a 316 with a 1.6us cycle time
+   * takes approximately 460,000 years simulated time.
+   *
+   * (A 32-bit half-cycle counter would rollover in just under
+   * an hour of simulated time.)
    */
   half_cycles = 0;
 
@@ -198,11 +207,11 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
    * address
    */
 #ifdef RTL_SIM
-  devices = 0;
-  dmc_devices = 0;
+  //devices = 0;
+  //dmc_devices = 0;
 #else
-  devices = IODEV::dispatch_table(this, stdtty);
-  dmc_devices = IODEV::dmc_dispatch_table(this, stdtty, devices);
+  //devices = IODEV::dispatch_table(this, stdtty);
+  //dmc_devices = IODEV::dmc_dispatch_table(this, stdtty, devices);
 #endif
 
   /*
@@ -233,7 +242,7 @@ Proc::Proc(STDTTY *stdtty UNUSED, bool HasEa)
 #ifdef RTL_SIM
   mfm = 0;
 #else
-  mfm = new MFM(this);
+  mfm = new Mfm(*this);
 #endif
 }
 
@@ -255,14 +264,14 @@ void Proc::exit(int code)
 void Proc::set_limit(uint64_t half_cycles)
 {
 #ifndef RTL_SIM
-  event_queue.queue(this->half_cycles + half_cycles, mfm, MFM_REASON_LIMIT);
+  event_queue.queue(this->half_cycles + half_cycles, *mfm, MFM_REASON_LIMIT);
 #endif
 }
 
 void Proc::set_sbi(uint64_t half_cycles)
 {
 #ifndef RTL_SIM
-  event_queue.queue(this->half_cycles + half_cycles, mfm, MFM_REASON_START_DOWN);
+  event_queue.queue(this->half_cycles + half_cycles, *mfm, MFM_REASON_START_DOWN);
 #endif
 }
 
@@ -582,7 +591,7 @@ void Proc::master_clear(void)
 
   sc = 0x3f;
 #ifndef RTL_SIM
-  IODEV::master_clear_devices(devices);
+  ioDispatch.master_clear_devices();
   event_queue.discard_events();
 #endif
 }
@@ -979,14 +988,53 @@ void Proc::clear_interrupt(uint16_t bit)
   interrupts &= (~bit);
 }
 
-void Proc::set_rtclk(bool v)
-{
-  rtclk = v;
+void Proc::set_break(unsigned n) {
+  if (n == 0) {
+    rtclk = true;
+  } else if (n <= 16) {
+    dmc_req |= (1 << (n-1));
+  } else {
+    std::cerr << "Unexpected set_break()" << std::endl;
+    exit(1);
+  }
 }
 
-void Proc::set_dmcreq(uint16_t bit)
-{
-  dmc_req |= bit;
+std::string Proc::get_file_name(const std::string &device_name,
+                                const std::string &extension,
+                                const std::string &description) {
+  StdTty &stdtty {StdTty::getInstance()};
+  char buf[256];
+  std::stringstream ss;
+
+  std::string str = (description.size() == 0) ? "Filename" : description;
+  
+  ss << device_name << ": " << str << "> ";
+
+  stdtty.get_input(ss.str().c_str(), buf, 256, false);
+
+  std::string res {buf};
+
+  return res;
+}
+
+void Proc::anomaly(Level level, const std::string &message) {
+
+  static std::map<Level, const std::string> lnames {
+    {Level::FATAL, "Fatal"},
+    {Level::ERROR, "Error"},
+    {Level::WARNING, "Warning"}
+  };
+  const std::string l = lnames.count(level) ? lnames.at(level) : "???";
+  
+  // TODO - count how many times errors are printed and silence them
+
+  std::cerr << l << ": " << message << std::endl;
+
+  if (level == Level::FATAL) {
+    exit(1);
+  }
+  
+  // TODO - count how many times errors/warings are printed and silence them
 }
 
 /*****************************************************************
@@ -1098,14 +1146,14 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
       // DMC cycle 3
       if (dmc_addr & 0x8000) {
         // Do an input
-        dmc_devices[dmc_dev]->dmc(dmc_data, dmc_erl);
+        ioDispatch.dmc(dmc_dev, dmc_data, dmc_erl);
         //cout << "DMC " << dec << dmc_dev << " write " << oct << dmc_data << " to "
         //     << oct << break_addr << endl;
         write(break_addr, dmc_data);
       } else {
         // Do an output
         dmc_data = read(break_addr);
-        dmc_devices[dmc_dev]->dmc(dmc_data, dmc_erl);
+        ioDispatch.dmc(dmc_dev, dmc_data, dmc_erl);
       }
       break_addr   = 000020 + (dmc_dev * 2);
       half_cycles += 2;
@@ -1233,8 +1281,8 @@ void Proc::do_instr(bool &x_run, bool &monitor_flag)
   /*
    * If there is TTY input then service it
    */
-  if (STDTTY::get_tty_input())
-    STDTTY::service_tty_input();
+  //if (STDTTY::get_tty_input())
+  //  STDTTY::service_tty_input();
 #endif
 
   fetched = true;
@@ -1337,7 +1385,7 @@ bool Proc::optimize_io_poll(uint16_t instr)
        * for keyboard input).
        */
 
-      EventQueue::EventTime next_event_time;
+      uint64_t next_event_time;
 
       if (event_queue.next_event_time(next_event_time))
         {
@@ -1374,7 +1422,7 @@ bool Proc::optimize_io_poll(uint16_t instr)
           // so for now just let it poll the
           // device
 
-          if ((instr & 077) == IODEV::ASR_DEVICE)
+          if ((instr & 077) == static_cast<uint16_t>(IoDispatch::DEVICE::ASR))
             {
               // Ought to wait for keyboard or GUI
               // printf("Polling ASR\n");
@@ -1491,7 +1539,7 @@ void Proc::start_button()
   start_button_interrupt = true;
 
 #ifndef RTL_SIM
-  event_queue.queue(this->half_cycles + START_BUTTON_DOWN_TIME, mfm, MFM_REASON_START_UP);
+  event_queue.queue(this->half_cycles + START_BUTTON_DOWN_TIME, *mfm, MFM_REASON_START_UP);
 #endif
 }
 
@@ -1513,6 +1561,21 @@ void Proc::flush_events()
 #endif
 }
 
+
+void Proc::set_filename(IoDispatch::DEVICE dev, const std::string &filename, int subdevice) {
+#ifndef RTL_SIM
+  // call via io_dispatch
+#endif
+}
+  
+void Proc::send_event(IoDispatch::DEVICE dev, unsigned reason) {
+#ifndef RTL_SIM
+  // call via io_dispatch
+#endif
+}
+
+
+#if 0
 void Proc::set_ptr_filename(char *filename UNUSED)
 {
 #ifndef RTL_SIM
@@ -1568,13 +1631,13 @@ void Proc::asr_ptr_on(char *filename UNUSED)
   dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->asr_ptr_on(filename);
 #endif
 }
-
+#endif
 bool Proc::special(char k UNUSED)
 {
   bool r = false;
 
 #ifndef RTL_SIM
-  r = dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->special(k);
+  r = 0;//dynamic_cast<ASR_INTF *>(devices[IODEV::ASR_DEVICE])->special(k);
 
   if ( (k & 0x7f) == 'h' )
     {
@@ -1728,7 +1791,7 @@ void Proc::do_OTK(uint16_t instr UNUSED)
       increment_p();
     }
 #else
-    if (devices[instr & 0x3f]->sks(instr)) {
+    if (ioDispatch.sks(instr) != PToIoIntf::Status::WAIT) {
       increment_p();
     }
 #endif
@@ -2225,7 +2288,7 @@ void Proc::do_INA(uint16_t instr)
       rerun = false;
     }
 #else
-    if (devices[instr & 077]->ina(instr, d)) {
+    if (ioDispatch.ina(instr, d) != PToIoIntf::Status::WAIT) {
       increment_p();
       if (instr & 01000)
         a = 0;
@@ -2256,14 +2319,14 @@ void Proc::do_OCP(uint16_t instr UNUSED)
       increment_p();
     }
 #else
-    if (devices[instr & 0x3f]->sks(instr)) {
+    if (ioDispatch.sks(instr) != PToIoIntf::Status::WAIT) {
       increment_p();
     }
 #endif
     melov = true;
   } else {
 #ifndef RTL_SIM
-    devices[instr & 0x3f]->ocp(instr);
+    ioDispatch.ocp(instr);
 #endif
   }
 }
@@ -2283,9 +2346,8 @@ void Proc::do_OTA(uint16_t instr UNUSED)
       rerun = false;
     }
 #else
-    if ((restrict) ?
-        devices[instr & 0x3f]->sks(instr   ) :
-        devices[instr & 0x3f]->ota(instr, a)) {
+    if (((restrict) ? ioDispatch.sks(instr) :
+         ioDispatch.ota(instr, a)) != PToIoIntf::Status::WAIT) {
       increment_p();
       rerun = false;
     } else {
@@ -2319,7 +2381,7 @@ void Proc::do_SMK(uint16_t instr)
       switch (function) {
       case 000: /* Standard interrupts      */
 #ifndef RTL_SIM
-        IODEV::set_mask(devices, a);
+        ioDispatch.smk(a);
 #endif
         break;
       case 001: /* Priority Interrupt  1-16 */ break;
@@ -2355,7 +2417,7 @@ void Proc::do_SKS(uint16_t instr UNUSED)
       rerun = 0;
     }
 #else
-    if (devices[instr & 0x3f]->sks(instr)) {
+    if (ioDispatch.sks(instr) != PToIoIntf::Status::WAIT) {
       increment_p();
       rerun = 0;
     } else
@@ -2436,9 +2498,9 @@ void Proc::do_IRS(uint16_t instr)
     }
   }
 #ifndef RTL_SIM
-  if ((d == 0) && break_flag &&
-      (break_addr = 061) && (devices[IODEV::RTC_DEVICE])) {
-    dynamic_cast<RTC *>(devices[IODEV::RTC_DEVICE])->rollover();
+  if ((d == 0) && break_flag && (break_addr = 061)) {
+    ioDispatch.event(IoDispatch::DEVICE::RTC,
+                     static_cast<unsigned>(RTC::Event::ROLLOVER));
   }
 #endif
 }

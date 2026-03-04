@@ -1,5 +1,5 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 2011, 2026  Adrian Wise
+ * Copyright (C) 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,40 +18,33 @@
  *
  */
 
-#ifndef _RTC_HPP_
-#define _RTC_HPP_
+#ifndef _DUM_HPP_
+#define _DUM_HPP_
 
 #include "p_to_io_intf.hpp"
+#include "p_to_dmc_intf.hpp"
 #include "iodev.hpp"
 
-class RTC : public PToIoIntf, public IoDev
+class Dum : public PToIoIntf, public PToDmcIntf, public IoDev
 {
 public:
-  enum class Event : int {
-    MASTER_CLEAR = EVENT_MASTER_CLEAR,
-    TICK,
-    ROLLOVER,
-    NUM
-  };
-  RTC(IoToPIntf &p);
-  
+  Dum(IoToPIntf &p);
+  ~Dum(){};
+
   Status ina(uint16_t instr, int16_t &data);
+  void ocp(uint16_t instr);
   Status sks(uint16_t instr);
   Status ota(uint16_t instr, int16_t data);
-  void ocp(uint16_t instr);
   void smk(uint16_t mask);
 
   void event(int reason);
-  void set_filename(const std::string &filename, unsigned subdevice);
 
+  void set_filename(const std::string &filename, unsigned subdevice); 
+
+  void dmc(unsigned dmc_dev, int16_t &data, bool erl);  
+      
 private:
   const char *name();
-  
-  void master_clear(void);
-
-  uint16_t mask;
-  bool running;
-  bool interrupting;
 };
 
-#endif // _RTC_HPP_
+#endif // _DUM_HPP_

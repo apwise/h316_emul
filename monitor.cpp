@@ -35,9 +35,13 @@
 #include "stdtty.hpp"
 #include "gpl.h"
 #include "version.h"
+#include "asr_intf.hpp"
 
 #define BUFSIZE 1024
 #define PROMPT "MON"
+
+#define ASR_PTR 0
+#define ASR_PTP 1
 
 static const char *instructions_text[] = 
   {
@@ -101,17 +105,16 @@ static void sig_handler(int signo)
 void Monitor::sig_handler(int signo)
 {
   if (signo == SIGINT) {
-    p->goto_monitor();
+    p.goto_monitor();
   }
 }
 
-Monitor::Monitor(Proc *p, STDTTY *stdtty, int argc, char **argv)
+Monitor::Monitor(Proc &p, int argc, char **argv)
+  : p(p)
+  , argc(argc)
+  , argv(argv)
+  , stdTty(StdTty::getInstance())
 {
-  this->p = p;
-  this->stdtty = stdtty;
-  this->argc = argc;
-  this->argv = argv;
-
   first_time = 1;
 
   if (!monitor) {
@@ -154,7 +157,7 @@ void Monitor::get_line(char *prompt, FILE **fp, char *buffer, int buf_size)
     }
 
   if (!*fp)
-    stdtty->get_input(prompt, buffer, buf_size, 1);
+    stdTty.get_input(prompt, buffer, buf_size, 1);
 
   /*
     p=buffer;
@@ -177,7 +180,7 @@ void Monitor::do_commands(bool &run, FILE **fp)
   sprintf(prompt, "%s> ", PROMPT);
   
   if (!run)
-    p->flush_events();
+    p.flush_events();
   
   if ((*fp))
     {
@@ -196,9 +199,9 @@ void Monitor::do_commands(bool &run, FILE **fp)
         }
       first_time = 0;
       printf("\n%s: A:%06o B:%06o X:%06o %s\n", PROMPT,
-             (p->get_a() & 0xffff), (p->get_b() & 0xffff),
-             (p->get_x() & 0xffff),
-             p->dis());
+             (p.get_a() & 0xffff), (p.get_b() & 0xffff),
+             (p.get_x() & 0xffff),
+             p.dis());
     }
   
   doing_commands = 1;
@@ -214,7 +217,7 @@ void Monitor::do_commands(bool &run, FILE **fp)
     }
   
   fflush(stdout);
-  stdtty->set_non_cannonical();
+  stdTty.set_cannonical(false);
 }
 
 // Kludge to avoid mismatched malloc/delete
@@ -430,7 +433,7 @@ bool Monitor::cont(bool &run, int words, char **cmd)
 bool Monitor::stop(bool &run, int words, char **cmd)
 {
   run = 0;
-  p->flush_events();
+  p.flush_events();
   return 1;
 }
 
@@ -444,7 +447,7 @@ bool Monitor::go(bool &run, int words, char **cmd)
     {
       pc = parse_number(cmd[1], ok);
       if (ok)
-        p->set_py(pc);
+        p.set_py(pc);
     }
     
   if (ok)
@@ -466,7 +469,7 @@ bool Monitor::limit(bool &run, int words, char **cmd)
     {
       half_cycles = parse_number(cmd[1], ok);
       if (ok)
-        p->set_limit(half_cycles);
+        p.set_limit(half_cycles);
     }
 
   return ok;
@@ -482,7 +485,7 @@ bool Monitor::sbi(bool &run, int words, char **cmd)
     {
       half_cycles = parse_number(cmd[1], ok);
       if (ok)
-        p->set_sbi(half_cycles);
+        p.set_sbi(half_cycles);
     }
 
   return ok;
@@ -505,10 +508,10 @@ bool Monitor::ss(bool &run, int words, char **cmd)
         {
           v = parse_bool(cmd[2], ok);
           if (ok)
-            p->set_ss(sw-1, v);
+            p.set_ss(sw-1, v);
         }
       else
-        printf("SS%d: %d\n", sw, p->get_ss(sw-1));
+        printf("SS%d: %d\n", sw, p.get_ss(sw-1));
     }
   return ok;
 }
@@ -517,7 +520,7 @@ bool Monitor::ptr(bool &run, int words, char **cmd)
 {
   bool ok = 1;
 
-  p->set_ptr_filename(cmd[1]);
+  p.set_filename(IoDispatch::DEVICE::PTR, cmd[1]); 
 
   return ok;
 }
@@ -526,7 +529,7 @@ bool Monitor::ptp(bool &run, int words, char **cmd)
 {
   bool ok = 1;
 
-  p->set_ptp_filename(cmd[1]);
+  p.set_filename(IoDispatch::DEVICE::PTP, cmd[1]); 
 
   return ok;
 }
@@ -535,7 +538,7 @@ bool Monitor::plt(bool &run, int words, char **cmd)
 {
   bool ok = 1;
 
-  p->set_plt_filename(cmd[1]);
+  p.set_filename(IoDispatch::DEVICE::PLT, cmd[1]); 
 
   return ok;
 }
@@ -544,7 +547,7 @@ bool Monitor::lpt(bool &run, int words, char **cmd)
 {
   bool ok = 1;
 
-  p->set_lpt_filename(cmd[1]);
+  p.set_filename(IoDispatch::DEVICE::LPT, cmd[1]); 
 
   return ok;
 }
@@ -553,7 +556,7 @@ bool Monitor::asr_ptr(bool &run, int words, char **cmd)
 {
   bool ok = 1;
   
-  p->set_asr_ptr_filename(cmd[1]);
+  p.set_filename(IoDispatch::DEVICE::ASR, cmd[1], AsrIntf::PTR); 
 
   return ok;
 }
@@ -562,7 +565,7 @@ bool Monitor::asr_ptp(bool &run, int words, char **cmd)
 {
   bool ok = 1;
   
-  p->set_asr_ptp_filename(cmd[1]);
+  p.set_filename(IoDispatch::DEVICE::ASR, cmd[1], AsrIntf::PTP); 
 
   return ok;
 }
@@ -570,8 +573,11 @@ bool Monitor::asr_ptp(bool &run, int words, char **cmd)
 bool Monitor::asr_ptr_on(bool &run, int words, char **cmd)
 {
   bool ok = 1;
-  
-  p->asr_ptr_on(((words>0) ? cmd[1] : 0));
+
+  if (words>0) {
+    p.set_filename(IoDispatch::DEVICE::ASR, cmd[1], AsrIntf::PTR); 
+  }
+  p.send_event(IoDispatch::DEVICE::ASR, static_cast<int>(AsrIntf::Event::PTR_ON));
 
   return ok;
 }
@@ -580,7 +586,10 @@ bool Monitor::asr_ptp_on(bool &run, int words, char **cmd)
 {
   bool ok = 1;
   
-  p->asr_ptp_on(((words>0) ? cmd[1] : 0));
+  if (words>0) {
+    p.set_filename(IoDispatch::DEVICE::ASR, cmd[1], AsrIntf::PTP); 
+  }
+  p.send_event(IoDispatch::DEVICE::ASR, static_cast<int>(AsrIntf::Event::PTP_ON));
 
   return ok;
 }
@@ -615,11 +624,11 @@ bool Monitor::m(bool &run, int words, char **cmd)
     {
       val = parse_number(cmd[2], ok);
       if (ok)
-        p->write(addr, val);
+        p.write(addr, val);
     }
   else
     {
-      val = p->read(addr);
+      val = p.read(addr);
       printf("0x%04x \'%06o : 0x%04x \'%06o %s\n",
              addr, addr, val, val, binary16(val));
     }
@@ -661,9 +670,9 @@ bool Monitor::reg(bool &run, int words, char **cmd, int n)
         {
           switch (n)
             {
-            case REG_A: p->set_a(val); break;
-            case REG_B: p->set_b(val); break;
-            case REG_X: p->set_x(val); break;
+            case REG_A: p.set_a(val); break;
+            case REG_B: p.set_b(val); break;
+            case REG_X: p.set_x(val); break;
             default:
               fprintf(stderr, "bad reg\n");
               exit(1);
@@ -674,9 +683,9 @@ bool Monitor::reg(bool &run, int words, char **cmd, int n)
     {
       switch (n)
         {
-        case REG_A: val = p->get_a(); break;
-        case REG_B: val = p->get_b(); break;
-        case REG_X: val = p->get_x(); break;
+        case REG_A: val = p.get_a(); break;
+        case REG_B: val = p.get_b(); break;
+        case REG_X: val = p.get_x(); break;
         default:
           fprintf(stderr, "bad reg\n");
           exit(1);
@@ -691,7 +700,7 @@ bool Monitor::reg(bool &run, int words, char **cmd, int n)
 bool Monitor::clear(bool &run, int words, char **cmd)
 {
   run = 0;
-  p->master_clear();
+  p.master_clear();
   return 1;
 }
 
@@ -739,7 +748,7 @@ bool Monitor::trace(bool &run, int words, char **cmd)
     lines = parse_number(cmd[2], ok);
 
   if (ok)
-    p->dump_trace(filename, lines);
+    p.dump_trace(filename, lines);
 
   return ok;
 }
@@ -778,7 +787,7 @@ bool Monitor::disassemble(bool &run, int words, char **cmd)
     last = first;
 
   if (ok)
-    p->dump_disassemble(filename, first, last);
+    p.dump_disassemble(filename, first, last);
 
   return ok;
 }
@@ -801,7 +810,7 @@ bool Monitor::vmem(bool &run, int words, char **cmd)
     exec_addr = parse_number(cmd[2], ok);
 
   if (ok)
-    p->dump_vmem(filename, exec_addr);
+    p.dump_vmem(filename, exec_addr);
   
   return ok;
 }
@@ -824,7 +833,7 @@ bool Monitor::omem(bool &run, int words, char **cmd)
     exec_addr = parse_number(cmd[2], ok);
 
   if (ok)
-    p->dump_vmem(filename, exec_addr, true);
+    p.dump_vmem(filename, exec_addr, true);
   
   return ok;
 }
@@ -847,7 +856,7 @@ bool Monitor::coemem(bool &run, int words, char **cmd)
     exec_addr = parse_number(cmd[2], ok);
 
   if (ok)
-    p->dump_coemem(filename, exec_addr);
+    p.dump_coemem(filename, exec_addr);
   
   return ok;
 }

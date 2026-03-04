@@ -1,6 +1,6 @@
 /* Honeywell Series 16 emulator
  *
- * Copyright (C) 2018, 2026  Adrian Wise
+ * Copyright (C) 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,46 +18,50 @@
  * MA  02111-1307 USA
  */
 
-#include "proc.hpp"
-#include "vsim.hpp"
+#include "dum.hpp"
+#include "iodev.hpp"
 
-VSIM::VSIM(IoToPIntf &p)
-  : IoDev(p)
-{
+const char *Dum::name() {
+  return "DUM";
 }
 
-const char *VSIM::name() {
-  return "VSIM";
+Dum::Dum(IoToPIntf &p)
+  : IoDev(p) {
 }
 
-PToIoIntf::Status VSIM::ota(uint16_t instr, int16_t data)
-{
+PToIoIntf::Status Dum::ina(uint16_t instr, int16_t &data) {
   p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   return Status::WAIT;
 }
 
-PToIoIntf::Status VSIM::ina(uint16_t instr, int16_t &data) {
+PToIoIntf::Status Dum::sks(uint16_t instr) {
   p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   return Status::WAIT;
 }
 
-PToIoIntf::Status VSIM::sks(uint16_t instr) {
+PToIoIntf::Status Dum::ota(uint16_t instr, int16_t data) {
   p.anomaly(IoToPIntf::Level::ERROR, message(instr));
   return Status::WAIT;
 }
 
-void VSIM::ocp(uint16_t instr) {
+void Dum::ocp(uint16_t instr) {
   p.anomaly(IoToPIntf::Level::ERROR, message(instr));
 }
 
-void VSIM::smk(uint16_t mask) {
-  // Just ignore
+void Dum::smk(uint16_t mask) {
+  // Just ignore it
 }
 
-void VSIM::event(int reason) {
+void Dum::event(int reason) {
   if (reason != EVENT_MASTER_CLEAR) {
     p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
   }
 }
 
-DEF_NULL_SET_FILENAME(VSIM)
+void Dum::set_filename(const std::string &filename, unsigned subdevice) {
+  p.anomaly(IoToPIntf::Level::FATAL, message("set_filename()"));
+}
+
+void Dum::dmc(unsigned dmc_dev, int16_t &data, bool erl) {
+  p.anomaly(IoToPIntf::Level::FATAL, message("Unexpected DMC"));
+}

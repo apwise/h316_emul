@@ -1,5 +1,6 @@
 /* Honeywell Series 16 emulator
- * Copyright (C) 1997, 1998, 2005, 2018, 2026  Adrian Wise
+ *
+ * Copyright (C) 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,156 +16,43 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
+
 #include "config.h"
-
 #include "iodev.hpp"
+#include <sstream>
+#include <iomanip>
 
-#include <cstdlib>
-#include <cstdio>
-
-#include "ptr.hpp"
-#include "ptp.hpp"
-#include "asr_intf.hpp"
-#include "lpt.hpp"
-#include "rtc.hpp"
-#include "plt.hpp"
-#if ENABLE_VERIF
-#include "vdmc.hpp"
-#include "vsim.hpp"
-#endif
-#if ENABLE_SPI
-#include "spi.hpp"
-#include "fram.hpp"
-#endif
-
-#include "proc.hpp"
-#include "stdtty.hpp"
-
-IODEV::IODEV(Proc *p)
-  : p(p)
-{
+std::string IoDev::message(const std::string &text) {
+  std::stringstream ss;
+  ss << name() << ": " << text;
+  return ss.str();
 }
 
-IODEV::~IODEV()
-{
-}
+std::string IoDev::message(uint16_t instr, const std::string &additional) {
 
-IODEV::STATUS IODEV::ina(unsigned short instr, signed short &data)
-{
-  fprintf(stderr, "INA with undefined device: '%02o\n", instr & 0x3f);
-  p->abort();
-  return STATUS_WAIT;
-}
-
-IODEV::STATUS IODEV::ocp(unsigned short instr)
-{
-  fprintf(stderr, "OCP with undefined device: '%02o\n", instr & 0x3f);
-  p->abort();
-  return STATUS_WAIT;
-}
-
-IODEV::STATUS IODEV::sks(unsigned short instr)
-{
-  fprintf(stderr, "SKS with undefined device: '%02o\n", instr & 0x3f);
-  p->abort();
-  return STATUS_WAIT;
-}
-
-IODEV::STATUS IODEV::ota(unsigned short instr, signed short data)
-{
-  fprintf(stderr, "OTA with undefined device: '%02o\n", instr & 0x3f);
-  p->abort();
-  return STATUS_WAIT;
-}
-
-IODEV::STATUS IODEV::smk(unsigned short mask)
-{
-  // quite likely to get here from set_mask();
-  return STATUS_WAIT;
-}
-
-void IODEV::dmc(signed short &data, bool erl)
-{
-}
-
-void IODEV::event(int reason)
-{
-  if (reason != REASON_MASTER_CLEAR)
-    {
-      fprintf(stderr, "Event called for undefined device with reason %d\n",
-              reason);
-      p->abort();
-    }
-}
-
-IODEV **IODEV::dispatch_table(Proc *p, STDTTY *stdtty)
-{
-  IODEV **dt = new IODEV *[64];
-  IODEV *dummy = new IODEV(p);
-  int i;
-  
-  for(i=0; i<64; i++)
-    dt[i] = dummy;
-  
-  dt[ASR_DEVICE] = new ASR_INTF(p, stdtty);
-  dt[PTR_DEVICE] = new PTR(p, stdtty);
-  dt[PTP_DEVICE] = new PTP(p, stdtty);
-  dt[LPT_DEVICE] = new LPT(p, stdtty);
-
-#if ENABLE_SPI
-  FRAM *fram = new FRAM;
-  SpiDev *devices[SPI::CHIP_SELECTS] = {fram, 0, 0, 0};
-                  
-  dt[SPI_DEVICE] = new SPI(p, devices);  
-#endif
-  
-  dt[RTC_DEVICE] = new RTC(p);
-  dt[PLT_DEVICE] = new PLT(p, stdtty);
-
-#if ENABLE_VERIF
-  dt[VSM_DEVICE] = new VSIM(p);
-  VDMC *vdmc = new VDMC(p, VD2_DEVICE);
-  dt[VD1_DEVICE] = vdmc;
-  dt[VD2_DEVICE] = vdmc;
-#endif
-  
-  return dt;
-}
-
-IODEV **IODEV::dmc_dispatch_table(Proc *p, STDTTY *stdtty, IODEV **dt)
-{
-  IODEV **dmct = new IODEV *[16];
-  int i=0;
-
-#if ENABLE_SPI
-  dmct[i++] = dt[SPI_DEVICE];
-#endif
-#if ENABLE_VERIF
-  for( ; i<16; i++) {
-    dmct[i] = dt[VD1_DEVICE];
+  std::string mnemonic;
+  switch ((instr >> 10) & 0x3f) {
+  case 014: mnemonic = "OCP" ; break;
+  case 034: mnemonic = "SKS" ; break;
+  case 054: mnemonic = "INA" ; break;
+  case 074: mnemonic = "OTA" ; break;
+  default: /* Do nothing */ break;
   }
-#endif
-  for( ; i<16; i++) {
-    dmct[i] = dt[DUM_DEVICE];
-  }
-    
-  return dmct;
-} 
-
-void IODEV::master_clear_devices(IODEV **dt)
-{
-  int i;
   
-  for(i=0; i<64; i++)
-    dt[i]->event(REASON_MASTER_CLEAR);
+  std::stringstream ss;
+  ss << name() << ": ";
+  if (mnemonic.size()) {
+    ss << mnemonic << " '" << std::oct << std::setw(4) << std::setfill('0')
+       << (instr & 0x3ff) << std::dec << ": ";
+  }
+
+  ss << additional;
+  return ss.str();
 }
 
-void IODEV::set_mask(IODEV **dt, unsigned short mask)
-{
-  int i;
-  
-  for(i=0; i<64; i++)
-    dt[i]->smk(mask);
+std::string IoDev::uxReason(int n) {
+  std::stringstream ss;
+  ss << name() << ": Unexpected event reason (" << std::dec << n << ")";
+  return ss.str();
 }

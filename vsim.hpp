@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,22 +16,29 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #ifndef _VSIM_HPP_
 #define _VSIM_HPP_
 
+#include "p_to_io_intf.hpp"
 #include "iodev.hpp"
 
-class Proc;
-
-class VSIM : public IODEV
+class VSIM : public PToIoIntf, public IoDev
 {
 public:
-  VSIM(Proc *p);
+  VSIM(IoToPIntf &p);
   
-  STATUS ota(unsigned short instr, signed short data);
+  Status ina(uint16_t instr, int16_t &data);
+  Status sks(uint16_t instr);
+  Status ota(uint16_t instr, int16_t data);
+  void ocp(uint16_t instr);
+  void  smk(uint16_t mask);
+  
+  void event(int reason);
+  void set_filename(const std::string &filename, unsigned subdevice);
+
+  const char *name();
 
 private:
 };

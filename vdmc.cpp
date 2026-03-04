@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2018, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 
 #include <cstdlib>
@@ -28,11 +28,15 @@
 #include "proc.hpp"
 #include "vdmc.hpp"
 
-VDMC::VDMC(Proc *p, unsigned int cc_addr)
-  : IODEV(p)
+VDMC::VDMC(IoToPIntf &p, unsigned cc_addr)
+  : IoDev(p)
   , cc_addr(cc_addr)
 {
   master_clear();
+}
+
+const char *VDMC::name() {
+  return "VDMC";
 }
 
 void VDMC::master_clear()
@@ -72,7 +76,8 @@ void VDMC::reload_time_cntr(unsigned int chan)
                        ((time_prng[chan]  & 1) ? PRNG_TAPS : 0));
   }
 
-  p->queue_hc(time_cntr, this, (VDMC_REASON_TIMER + chan));
+  int reason = static_cast<int>(Event::TIMER) + chan;
+  p.queue_hc(time_cntr, *this, reason);
 }
 
 bool VDMC::chan_error(unsigned int chan)
@@ -86,7 +91,7 @@ bool VDMC::chan_error(unsigned int chan)
   return r;
 }
 
-bool VDMC::interrupts(signed short *chan)
+bool VDMC::interrupts(int16_t *chan)
 {
   bool r = false;
   unsigned int i;
@@ -111,17 +116,17 @@ bool VDMC::interrupts(signed short *chan)
 void VDMC::evaluate_interrupts()
 {
   if (interrupts() && intr_mask) {
-    p->set_interrupt(SMK_MASK);
+    p.set_interrupt(SMK_MASK);
     //cout << "Interrupt requested" << endl;
   } else {
-    p->clear_interrupt(SMK_MASK);
+    p.clear_interrupt(SMK_MASK);
     //cout << "Interrupt cleared" << endl;
   }
 }
 
-IODEV::STATUS VDMC::ina(unsigned short instr, signed short &data)
+VDMC::Status VDMC::ina(uint16_t instr, int16_t &data)
 {
-  STATUS status = STATUS_READY;
+  Status status = Status::READY;
   
   if (is_central(instr)) {
     switch(function_code(instr)) {
@@ -138,7 +143,7 @@ IODEV::STATUS VDMC::ina(unsigned short instr, signed short &data)
         }
       }
       break;
-    default: status = STATUS_WAIT;
+    default: status = Status::WAIT;
     }
   } else {
     switch(function_code(instr)) {
@@ -149,24 +154,24 @@ IODEV::STATUS VDMC::ina(unsigned short instr, signed short &data)
     case INA_CHAN_ERRS:
       data = (((unsigned int) unexpected_trfr[channel]) |
               (error_bits[channel].to_ulong()            <<   1) |
-              (((unsigned int) (checksum[channel] != 0)) << (1+NUM_ERROR_BITS)));
+              (((unsigned int) (checksum[channel] != 0)) << (1+numErrorBits)));
       //cout << "INA_CHAN_ERRS: " << " data = " << data << endl;
       break;
-    default: status = STATUS_WAIT;
+    default: status = Status::WAIT;
     }
   }
   
   return status;
 }
 
-IODEV::STATUS VDMC::ota(unsigned short instr, signed short data)
+VDMC::Status VDMC::ota(uint16_t instr, int16_t data)
 {
-  STATUS status = STATUS_READY;
+  Status status = Status::READY;
 
   if (is_central(instr)) {
     switch(function_code(instr)) {
     case OTA_CHAN_SLCT: channel = data & 0xf; break;
-    default: status = STATUS_WAIT;
+    default: status = Status::WAIT;
     }
   } else {
     switch(function_code(instr)) {
@@ -176,35 +181,35 @@ IODEV::STATUS VDMC::ota(unsigned short instr, signed short data)
     case OTA_DATA_PRNG: data_prng[channel] = data; break;
     case OTA_TIME_PRNG: time_prng[channel] = data; break;
     case OTA_TIME_CTRL: time_ctrl[channel] = data; break;
-    default: status = STATUS_WAIT;
+    default: status = Status::WAIT;
     }
   }
   return status;
 }
 
-VDMC::STATUS VDMC::sks(unsigned short instr)
+VDMC::Status VDMC::sks(uint16_t instr)
 {
-  STATUS status = STATUS_READY;
+  Status status = Status::READY;
 
   if (is_central(instr)) {
     switch(function_code(instr)) {
-    case SKS_NOT_BUSY:  if (busy.any())            status = STATUS_WAIT; break;
-    case SKS_NOT_INTR:  if (interrupts())          status = STATUS_WAIT; break;
-    case SKS_NTRFR_ERR: if (unexpected_trfr.any()) status = STATUS_WAIT; break;
-    default:                                       status = STATUS_WAIT;
+    case SKS_NOT_BUSY:  if (busy.any())            status = Status::WAIT; break;
+    case SKS_NOT_INTR:  if (interrupts())          status = Status::WAIT; break;
+    case SKS_NTRFR_ERR: if (unexpected_trfr.any()) status = Status::WAIT; break;
+    default:                                       status = Status::WAIT;
     }
   } else {
     switch(function_code(instr)) {
-    case SKS_NOT_BUSY: if (busy[channel])          status = STATUS_WAIT; break;
-    case SKS_NO_ERROR: if (chan_error(channel))    status = STATUS_WAIT; break;
-    case SKS_NOT_INTR: if (chn_interrupt[channel]) status = STATUS_WAIT; break;
-    default:                                       status = STATUS_WAIT;
+    case SKS_NOT_BUSY: if (busy[channel])          status = Status::WAIT; break;
+    case SKS_NO_ERROR: if (chan_error(channel))    status = Status::WAIT; break;
+    case SKS_NOT_INTR: if (chn_interrupt[channel]) status = Status::WAIT; break;
+    default:                                       status = Status::WAIT;
     }
   }
   return status;
 }
 
-VDMC::STATUS VDMC::ocp(unsigned short instr)
+void VDMC::ocp(uint16_t instr)
 {
   if (is_central(instr)) {
     switch(function_code(instr)) {
@@ -235,25 +240,23 @@ VDMC::STATUS VDMC::ocp(unsigned short instr)
       //cout << "Busy = " << busy << endl;
     }
   }
-  return STATUS_READY;
 }
 
-VDMC::STATUS VDMC::smk(unsigned short mask)
+void VDMC::smk(uint16_t mask)
 {
   intr_mask = (mask & SMK_MASK);
 
   evaluate_interrupts();
-  
-  return STATUS_READY;
 }
 
 void VDMC::event(int reason)
 {
-  if ((reason >= VDMC_REASON_TIMER                        ) &&
-      (reason < (VDMC_REASON_TIMER + ((int) NUM_CHANNELS)))) {
-    unsigned int chan = reason - VDMC_REASON_TIMER;
+  const int timer = static_cast<int>(Event::TIMER);
+  if ((reason >= timer           ) &&
+      (reason < (timer + ((int) NUM_CHANNELS)))) {
+    unsigned int chan = reason - timer;
     if (pending_transfers[chan] == 0) {
-      p->set_dmcreq(1 << chan);
+      p.set_break(chan+1);
     }
     pending_transfers[chan]++;
     if (trfr_cntr[chan] == 0) {
@@ -267,22 +270,22 @@ void VDMC::event(int reason)
       reload_time_cntr(chan);
     }
   } else {
-    switch(reason) {
-    case REASON_MASTER_CLEAR:
+    const Event event {static_cast<Event>(reason)};
+    switch(event) {
+    case Event::MASTER_CLEAR:
       master_clear();
       break;
       
     default:
-      fprintf(stderr, "%s %d\n", __PRETTY_FUNCTION__, reason);
-      p->abort();
+      p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
       break;
     }
   }
 }
 
-void VDMC::dmc(signed short &data, bool erl)
+void VDMC::dmc(unsigned dmc_dev, int16_t &data, bool erl)
 {
-  const unsigned int chan = p->get_dmc_dev();
+  const unsigned chan = dmc_dev;
   
  
   if (pending_transfers[chan] == 0) {
@@ -299,14 +302,14 @@ void VDMC::dmc(signed short &data, bool erl)
     
     if ((pending_transfers[chan] != 0) && (!erl)) {
       // Keep requesting
-      p->set_dmcreq(1 << chan);
+      p.set_break(chan + 1);
     }
     
     if (erl && (!last_transfer)) {
-      error_bits[chan][UNEXPECTED_EOR] = true;
+      error_bits[chan][static_cast<unsigned>(ErrorBits::UNEXPECTED_EOR)] = true;
     } else if (last_transfer && (!erl)) {
       //cout << "Missing EOR" << endl;
-      error_bits[chan][MISSING_EOR] = true;
+      error_bits[chan][static_cast<unsigned>(ErrorBits::MISSING_EOR)] = true;
     }
     
     if (input_mode[chan]) {
@@ -319,7 +322,7 @@ void VDMC::dmc(signed short &data, bool erl)
       if ((!last_transfer) &&
           ((data & 0xffff) != (data_prng[chan] & 0xffff))) {
         //cout << "Mismatch" << endl;
-        error_bits[chan][DATA_MISMATCH] = true;
+        error_bits[chan][static_cast<unsigned>(ErrorBits::DATA_MISMATCH)] = true;
       }
     }
     
@@ -343,3 +346,5 @@ void VDMC::dmc(signed short &data, bool erl)
   }
 
 }
+
+DEF_NULL_SET_FILENAME(VDMC)

@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <cinttypes>
 
-#include "stdtty.hpp"
+//#include "stdtty.hpp"
 #include "proc.hpp"
 #include "instr.hpp"
 #include "monitor.hpp"
@@ -108,6 +108,7 @@ static void fp_master_clear(struct FP_INTF *intf)
 
 #endif
 
+#if 0
 /*
  * Do whatever has to happen in the case that
  * an Alt-key is pressed
@@ -129,6 +130,7 @@ static bool call_special_chars(Proc *p, int k)
 
   return r;
 }
+#endif
 
 /*
  * Where it all starts...
@@ -137,7 +139,7 @@ int main(int argc, char **argv)
 {
   int exit_code = 0;
   bool exit_called = false;
-  STDTTY *stdtty;
+  //STDTTY *stdtty;
   Proc *p;
 #ifdef ENABLE_GUI
   bool front_panel = 1;
@@ -193,9 +195,9 @@ int main(int argc, char **argv)
    * which Proc it is connected to; they each need to know
    * how to contact the other!
    */
-  stdtty = new STDTTY;
-  p = new Proc(stdtty, true);
-  stdtty->set_proc(p, call_special_chars);
+  //stdTty = new StdTty;
+  p = new Proc(true);
+  //stdtty->set_proc(p, call_special_chars);
 
 #ifdef ENABLE_GUI
   if (front_panel)
@@ -228,7 +230,7 @@ int main(int argc, char **argv)
       /*
        * Initialize the monitor
        */
-      m = new Monitor(p, stdtty, argc, argv);
+      m = new Monitor(*p, argc, argv);
 
       /*
        * Open a script file (if any)
