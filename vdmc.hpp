@@ -22,14 +22,13 @@
 #define _VDMC_HPP_
 
 #include "p_to_io_intf.hpp"
-#include "p_to_dmc_intf.hpp"
 #include "iodev.hpp"
 
 #include <bitset>
 
 class Proc;
 
-class VDMC : public PToIoIntf, public PToDmcIntf, public IoDev
+class VDMC : public PToIoIntf, public IoDev
 {
 public:
   VDMC(IoToPIntf &p, unsigned cc_addr);

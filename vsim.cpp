@@ -32,22 +32,12 @@ const char *VSIM::name() {
 
 PToIoIntf::Status VSIM::ota(uint16_t instr, int16_t data)
 {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
-PToIoIntf::Status VSIM::ina(uint16_t instr, int16_t &data) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
-PToIoIntf::Status VSIM::sks(uint16_t instr) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
-void VSIM::ocp(uint16_t instr) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  // This needs to set the exit code to data
+  Proc *proc = dynamic_cast<Proc *>(&p);
+  if (proc) {
+    proc->exit(data);
+  }
+  return Status::READY;
 }
 
 void VSIM::smk(uint16_t mask) {
@@ -60,4 +50,10 @@ void VSIM::event(int reason) {
   }
 }
 
-DEF_NULL_SET_FILENAME(VSIM)
+
+DEFINE_UNEXPECTED_INA(VSIM)
+DEFINE_UNEXPECTED_SKS(VSIM)
+DEFINE_UNEXPECTED_OCP(VSIM)
+DEFINE_UNEXPECTED_DMC(VSIM)
+
+DEFINE_NULL_SET_FILENAME(VSIM)

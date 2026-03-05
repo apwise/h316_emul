@@ -51,7 +51,7 @@ IoDispatch::IoDispatch(IoToPIntf &p)
   : IoDev(p) {
   io_table.clear();
 
-  Dum *dum = new Dum(p);
+  DUM *dum = new DUM(p);
 
   io_table.resize(64, dum);
 
@@ -83,20 +83,19 @@ IoDispatch::IoDispatch(IoToPIntf &p)
 
   unsigned i=0;
 #if ENABLE_SPI
-  dmc_table.push_back(static_cast<PToDmcIntf *>(spi));
+  dmc_table.push_back(spi);
   i++;
 #endif
 
 #if ENABLE_VERIF
   for( ; i<16; i++) {
-    dmc_table.push_back(static_cast<PToDmcIntf *>(vdmc));
+    dmc_table.push_back(vdmc);
   }
 #endif
   
   for( ; i<16; i++) {
-    dmc_table.push_back(static_cast<PToDmcIntf *>(dum));
+    dmc_table.push_back(dum);
   }
-  
 }
 
 IoDispatch::~IoDispatch() {
@@ -140,12 +139,7 @@ void IoDispatch::smk(uint16_t mask) {
 
 void IoDispatch::dmc(unsigned dmc_dev, int16_t &data, bool erl) {
   assert(dmc_dev < 16);
-  PToDmcIntf *d = dynamic_cast<PToDmcIntf *>(dmc_table[dmc_dev]);
-  if (d) {
-    d -> dmc(dmc_dev, data, erl);
-  } else {
-    p.anomaly(IoToPIntf::Level::ERROR, "DMC cycle to non-DMC enabled device");
-  }
+  dmc_table[dmc_dev] -> dmc(dmc_dev, data, erl);
 }
 
 void IoDispatch::event(DEVICE dev, unsigned reason) {

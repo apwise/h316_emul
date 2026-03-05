@@ -78,7 +78,7 @@ protected:
   
 };
 
-#define DEF_STD_NAME(ClassName) const char *ClassName::name() { return #ClassName; }
+#define DEFINE_STD_NAME(ClassName) const char *ClassName::name() { return #ClassName; }
 
 
 #endif //_IODEV_HPP_

@@ -38,6 +38,8 @@ class PLT : public PToIoIntf, public IoDev
   void event(int reason);
   void set_filename(const std::string &filename, unsigned subdevice); 
 
+  void dmc(unsigned dmc_dev, int16_t &data, bool erl);
+
  private:
   static const int SPEED = 300; // steps per second
   static const int PEN_TIME = 20; // ms

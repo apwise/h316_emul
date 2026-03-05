@@ -55,8 +55,8 @@ public:
   void event(int reason);
   void set_filename(const std::string &filename, unsigned subdevice);
 
-  //void asr_ptr_on(char *filename);
-  //void asr_ptp_on(char *filename);
+  void dmc(unsigned dmc_dev, int16_t &data, bool erl);
+
   bool special(char c);
         
 private:

@@ -347,4 +347,4 @@ void VDMC::dmc(unsigned dmc_dev, int16_t &data, bool erl)
 
 }
 
-DEF_NULL_SET_FILENAME(VDMC)
+DEFINE_NULL_SET_FILENAME(VDMC)

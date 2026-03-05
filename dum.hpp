@@ -22,14 +22,13 @@
 #define _DUM_HPP_
 
 #include "p_to_io_intf.hpp"
-#include "p_to_dmc_intf.hpp"
 #include "iodev.hpp"
 
-class Dum : public PToIoIntf, public PToDmcIntf, public IoDev
+class DUM : public PToIoIntf, public IoDev
 {
 public:
-  Dum(IoToPIntf &p);
-  ~Dum(){};
+  DUM(IoToPIntf &p);
+  ~DUM(){};
 
   Status ina(uint16_t instr, int16_t &data);
   void ocp(uint16_t instr);

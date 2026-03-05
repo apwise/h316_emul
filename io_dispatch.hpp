@@ -24,7 +24,6 @@
 #include <vector>
 #include "iodev.hpp"
 #include "p_to_io_intf.hpp"
-#include "p_to_dmc_intf.hpp"
 
 class IoDispatch : public IoDev
 {
@@ -68,7 +67,7 @@ public:
 
 private:
   std::vector<PToIoIntf *> io_table;
-  std::vector<PToDmcIntf *> dmc_table;
+  std::vector<PToIoIntf *> dmc_table;
   const char *name();
 };
 

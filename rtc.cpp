@@ -1,4 +1,5 @@
 /* Honeywell Series 16 emulator
+ *
  * Copyright (C) 2011, 2026  Adrian Wise
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA  02111-1307 USA
- *
  */
 #include "rtc.hpp"
 
@@ -33,10 +33,6 @@
 #define RATE 60 /* Ticks per second */
 #define iEvent(x) static_cast<int>(Event::x)
 
-const char *RTC::name() {
-  return "RTC";
-}
-
 RTC::RTC(IoToPIntf &p)
   : IoDev(p)
 {
@@ -50,15 +46,6 @@ void RTC::master_clear()
   interrupting = false;
   mask = 0;
 };
-
-RTC::Status RTC::ina(uint16_t instr, int16_t &data)
-{
-  bool r = false;
-
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
- 
-  return status(r);
-}
 
 void RTC::ocp(uint16_t instr)
 {
@@ -94,13 +81,6 @@ RTC::Status RTC::sks(uint16_t instr)
   }
   
   return status(r);
-}
-
-RTC::Status RTC::ota(uint16_t instr, int16_t data)
-{
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-
-  return Status::WAIT;
 }
 
 void RTC::smk(uint16_t mask)
@@ -143,4 +123,9 @@ void RTC::event(int reason)
   }
 }
 
-DEF_NULL_SET_FILENAME(RTC)
+DEFINE_UNEXPECTED_INA(RTC)
+DEFINE_UNEXPECTED_OTA(RTC)
+DEFINE_NULL_SET_FILENAME(RTC)
+DEFINE_UNEXPECTED_DMC(RTC)
+
+DEFINE_STD_NAME(RTC)

@@ -211,13 +211,6 @@ PTR::Status PTR::sks(uint16_t instr)
   return status(r);
 }
 
-PTR::Status PTR::ota(uint16_t instr, int16_t data)
-{
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr, "Output to reader"));
-  
-  return Status::WAIT;
-}
-
 void PTR::smk(uint16_t mask)
 {
   this->mask = mask & SMK_MASK;
@@ -282,4 +275,7 @@ void PTR::set_filename(const std::string &filename, unsigned subdevice) {
   this->filename = filename;
 }
 
-DEF_STD_NAME(PTR)
+DEFINE_UNEXPECTED_OTA(PTR)
+DEFINE_UNEXPECTED_DMC(PTR)
+
+DEFINE_STD_NAME(PTR)

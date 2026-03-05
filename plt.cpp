@@ -96,18 +96,6 @@ void PLT::master_clear()
   not_busy = true;
 };
 
-PLT::Status PLT::ina(uint16_t instr, int16_t &data)
-{
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr, "Input from plotter"));
-  return Status::WAIT;
-}
-
-PLT::Status PLT::ota(uint16_t instr, int16_t data)
-{
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr, "Output to plotter"));
-  return Status::WAIT;
-}
-
 void PLT::ensure_file_open()
 {
   std::string str;
@@ -303,4 +291,9 @@ void PLT::set_filename(const std::string &filename, unsigned subdevice) {
   this->filename = filename;
 }
 
-DEF_STD_NAME(PLT)
+
+DEFINE_UNEXPECTED_INA(PLT)
+DEFINE_UNEXPECTED_OTA(PLT)
+DEFINE_UNEXPECTED_DMC(PLT)
+
+DEFINE_STD_NAME(PLT)

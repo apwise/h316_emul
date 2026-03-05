@@ -21,47 +21,17 @@
 #include "dum.hpp"
 #include "iodev.hpp"
 
-const char *Dum::name() {
-  return "DUM";
-}
-
-Dum::Dum(IoToPIntf &p)
+DUM::DUM(IoToPIntf &p)
   : IoDev(p) {
 }
 
-PToIoIntf::Status Dum::ina(uint16_t instr, int16_t &data) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
+DEFINE_UNEXPECTED_INA(DUM)
+DEFINE_UNEXPECTED_SKS(DUM)
+DEFINE_UNEXPECTED_OTA(DUM)
+DEFINE_UNEXPECTED_OCP(DUM)
+DEFINE_NULL_SMK(DUM)
+DEFINE_NULL_EVENT(DUM)
+DEFINE_UNEXPECTED_DMC(DUM)
+DEFINE_NULL_SET_FILENAME(DUM)
 
-PToIoIntf::Status Dum::sks(uint16_t instr) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
-PToIoIntf::Status Dum::ota(uint16_t instr, int16_t data) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
-void Dum::ocp(uint16_t instr) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-}
-
-void Dum::smk(uint16_t mask) {
-  // Just ignore it
-}
-
-void Dum::event(int reason) {
-  if (reason != EVENT_MASTER_CLEAR) {
-    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason));
-  }
-}
-
-void Dum::set_filename(const std::string &filename, unsigned subdevice) {
-  p.anomaly(IoToPIntf::Level::FATAL, message("set_filename()"));
-}
-
-void Dum::dmc(unsigned dmc_dev, int16_t &data, bool erl) {
-  p.anomaly(IoToPIntf::Level::FATAL, message("Unexpected DMC"));
-}
+DEFINE_STD_NAME(DUM)

@@ -31,27 +31,8 @@ Mfm::Mfm(IoToPIntf &p)
   : IoDev(p) {
 }
 
-PToIoIntf::Status Mfm::ina(uint16_t instr, int16_t &data) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
-void Mfm::ocp(uint16_t instr) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-}
-
-PToIoIntf::Status Mfm::sks(uint16_t instr) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
-PToIoIntf::Status Mfm::ota(uint16_t instr, int16_t data) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::WAIT;
-}
-
 void Mfm::smk(uint16_t mask) {
-  p.anomaly(IoToPIntf::Level::ERROR, message("SMK"));
+  p.anomaly(IoToPIntf::Level::ERROR, message("Unexpected SMK"));
 }
 
 void Mfm::event(int reason) {
@@ -63,4 +44,10 @@ void Mfm::event(int reason) {
   }
 }
 
-DEF_NULL_SET_FILENAME(Mfm)
+DEFINE_UNEXPECTED_INA(Mfm)
+DEFINE_UNEXPECTED_SKS(Mfm)
+DEFINE_UNEXPECTED_OTA(Mfm)
+DEFINE_UNEXPECTED_OCP(Mfm)
+DEFINE_UNEXPECTED_DMC(Mfm)
+
+DEFINE_NULL_SET_FILENAME(Mfm)

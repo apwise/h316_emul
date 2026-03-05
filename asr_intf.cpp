@@ -231,9 +231,11 @@ void AsrIntf::event(int reason)
     break;
     
   case Event::PTR_ON:
+    asr->ptr_on();
     break;
     
   case Event::PTP_ON:
+    asr->ptp_on();
     break;
     
   default:
@@ -246,24 +248,9 @@ void AsrIntf::set_filename(const std::string &filename, unsigned subdevice) {
   asr->set_filename(filename, subdevice);
 }
 
-/*
-void AsrIntf::set_filename(char *filename, bool asr_ptp)
-{
-  asr->set_filename(filename, asr_ptp);
-}
- 
-void AsrIntf::asr_ptr_on(char *filename)
-{
-  asr->asr_ptr_on(filename);
-}
- 
-void AsrIntf::asr_ptp_on(char *filename)
-{
-  asr->asr_ptp_on(filename);
-}
-*/
-
 bool AsrIntf::special(char c)
 {
   return asr->special(c);
 }
+
+DEFINE_UNEXPECTED_DMC(AsrIntf)

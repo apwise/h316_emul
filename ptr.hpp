@@ -38,6 +38,8 @@ public:
   void event(int reason);
   void set_filename(const std::string &filename, unsigned subdevice); 
 
+  void dmc(unsigned dmc_dev, int16_t &data, bool erl);
+
 private:
   enum Event {
     MASTER_CLEAR = EVENT_MASTER_CLEAR,

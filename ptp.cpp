@@ -195,4 +195,6 @@ void PTP::set_filename(const std::string &filename, unsigned subdevice) {
   this->filename = filename;
 }
 
-DEF_STD_NAME(PTP)
+DEFINE_UNEXPECTED_DMC(PTP)
+
+DEFINE_STD_NAME(PTP)

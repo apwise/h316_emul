@@ -45,8 +45,42 @@ public:
   virtual void event(int reason) = 0;
 
   virtual void set_filename(const std::string &filename, unsigned subdevice) = 0; 
+
+  virtual void dmc(unsigned dmc_dev, // 0 to 15
+                   int16_t &data, bool erl) = 0;
 };
 
-#define DEF_NULL_SET_FILENAME(ClassName) void ClassName::set_filename(const std::string &filename, unsigned subdevice) {}
+#define DEFINE_UNEXPECTED_INA(ClassName) PToIoIntf::Status ClassName::ina(uint16_t instr, int16_t &data) { \
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr)); \
+  return Status::WAIT; \
+}
+
+#define DEFINE_UNEXPECTED_SKS(ClassName) PToIoIntf::Status ClassName::sks(uint16_t instr) { \
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr)); \
+  return Status::WAIT; \
+}
+
+#define DEFINE_UNEXPECTED_OTA(ClassName) PToIoIntf::Status ClassName::ota(uint16_t instr, int16_t data) { \
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr)); \
+  return Status::WAIT; \
+}
+
+#define DEFINE_UNEXPECTED_OCP(ClassName) void ClassName::ocp(uint16_t instr) { \
+  p.anomaly(IoToPIntf::Level::ERROR, message(instr)); \
+}
+
+#define DEFINE_NULL_SMK(ClassName) void ClassName::smk(uint16_t mask) { }
+
+#define DEFINE_NULL_EVENT(ClassName) void ClassName::event(int reason) { \
+  if (reason != EVENT_MASTER_CLEAR) { \
+    p.anomaly(IoToPIntf::Level::FATAL, uxReason(reason)); \
+  } \
+}
+
+#define DEFINE_UNEXPECTED_DMC(ClassName) void ClassName::dmc(unsigned dmc_dev, int16_t &data, bool erl) { \
+  p.anomaly(IoToPIntf::Level::ERROR, message("Unexpected DMC")); \
+}
+
+#define DEFINE_NULL_SET_FILENAME(ClassName) void ClassName::set_filename(const std::string &filename, unsigned subdevice) {}
 
 #endif // _P_TO_IO_INTF_HPP_

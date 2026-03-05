@@ -53,11 +53,6 @@ void LPT::master_clear() {
   pending_nl = false;
 }
 
-LPT::Status LPT::ina(unsigned short instr, signed short &data) {
-  p.anomaly(IoToPIntf::Level::ERROR, message(instr));
-  return Status::READY;
-}
-
 void LPT::open_file() {
   std::string str;
 
@@ -256,4 +251,7 @@ void LPT::set_filename(const std::string &filename, unsigned subdevice) {
   this->filename = filename;
 }
 
-DEF_STD_NAME(LPT)
+DEFINE_UNEXPECTED_INA(LPT)
+DEFINE_UNEXPECTED_DMC(LPT)
+
+DEFINE_STD_NAME(LPT)
