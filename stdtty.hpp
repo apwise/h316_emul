@@ -29,6 +29,7 @@ class StdTty final
 private:
   static StdTty *pStdTty;
   class StdTtyDestructor {
+  public:
     ~StdTtyDestructor();
   };
   static StdTtyDestructor destructor;

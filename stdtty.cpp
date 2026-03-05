@@ -96,6 +96,7 @@ struct SavedState {
 };
 
 StdTty *StdTty::pStdTty{nullptr};
+StdTty::StdTtyDestructor StdTty::destructor;
 
 StdTty &StdTty::getInstance()
 {
