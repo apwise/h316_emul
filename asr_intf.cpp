@@ -35,7 +35,7 @@
 
 #define iEvent(x) static_cast<int>(Event::x)
 #define MILLISECONDS_CHAR ((1000000*11)/ BAUD)
-#define MILLISECONDS_START ((1000000*2)/ BAUD)
+#define MILLISECONDS_DUMMY ((1000000*1)/ BAUD)
 
 AsrIntf::AsrIntf(IoToPIntf &p)
   : IoDev(p)
@@ -119,7 +119,7 @@ void AsrIntf::ocp(uint16_t instr)
       ready = 1;
       p.set_interrupt(mask);
 
-      p.queue(MILLISECONDS_START, *this, iEvent(DUMMY_CYCLE) );
+      p.queue(MILLISECONDS_DUMMY, *this, iEvent(DUMMY_CYCLE) );
                         
       break;
                         
