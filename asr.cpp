@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <cassert>
 
 #include <iostream>
 
@@ -37,9 +38,8 @@
 #define XOFF 023
 #define RUBOUT 0377
 
-Asr::Asr(IoToPIntf &p)
-  : IoDev(p)
-  , stdTty(StdTty::getInstance())
+ASR::ASR()
+  : stdTty(StdTty::getInstance())
 {
   int i;
 
@@ -57,23 +57,19 @@ Asr::Asr(IoToPIntf &p)
   clear_ptp_flags();
 }
 
-const char *Asr::name() {
-  return "ASR";
-}
-
-void Asr::clear_ptp_flags()
+void ASR::clear_ptp_flags()
 {
   tape_char_received = false;
   xoff_received = false;
 }
 
-void Asr::clear_ptr_flags()
+void ASR::clear_ptr_flags()
 {
   stop_after_next = false;
   xoff_read = false;
 }
 
-bool Asr::get_asrch(char &c, bool local_echo)
+bool ASR::get_asrch(char &c, bool local_echo)
 {
   char k;
   bool r = false;
@@ -123,12 +119,12 @@ bool Asr::get_asrch(char &c, bool local_echo)
   return r;
 }
 
-void Asr::put_asrch(char c)
+void ASR::put_asrch(char c)
 {
   echo_asrch(c, true);
 }
 
-void Asr::echo_asrch(char c, bool from_serial)
+void ASR::echo_asrch(char c, bool from_serial)
 {
   int k;
 
@@ -173,10 +169,8 @@ void Asr::echo_asrch(char c, bool from_serial)
   }
 }
 
-void Asr::set_filename(const std::string &filename, unsigned subdevice) {
-  if (subdevice > 1) {
-    p.anomaly(IoToPIntf::Level::FATAL, "Unexpected subdevice");
-  }
+void ASR::set_filename(const std::string &filename, unsigned subdevice) {
+  assert(subdevice < 2);
   
   int f=0;
   ascii_file[subdevice] = silent_file[subdevice] = false;
@@ -194,17 +188,17 @@ void Asr::set_filename(const std::string &filename, unsigned subdevice) {
   pending_filename[subdevice] = true;
 }
 
-void Asr::ptp_on() {
+void ASR::ptp_on() {
   open_punch_file();
 }
 
-void Asr::ptr_on() {
+void ASR::ptr_on() {
   open_reader_file();
 }
 
 #define BUFLEN 256
 
-void Asr::get_filename(bool asr_ptp)
+void ASR::get_filename(bool asr_ptp)
 {
   char temp[BUFLEN];
   stdTty.get_input( const_cast<char *>((asr_ptp) ? "AsrPTP: " : "AsrPTR: "),
@@ -212,13 +206,13 @@ void Asr::get_filename(bool asr_ptp)
   set_filename(temp, asr_ptp);
 }
 
-void Asr::close_file(bool asr_ptp)
+void ASR::close_file(bool asr_ptp)
 {
   tty_file[asr_ptp].close();
   running[asr_ptp] = false;
 }
 
-void Asr::open_reader_file()
+void ASR::open_reader_file()
 {
   while (!tty_file[ASR_PTR].is_open()) {
     if (!pending_filename[ASR_PTR])
@@ -237,7 +231,7 @@ void Asr::open_reader_file()
   running[ASR_PTR] = true;
 }
 
-void Asr::open_punch_file()
+void ASR::open_punch_file()
 {
   while (!tty_file[ASR_PTP].is_open()) {
     if (!pending_filename[ASR_PTP])
@@ -254,7 +248,7 @@ void Asr::open_punch_file()
   running[ASR_PTP] = true;
 }
 
-bool Asr::special(char c)
+bool ASR::special(char c)
 {
   bool r=false;
 

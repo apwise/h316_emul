@@ -21,18 +21,17 @@
 #define _ASR_HPP_
 
 #include "tty_file.hpp"
-#include "io_to_p_intf.hpp"
-#include "iodev.hpp"
+#include <string>
 
 class StdTty;
 
 #define ASR_PTR 0
 #define ASR_PTP 1
 
-class Asr : public IoDev
+class ASR
 {
 public:
-  Asr(IoToPIntf &p);
+  ASR();
   bool get_asrch(char &c, bool local_echo=true);
   void put_asrch(char c);
   void set_filename(const std::string &filename, unsigned subdevice);
@@ -43,8 +42,6 @@ public:
 
   bool special(char c);
   
-  const char *name();
-
 private:
   StdTty &stdTty;
 

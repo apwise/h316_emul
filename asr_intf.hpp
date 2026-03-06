@@ -24,7 +24,7 @@
 #include "p_to_io_intf.hpp"
 #include "iodev.hpp"
 
-class Asr;
+class ASR;
 
 class AsrIntf : public PToIoIntf, public IoDev
 {
@@ -45,6 +45,7 @@ public:
   static const int PTP {1};
 
   AsrIntf(IoToPIntf &p);
+  ~AsrIntf();
 
   Status ina(uint16_t instr, int16_t &data);
   void ocp(uint16_t instr);
@@ -70,7 +71,7 @@ private:
   
   const char *name();
   void master_clear(void);
-  Asr *asr;
+  ASR *asr;
 
   uint16_t mask; // just set the one bit for this device
 

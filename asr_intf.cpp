@@ -39,10 +39,15 @@
 
 AsrIntf::AsrIntf(IoToPIntf &p)
   : IoDev(p)
+  , asr(nullptr)
 {
-  asr = new Asr(p);
+  asr = new ASR();
 
   master_clear();
+}
+
+AsrIntf::~AsrIntf() {
+  if (asr) delete asr;
 }
 
 const char *AsrIntf::name() {
@@ -245,6 +250,7 @@ void AsrIntf::event(int reason)
 
 void AsrIntf::set_filename(const std::string &filename, unsigned subdevice) {
   // Forward to the ASR
+  p.anomaly(IoToPIntf::Level::FATAL, "Unexpected subdevice");
   asr->set_filename(filename, subdevice);
 }
 
