@@ -30,7 +30,6 @@ h16_SOURCES = 	dum.cpp \
 		io_to_p_intf.cpp \
 		p_to_io_intf.hpp \
 		p_to_io_intf.cpp \
-		p_to_dmc_intf.hpp \
 		iodev.hpp \
 		io_dispatch.hpp \
 		monitor.hpp \
@@ -97,6 +96,7 @@ version.h: $(h16_SOURCES)
 	@echo "#define VERSION \"$(PACKAGE_VERSION)\"" >> $@
 	@echo "#define COPYRIGHT \"`grep ^Copyright.*Wise$$ $(srcdir)/configure`\"" >> $@
 	@echo "#define DATE \"`date`\"" >> $@
+	@echo "#define GITVERSION \"`git describe HEAD`\"" >> $@
 
 h16_tabs_SOURCES = utils/h16-tabs.c
 
@@ -175,7 +175,9 @@ CLEANFILES = h16-as h16-ld h16-f4 version.h
 
 do_subst = sed -e 's,[@]pkgdatadir[@],$(pkgdatadir),g'
 
-%: $(srcdir)/scripts/%.in Makefile
+h16-as: scripts/h16-as.in
+h16-ld: scripts/h16-ld.in
+h16-f4: scripts/h16-f4.in
 	$(do_subst) < $< > $@
 
 install-exec-local:
@@ -196,3 +198,5 @@ uninstall-local:
 	rm -f  $(DESTDIR)$(bindir)/h16-as
 	rm -f  $(DESTDIR)$(bindir)/h16-ld
 	rm -f  $(DESTDIR)$(bindir)/h16-f4
+	rm -f  $(DESTDIR)$(bindir)/h16-basic
+	rm -f  $(DESTDIR)$(bindir)/h16-pl5

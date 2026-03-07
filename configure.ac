@@ -15,6 +15,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_CC
 AC_PROG_CXX
 AX_CXX_COMPILE_STDCXX([20],[noext],[mandatory])
+AX_COMPILER_FLAGS()
 
 AC_ARG_ENABLE([gui],
               AS_HELP_STRING([--disable-gui],[Compile a text-only version with no GUI]),
@@ -45,8 +46,10 @@ fi
 AC_CHECK_LIB([termcap], [tgoto])
 AC_CHECK_LIB([history], [add_history])
 AC_CHECK_LIB([readline], [readline])
-AC_CHECK_LIB([depp], [DeppEnable])
 
+AC_CHECK_FILE([/usr/include/digilent/adept], [CFLAGS="$CFLAGS -I /usr/include/digilent/adept"])
+AC_CHECK_FILE([/usr/lib/digilent/adept], [LDFLAGS="$LDFLAGS -L /usr/lib/digilent/adept"])
+AC_CHECK_LIB([depp], [DeppEnable])
 AM_CONDITIONAL([ENABLE_DEPP], [test x$ac_cv_lib_depp_DeppEnable = xyes])
 
 # Checks for header files.
