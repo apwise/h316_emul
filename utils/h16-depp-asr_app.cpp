@@ -26,22 +26,23 @@
 
 #include <iostream>
 
-#include "dummy_proc.hpp"
 #include "asr.hpp"
 #include "stdtty.hpp"
 
 #include "depp_channel.h"
 
-static bool call_special_chars(Proc *p, int k)
+static bool special_chars(void *callback_arg, int k)
 {
+  ASR *p = static_cast<ASR *>(callback_arg);
   return p->special(k);
 }
 
 int main(int argc, char **argv)
 { 
-  STDTTY stdtty;
-  ASR asr(&stdtty);
-  Proc p(&asr);
+  StdTty &stdtty(StdTty::getInstance());
+  ASR asr;
+  stdtty.register_callback(static_cast<void *>(&asr), special_chars);
+
   char c;
   bool ok;
   struct depp_channel_s *ppc;
@@ -55,8 +56,6 @@ int main(int argc, char **argv)
   if (! (ppc = depp_channel_init()))
     exit(1);
   
-  stdtty.set_proc(&p, &call_special_chars);
-
   i = 0;
   file_input = false;
   

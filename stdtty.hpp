@@ -21,7 +21,6 @@
 #ifndef _STDTTY_HPP_
 #define _STDTTY_HPP_
 
-class Proc;
 struct SavedState;
 
 class StdTty final
@@ -38,13 +37,15 @@ private:
   ~StdTty();
 
 public:
+  typedef bool callback_t(void *callback_arg, int k);
+    
   StdTty(StdTty &) = delete; // Can't copy
   void operator=(const StdTty &) = delete; // Can't assign
 
   static StdTty &getInstance();
-  
-  void set_proc(Proc *p, bool (*call_special_chars)(Proc *p, int k));
 
+  void register_callback(void *p, bool (*call_back)(void *p, int k));
+  
   bool got_char(char &c);
   void putch(const char c);
 
@@ -69,10 +70,10 @@ private:
   bool last_was_cr;
   bool last_was_lf;
 
-  // TODO - replace this with an interface...
-  Proc *p;
-  bool (*call_special_chars)(Proc *p, int k);
-   
+  // TODO - should this be an interface?
+  void *callback_arg;
+  callback_t *callback;
+  
   char cr_or_lf;
 
   static void catch_sigio(int sig);

@@ -31,7 +31,6 @@
 
 #include <iostream>
 
-#include "dummy_proc.hpp"
 #include "asr.hpp"
 #include "stdtty.hpp"
 #include "serial.hpp"
@@ -54,8 +53,9 @@
 #define DEFAULT_DEVICE "/dev/ttyS0"
 #define DEFAULT_BAUD 110
 
-static bool call_special_chars(Proc *p, int k)
+static bool special_chars(void *callback_arg, int k)
 {
+  ASR *p = static_cast<ASR *>(callback_arg);
   return p->special(k);
 }
 
@@ -281,23 +281,25 @@ int main(int argc, char **argv)
     
     exit((usage) ? 1 : 0);
   }
-
+  
   fd_set readfs;    /* file descriptor set */
   fd_set writefs;   /* file descriptor set */
   int    maxfd=0;   /* maximum file desciptor used */
 
-  STDTTY stdtty;
-  ASR asr(&stdtty);
-  Proc p(&asr);
+  StdTty &stdtty(StdTty::getInstance());
+  ASR asr;
+  stdtty.register_callback(static_cast<void *>(&asr), special_chars);
+
   Serial serial(device, baud);
   char c;
   bool ok;
   Pal_monitor pal_monitor;
   
-  stdtty.set_proc(&p, &call_special_chars);
+  stdtty.register_callback(nullptr, &special_chars);
 
   if (tape) {
-    asr.asr_ptr_on(tape);
+    asr.set_filename(tape, ASR_PTR);
+    asr.ptr_on();
   }
 
   maxfd = serial.get_fd() + 1;

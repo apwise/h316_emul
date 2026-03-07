@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <cinttypes>
 
-//#include "stdtty.hpp"
+#include "stdtty.hpp"
 #include "proc.hpp"
 #include "instr.hpp"
 #include "monitor.hpp"
@@ -108,29 +108,25 @@ static void fp_master_clear(struct FP_INTF *intf)
 
 #endif
 
-#if 0
 /*
  * Do whatever has to happen in the case that
  * an Alt-key is pressed
  */
-static bool call_special_chars(Proc *p, int k)
+static bool special_chars(void *callback_arg, int k)
 {
+  Proc *p = static_cast<Proc *>(callback_arg);
   bool r = false;
 
-  if ( k == ('s' | 0x80))
-    {
-      p->start_button();
-      r = 1;
-    }
-  else if ( k == ('m' | 0x80))
-    {
-      p->goto_monitor();
-      r = 1;
-    }
+  if ( k == ('s' | 0x80)) {
+    p->start_button();
+    r = 1;
+  } else if ( k == ('m' | 0x80)) {
+    p->goto_monitor();
+    r = 1;
+  }
 
   return r;
 }
-#endif
 
 /*
  * Where it all starts...
@@ -139,8 +135,6 @@ int main(int argc, char **argv)
 {
   int exit_code = 0;
   bool exit_called = false;
-  //STDTTY *stdtty;
-  Proc *p;
 #ifdef ENABLE_GUI
   bool front_panel = 1;
 #endif
@@ -195,9 +189,9 @@ int main(int argc, char **argv)
    * which Proc it is connected to; they each need to know
    * how to contact the other!
    */
-  //stdTty = new StdTty;
-  p = new Proc(true);
-  //stdtty->set_proc(p, call_special_chars);
+  StdTty &stdtty {StdTty::getInstance()};
+  Proc *p = new Proc(true);
+  stdtty.register_callback(static_cast<void *>(p), special_chars);
 
 #ifdef ENABLE_GUI
   if (front_panel)

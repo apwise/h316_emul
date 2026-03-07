@@ -130,8 +130,8 @@ StdTty::StdTty()
   , escape(false)
   , last_was_cr(false)
   , last_was_lf(false)
-  , p(nullptr)
-  , call_special_chars(nullptr)
+  , callback_arg(nullptr)
+  , callback(nullptr)
 {
   savedState = new SavedState;
   
@@ -181,10 +181,9 @@ StdTty::~StdTty() {
   }
 }
 
-void StdTty::set_proc(Proc *p, bool (*call_special_chars)(Proc *p, int k))
-{
-  this->p = p;
-  this->call_special_chars = call_special_chars;
+void StdTty::register_callback(void *callback_arg, callback_t *callback) {
+  this->callback_arg = callback_arg;
+  this->callback = callback;
 }
 
 void StdTty::set_cannonical(bool c)
@@ -429,7 +428,7 @@ void StdTty::service_tty_input()
 bool StdTty::special_action(char c)
 {
   // cout << __PRETTY_FUNCTION__ << "\n";
-  bool r=0;
+  bool r = false;
   int k = ((int) c) & 0xff;
 
   /* In xterm ALT-<c> causes the MSB of the byte received to
@@ -445,8 +444,8 @@ bool StdTty::special_action(char c)
     k |= 0x80; // try putting on the top bit
   }
 
-  if ( k & 0x80 ) {
-    r = (*call_special_chars)(p, k);
+  if (( k & 0x80 ) && (callback)) {
+    r = (*callback)(callback_arg, k);
   }
   
   escape = false;
