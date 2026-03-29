@@ -31,34 +31,60 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <list>
 #include <vector>
+#include <map>
+#include <ranges>
 #include <cassert>
+
+enum class ERROR {
+  // Used in class Block
+  NONE,     // All OK
+  END,      // End Of File encountered while reading block leader
+  E_O_F,    // End Of File encountered
+  STREAM,   // Some other stream error
+  SOH,      // Missing SOH at start of block
+  CHANNEL,  // Channel punched that should not be
+  DC3,      // Encountered DC3 in unexpected place
+  DEL,      // DEL does not follow DC3
+  CHECKSUM, // Checksum incorrect
+  // Added by class ObjectBlock
+  BLOCK_TYPE, // Unknown block type
+  WORDS,      // No Words in block
+  // Added by class ObjectFile
+  OPEN,       // Could not open file
+};
+
+static const std::map<ERROR, std::string> errorName {
+  {ERROR::NONE,       "NONE"},        
+  {ERROR::END,        "END"},         
+  {ERROR::E_O_F,      "E_O_F"},       
+  {ERROR::STREAM,     "STREAM"},      
+  {ERROR::SOH,        "SOH"},         
+  {ERROR::CHANNEL,    "CHANNEL"},     
+  {ERROR::DC3,        "DC3"},         
+  {ERROR::DEL,        "DEL"},         
+  {ERROR::CHECKSUM,   "CHECKSUM"},   
+  {ERROR::BLOCK_TYPE, "BLOCK_TYPE"},  
+  {ERROR::WORDS,      "WORDS"},       
+  {ERROR::OPEN,       "OPEN"},
+};
 
 class Block
 {
 public:
   Block();
   virtual ~Block();
+  void clear();
 
   void read(std::istream &st);
   void write(std::ostream &st);
 
-  void dump(std::ostream &st);
+  virtual bool operator==(const Block &rhs) const;
+  
+  void dump(std::ostream &st) const;
 
-  enum ERROR {
-    ERR_NONE,     // All OK
-    ERR_END,      // End Of File encountered while reading block leader
-    ERR_EOF,      // End Of File encountered
-    ERR_STREAM,   // Some other stream error
-    ERR_SOH,      // Missing SOH at start of block
-    ERR_CHANNEL,  // Channel punched that should not be
-    ERR_DC3,      // Encountered DC3 in unexpected place
-    ERR_DEL,      // DEL does not follow DC3
-    ERR_CHECKSUM, // Checksum incorrect
-    ERR_NUM
-  };
-
-  ERROR error() const { return Error; };
+  ERROR getError() const { return error; };
 
   static Block *read_new_block(std::istream &st, ERROR *p_error = 0);
   static ERROR write_leader(std::ostream &st, unsigned int n);
@@ -68,16 +94,16 @@ public:
   void set_leader_frames(unsigned int n);
 
 protected:
-  ERROR Error;
-  bool ok() const { return Error == ERR_NONE; };
+  bool ok() const { return (error == ERROR::NONE); };
   bool eot;
   std::streampos pos;
-  std::vector<unsigned int> words;
+  std::list<unsigned> words;
   unsigned int leader_frames;
 
-  virtual std::string annotation(int wi);
+  virtual std::string annotation(std::list<unsigned>::const_iterator wi) const;
   
 private:
+  ERROR error;
   unsigned int checksum;
 
 
@@ -90,9 +116,9 @@ private:
   void write_char(std::ostream &st, unsigned char uc);
   void write_block_start(std::ostream &st);
   void write_eot(std::ostream &st);
-  int to_invisible_char(int sixbit);
+  static int to_invisible_char(int sixbit);
   //void write_invisible_char(std::ostream &st, int sixbit);
-  int to_invisible(int sixteenbit, int i);
+  static int to_invisible(int sixteenbit, int i);
   void write_invisible(std::ostream &st, int sixteenbit);
   void write_block_finish(std::ostream &st);
   void compute_checksum(bool add_not_replace = false);
@@ -104,16 +130,25 @@ private:
 };
 
 Block::Block()
-  : Error(ERR_NONE),
-    eot(false),
+  : eot(false),
     pos(-1),
     leader_frames(0),
+    error(ERROR::NONE),
     checksum(0)
 {
 }
 
 Block::~Block()
 {
+}
+
+void Block::clear() {
+  error = ERROR::NONE;
+  eot = false;
+  pos = -1;
+  words.clear();
+  leader_frames = 0;
+  checksum = 0;
 }
 
 unsigned char Block::read_char(std::istream &st)
@@ -124,13 +159,13 @@ unsigned char Block::read_char(std::istream &st)
       st.get(c);
       if (st.fail()) {
         if (st.eof())
-          Error = ERR_EOF;
+          error = ERROR::E_O_F;
         else
-          Error = ERR_STREAM;
+          error = ERROR::STREAM;
         c = 0;
       }
     } else {
-      Error = ERR_STREAM;
+      error = ERROR::STREAM;
     }
   } else
     c = 0;
@@ -145,7 +180,7 @@ void Block::write_char(std::ostream &st, unsigned char uc)
     if (st.good()) {
       st.put(c);
       if (st.fail())
-        Error = ERR_STREAM;
+        error = ERROR::STREAM;
     }
   }
 }
@@ -154,17 +189,17 @@ bool Block::read_block_start(std::istream &st)
 {
   bool r = false;
   unsigned char c = 0;
-  std::streampos stream_pos(-1);
+  std::streampos stream_pos = st.tellg();
   if (ok()) c = read_char(st);
   while ((ok()) && (c == 0)) {
     leader_frames++;
+    stream_pos = st.tellg();
     c = read_char(st);
   }
-  if ((Error == ERR_EOF) && (c == 0))
-    Error = ERR_END; // Clean end of file
+  if ((error == ERROR::E_O_F) && (c == 0))
+    error = ERROR::END; // Clean end of file
 
   if (ok()) {
-    stream_pos = st.tellg();
     switch(c) {
     case SOH: r = true; break; // Normal Start of block
     case ETX:
@@ -175,15 +210,15 @@ bool Block::read_block_start(std::istream &st)
           r = false; // It is an EOT mark
         else {
           if (ok()) st.putback(c);
-          Error = ERR_SOH;
+          error = ERROR::SOH;
         }
       } else {
         if (ok()) st.putback(c);
-        Error = ERR_SOH;
+        error = ERROR::SOH;
       }
       break;
     default:
-      Error = ERR_SOH;
+      error = ERROR::SOH;
     }
   }
   if (ok()) {
@@ -218,7 +253,7 @@ int Block::read_invisible_char(std::istream &st, bool first)
       if (first)
         r = -1;
       else
-        Error = ERR_DC3;
+        error = ERROR::DC3;
     } else {
       l7 = r & 0177;
       
@@ -229,7 +264,7 @@ int Block::read_invisible_char(std::istream &st, bool first)
       case 0177: l7 = 0023; break;
       default:
         if ((r & (~mask)) != 0)
-          Error = ERR_CHANNEL;
+          error = ERROR::CHANNEL;
       }
 
       r = ((r>>2) & 0040) | (l7 & 0037);
@@ -303,7 +338,7 @@ void Block::read_block_finish(std::istream &st)
   unsigned char c = 0;
   if (ok()) c = read_char(st);
   if (ok() && (c != DEL))
-    Error = ERR_DEL;
+    error = ERROR::DEL;
 }
 
 void Block::write_block_finish(std::ostream &st)
@@ -316,7 +351,7 @@ void Block::read(std::istream &st)
 {
   int w=0;
 
-  Error = ERR_NONE;
+  error = ERROR::NONE;
   leader_frames = 0;
   checksum = 0;
   words.resize(0);
@@ -335,7 +370,7 @@ void Block::read(std::istream &st)
     
     if (ok()) {
       if (checksum != 0)
-        Error = ERR_CHECKSUM;
+        error = ERROR::CHECKSUM;
     }
   } else if (ok()) {
     // It's an EOT mark - set special flag
@@ -345,32 +380,38 @@ void Block::read(std::istream &st)
   //dump(std::cout);
 }
 
-// low-level diagnostic dump of the block
-void Block::dump(std::ostream &st)
-{
-  unsigned a = pos;
-  unsigned i;
+bool Block::operator==(const Block &rhs) const {
+  return (words == rhs.words);
+}
 
+// low-level diagnostic dump of the block
+void Block::dump(std::ostream &st) const
+{
+  unsigned a = (pos >= 0) ? static_cast<unsigned>(pos) : 077777777;
   if (eot) {
     st << std::oct << std::setfill('0')
-       << std::setw(6) << a++
+       << std::setw(8) << a
        << " " << std::setw(3) << ETX
        << " " << std::setw(3) << DC3
        << " " << std::setw(3) << DEL;
+    if (pos >= 0) a+=3;
   } else {
     st << std::oct << std::setfill('0')
-       << std::setw(6) << a++
+       << std::setw(8) << a
        << " " << std::setw(3) << SOH << "\n";
+    if (pos >= 0) a++;
     
-    for (i=0; i<words.size(); i++) {
+    for (std::list<unsigned>::const_iterator i = words.cbegin(); i != words.cend(); i++) {
       std::string annot = annotation(i);
+      const int &word(*i);
       
       st << std::oct << std::setfill('0')
-         << std::setw(6) << a++
-         << " " << std::setw(3) << to_invisible(words[i], 0)
-         << " " << std::setw(3) << to_invisible(words[i], 1)
-         << " " << std::setw(3) << to_invisible(words[i], 2);
-
+         << std::setw(8) << a
+         << " " << std::setw(3) << to_invisible(word, 0)
+         << " " << std::setw(3) << to_invisible(word, 1)
+         << " " << std::setw(3) << to_invisible(word, 2);
+      if (pos >= 0) a+=3;
+    
       if (annot.size() > 0) {
         st << " " << annot;
       }
@@ -378,22 +419,23 @@ void Block::dump(std::ostream &st)
     }
     
     st << std::oct << std::setfill('0')
-       << std::setw(6) << a++
+       << std::setw(8) << a
        << " " << std::setw(3) << DC3
        << " " << std::setw(3) << DEL;
+    if (pos >= 0) a+=2;
   }
 
   st << std::endl;
 }
 
-std::string Block::annotation(int wi)
+std::string Block::annotation(std::list<unsigned>::const_iterator wi) const
 {
   std::string s;
 
-  if ((wi>=0) && (wi<static_cast<int>(words.size()))) {
+  if ((wi!=words.cbegin()) && (wi!=words.cend())) {
     std::ostringstream st;
     st << std::oct << std::setfill('0')
-       << std::setw(6) << words[wi];
+       << std::setw(6) << (*wi);
     s = st.str();
   }
   return s;
@@ -401,20 +443,20 @@ std::string Block::annotation(int wi)
 
 //
 // This is static - and hence doesn't use the
-// per-Block-object Error field, so that it can
+// per-Block-object error field, so that it can
 // be called from higher level objects
 //
-Block::ERROR Block::write_leader(std::ostream &st, unsigned int n)
+ERROR Block::write_leader(std::ostream &st, unsigned int n)
 {
-  ERROR r = ERR_NONE;
+  ERROR r = ERROR::NONE;
   unsigned int i = 0;
   char z = 0;
 
-  while ((r == ERR_NONE) && (i < n)) {
+  while ((r == ERROR::NONE) && (i < n)) {
     if (st.good()) {
       st.put(z);
       if (st.fail())
-        r = ERR_STREAM;
+        r = ERROR::STREAM;
     }
     i++;
   }
@@ -423,40 +465,36 @@ Block::ERROR Block::write_leader(std::ostream &st, unsigned int n)
 
 void Block::compute_checksum(bool add_not_replace)
 {
-  int n = words.size();
-  int i;
-
-  if (!add_not_replace)
-    n -= 1;
-
-  if (n < 1)
-    abort();
-
+  std::list<unsigned>::iterator limit(words.end());
+  if (!add_not_replace) {
+    limit--;
+  }
+  
   checksum = 0;
-  for (i = 0; i<n; i++)
-    checksum ^= words[i];
+  for (std::list<unsigned>::iterator i = words.begin(); i != limit; i++) {
+    checksum ^= (*i);
+  }
 
-  if (add_not_replace)
+  if (add_not_replace) {
     words.push_back(checksum);
-  else
-    words[n] = checksum;
+  } else {
+    (*limit) = checksum;
+  }
 }
 
 void Block::write(std::ostream &st)
 {
-  Error = write_leader(st, leader_frames);
+  error = write_leader(st, leader_frames);
 
   if (eot) {
     write_eot(st);
   } else {
-    unsigned int i;
-    
     compute_checksum();
     
     write_block_start(st);
     
-    for (i=0; i<words.size(); i++) {
-      write_invisible(st, words[i]);
+    for (auto word: words) {
+      write_invisible(st, word);
     }
     
     write_block_finish(st);
@@ -469,9 +507,9 @@ Block *Block::read_new_block(std::istream &st, ERROR *p_error)
   ERROR error;
 
   block->read(st);
-  error = block->error();
+  error = block->getError();
 
-  if (error != ERR_NONE) {
+  if (error != ERROR::NONE) {
     delete block;
     block = 0;
   }
@@ -479,7 +517,7 @@ Block *Block::read_new_block(std::istream &st, ERROR *p_error)
   if (p_error)
     *p_error = error;
   else {
-    if (error != ERR_NONE) {
+    if (error != ERROR::NONE) {
       std::cerr << "Error reading block" << std::endl;
       exit(1);
     }
@@ -504,88 +542,68 @@ class ObjectBlock : public Block
 public:
   ObjectBlock();
   virtual ~ObjectBlock();
+  void clear();
 
   void parse_block_type();
 
-  enum ERROR {
-    ERR_NONE,     // All OK
-    ERR_END,      // End Of File encountered while reading block leader
-    ERR_EOF,      // End Of File encountered
-    ERR_STREAM,   // Some other stream error
-    ERR_SOH,      // Missing SOH at start of block
-    ERR_CHANNEL,  // Channel punched that should not be
-    ERR_DC3,      // Encountered DC3 in unexpected place
-    ERR_DEL,      // DEL does not follow DC3
-    ERR_CHECKSUM, // Checksum incorrect
-    //
-    ERR_BLOCK_TYPE, // Unknown block type
-    ERR_WORDS,      // No Words in block
-    ERR_NUM
+  enum class BT {
+    NONE,
+    SUB_PROG_NAME,
+    SPECIAL_FORCE,
+    SPECIAL_CHAIN,
+    SPECIAL_END_OF_JOB,
+    DATA,
+    SYMBOL_NUM_DEFN,
+    END,
+    REL,
+    ABS,
+    CALL,
+    SUBR,
+    EXD,
+    LXD,
+    SETB,
+    ABS_PROG_WORDS,
+    REL_PROG_WORDS,
+    ABS_END_JMP,
+    REL_END_JMP,
+    SUBR_CALL,
+    SUBR_OR_COMN,
+    REF_ITEM_COMN,
+    EOT
   };
   
-  enum BT
-  {
-   BT_SUB_PROG_NAME,
-   BT_SPECIAL_FORCE,
-   BT_SPECIAL_CHAIN,
-   BT_SPECIAL_END_OF_JOB,
-   BT_DATA,
-   BT_SYMBOL_NUM_DEFN,
-   BT_END,
-   BT_REL,
-   BT_ABS,
-   BT_CALL,
-   BT_SUBR,
-   BT_EXD,
-   BT_LXD,
-   BT_SETB,
-   BT_ABS_PROG_WORDS,
-   BT_REL_PROG_WORDS,
-   BT_ABS_END_JMP,
-   BT_REL_END_JMP,
-   BT_SUBR_CALL,
-   BT_SUBR_OR_COMN,
-   BT_REF_ITEM_COMN,
-   BT_EOT,
-
-   BT_NUM_TYPES
-  };
-
   static ObjectBlock *read_new_block(std::istream &st, ERROR *p_error = 0,
                                      unsigned int *trailing_frames = 0);
 
   bool is_eoj() { return ((type == 0) && (subtype == 3)); };
 
 protected:
-  virtual std::string annotation(int wi);
+  virtual std::string annotation(std::list<unsigned>::const_iterator wi) const;
 
 private:
   struct BlockType {
+    enum BT bt;
     int type;
     int subtype;
     const char *descr;
   };
 
-  ERROR Error;
+  ERROR error;
   int type;
   int subtype;
-  BlockType *block_type;
-  BT bt;
+  const BlockType *block_type;
 
-  static ERROR conv_block_error(Block::ERROR error);
-
-  static BlockType block_types[BT_NUM_TYPES];
-  static ObjectBlock EOT_block_type;
+  static const std::vector<BlockType> block_types;
+  static const BlockType eot_block_type;
 
   void lookup_block_type();
 };
 
 ObjectBlock::ObjectBlock()
-  : Error(ERR_NONE),
+  : error(ERROR::NONE),
     type(-1),
     subtype(-1),
-    block_type(0),
-    bt(static_cast<ObjectBlock::BT>(-1))
+    block_type(nullptr)
 {
 }
 
@@ -593,55 +611,60 @@ ObjectBlock::~ObjectBlock()
 {
 }
 
-// This must match enum BT
-ObjectBlock::BlockType ObjectBlock::block_types[BT_NUM_TYPES] = {
-  { 0, 000, "Subprogram Name"},
-  { 0, 001, "Special Action - Force Load Next Subprogram"},
-  { 0, 002, "Special Action - Turn On Chain Flag"},
-  { 0, 003, "Special Action - End Of Job"},
-  { 0, 004, "Data"},
-  { 0, 010, "Symbol Number Definition"},
-  { 0, 014, "End"},
-  { 0, 024, "Relocatable Mode"},
-  { 0, 030, "Absolute Mode"},
-  { 0, 044, "Subprogram Call"},
-  { 0, 050, "Subprogram Entry Point Definition"},
-  { 0, 054, "Enter Extended-Memory-Mode Desectorizing"},
-  { 0, 060, "Leave Extended-Memory-Mode Desectorizing"},
-  { 0, 064, "Set Base Sector"},
-  { 1,  -1, "Absolute Program Words"},
-  { 2,  -1, "Relative Program Words"},
-  { 3,  -1, "Absolute End Jump"},
-  { 4,  -1, "Relative End Jump"},
-  { 5,  -1, "Subroutine Call"},
-  { 6,  -1, "Subroutine Or Common Block Definition"},
-  { 7,  -1, "Reference To Item In Common"},
+void ObjectBlock::clear() {
+  Block::clear();
+  error = ERROR::NONE;
+  type = -1;
+  subtype = -1;
+  block_type = nullptr;
+}
 
-  {-1,  -1, "End Of Tape"}
+const std::vector<ObjectBlock::BlockType> ObjectBlock::block_types {
+  { BT::SUB_PROG_NAME,      0, 000, "Subprogram Name"},
+  { BT::SPECIAL_FORCE,      0, 001, "Special Action - Force Load Next Subprogram"},
+  { BT::SPECIAL_CHAIN,      0, 002, "Special Action - Turn On Chain Flag"},
+  { BT::SPECIAL_END_OF_JOB, 0, 003, "Special Action - End Of Job"},
+  { BT::DATA,               0, 004, "Data"},
+  { BT::SYMBOL_NUM_DEFN,    0, 010, "Symbol Number Definition"},
+  { BT::END,                0, 014, "End"},
+  { BT::REL,                0, 024, "Relocatable Mode"},
+  { BT::ABS,                0, 030, "Absolute Mode"},
+  { BT::CALL,               0, 044, "Subprogram Call"},
+  { BT::SUBR,               0, 050, "Subprogram Entry Point Definition"},
+  { BT::EXD,                0, 054, "Enter Extended-Memory-Mode Desectorizing"},
+  { BT::LXD,                0, 060, "Leave Extended-Memory-Mode Desectorizing"},
+  { BT::SETB,               0, 064, "Set Base Sector"},
+  { BT::ABS_PROG_WORDS,     1,  -1, "Absolute Program Words"},
+  { BT::REL_PROG_WORDS,     2,  -1, "Relative Program Words"},
+  { BT::ABS_END_JMP,        3,  -1, "Absolute End Jump"},
+  { BT::REL_END_JMP,        4,  -1, "Relative End Jump"},
+  { BT::SUBR_CALL,          5,  -1, "Subroutine Call"},
+  { BT::SUBR_OR_COMN,       6,  -1, "Subroutine Or Common Block Definition"},
+  { BT::REF_ITEM_COMN,      7,  -1, "Reference To Item In Common"},
+};
+
+const ObjectBlock::BlockType ObjectBlock::eot_block_type {
+    BT::EOT,               -1,  -1, "End Of Tape"
 };
 
 void ObjectBlock::lookup_block_type()
 {
-  BlockType *pbt = block_types;
-
-  block_type = 0;
-
-  while (pbt->type >= 0) {
-
-    if ((pbt->type == this->type) &&
-        ((pbt->subtype < 0) ||
-         ((pbt->subtype == this->subtype)))) {
-      //std::cout << bt->name << std::endl;
-      block_type = pbt;
+  block_type = nullptr;
+  
+  for (const BlockType &bt: block_types) {
+    if ((bt.type == type) &&
+        ((bt.subtype < 0) || ((bt.subtype == subtype)))) {
+      block_type = &bt;
+      break;
     }
-    pbt++;
   }
-  if (eot)
-    block_type = pbt;
-  else
-    Error = ERR_BLOCK_TYPE;
-  if (ok()) {
-    bt = static_cast<ObjectBlock::BT>(pbt - block_types);
+  
+  if (!block_type) {
+    if (eot) {
+      block_type = &eot_block_type;
+    } else {
+      error = ERROR::BLOCK_TYPE;
+    }
   }
 }
 
@@ -650,76 +673,53 @@ void ObjectBlock::parse_block_type()
   if (Block::ok()) {
     if (words.size()>0) {
       // Parse the block type
-      type = (words[0] >> 12) & 017;
-      subtype = (words[0] >> 6) & 077;
+      unsigned word = words.front();
+      type = (word >> 12) & 017;
+      subtype = (word >> 6) & 077;
       lookup_block_type();
     } else {
       if (eot)
         lookup_block_type();
       else
-        Error = ERR_WORDS;
+        error = ERROR::WORDS;
     }
   }
 }
 
-std::string ObjectBlock::annotation(int wi)
+std::string ObjectBlock::annotation(std::list<unsigned>::const_iterator wi) const
 {
   std::string r = Block::annotation(wi);
 
-  if ((wi == 0) && (block_type)) {
+  if ((wi == words.cbegin()) && (block_type)) {
     r = block_type->descr;
   }
   return r;
 }
-
-ObjectBlock::ERROR ObjectBlock::conv_block_error(Block::ERROR error)
-{
-  ObjectBlock::ERROR r;
-
-  switch (error) {
-  case ERR_NONE:     r = ERR_NONE;     break;
-  case ERR_END:      r = ERR_END;      break;
-  case ERR_EOF:      r = ERR_EOF;      break;
-  case ERR_STREAM:   r = ERR_STREAM;   break;
-  case ERR_SOH:      r = ERR_SOH;      break;
-  case ERR_CHANNEL:  r = ERR_CHANNEL;  break;
-  case ERR_DC3:      r = ERR_DC3;      break;
-  case ERR_DEL:      r = ERR_DEL;      break;
-  case ERR_CHECKSUM: r = ERR_CHECKSUM; break;
-  default:
-    abort();
-  }
-  return r;
-}
-
 
 ObjectBlock *ObjectBlock::read_new_block(std::istream &st, ERROR *p_error,
                                          unsigned int *p_trailing_frames)
 {
   ObjectBlock *block = new ObjectBlock();
 
-  Block::ERROR block_error = Block::ERR_NONE;
-  ERROR error = ERR_NONE;
+  ERROR error = ERROR::NONE;
 
   block->Block::read(st);
-  block_error = block->error();
+  error = block->getError();
 
-  if (block_error == Block::ERR_NONE) {
+  if (error == ERROR::NONE) {
     block->parse_block_type();
-    block->dump(std::cout);
   } else {
-    error = conv_block_error(block_error);
-    if ((error == ERR_END) && p_trailing_frames) {
+    if ((error == ERROR::END) && p_trailing_frames) {
       *p_trailing_frames = block->leader_frames;
     }
     delete block;
-    block = 0;
+    block = nullptr;
   }
 
-  if (p_error)
+  if (p_error) {
     *p_error = error;
-  else {
-    if (error != ERR_NONE) {
+  } else {
+    if (error != ERROR::NONE) {
       std::cerr << "Error reading block" << std::endl;
       exit(1);
     }
@@ -731,19 +731,23 @@ class ObjectFile
 {
 public:
   ObjectFile();
-  void read(const std::string &filename, ObjectBlock::ERROR *p_error=0);
-  void write(std::ostream &st, Block::ERROR &r_error);
-  void write(const std::string &filename, Block::ERROR *p_error=0);
+  void read(const std::string &filename, bool list = false,
+            ERROR *p_error=nullptr);
+  void write(std::ostream &st, ERROR &r_error);
+  void write(const std::string &filename, ERROR *p_error=nullptr);
+
+  bool operator==(const ObjectFile &rhs) const;
 
   static ObjectFile *read_new_file(const std::string &filename,
-                                   ObjectBlock::ERROR *p_error=0);
+                                   bool list=false,
+                                   ERROR *p_error=nullptr);
   void strip_end_markers();
   void append_standard_end_markers();
   void set_trailing_frames(unsigned int n);
   void set_leading_frames(unsigned int n);
 
 private:
-  std::vector<ObjectBlock *> blocks;
+  std::list<ObjectBlock> blocks;
   unsigned int trailing_frames;
 };
 
@@ -753,7 +757,9 @@ ObjectFile::ObjectFile()
 }
 
 
-void ObjectFile::read(const std::string &filename, ObjectBlock::ERROR *p_error)
+void ObjectFile::read(const std::string &filename,
+                      bool list,
+                      ERROR *p_error)
 {
   std::ifstream ifs;
 
@@ -763,7 +769,7 @@ void ObjectFile::read(const std::string &filename, ObjectBlock::ERROR *p_error)
   ifs.open(filename.c_str());
   if (!ifs.good()) {
     if (p_error) {
-      *p_error = ObjectBlock::ERR_STREAM;
+      *p_error = ERROR::OPEN;
       return;
     } else {
       std::cerr << "Failed to open <" << filename
@@ -772,59 +778,74 @@ void ObjectFile::read(const std::string &filename, ObjectBlock::ERROR *p_error)
     }
   }
   
-  ObjectBlock::ERROR error;
+  ERROR error;
   ObjectBlock *block;
 
   block = ObjectBlock::read_new_block(ifs, &error, &trailing_frames);
-  while (error == ObjectBlock::ERR_NONE) {
-    blocks.push_back(block);
+  while (error == ERROR::NONE) {
+    if (list) {
+      block->dump(std::cout);
+    }
+    blocks.push_back(*block);
+    bool eoj = block->is_eoj();
+    delete block;
+    if (eoj) {
+      break;
+    }
     block = ObjectBlock::read_new_block(ifs, &error, &trailing_frames);
   }
 
   ifs.close();
 
-  if (error == ObjectBlock::ERR_END)
-    error = ObjectBlock::ERR_NONE;
-
-  if (error != ObjectBlock::ERR_NONE) {
+  if (error == ERROR::END) {
+    error = ERROR::NONE;
+  }
+  
+  if (error != ERROR::NONE) {
     if (p_error)
       *p_error = error;
     else {
-      std::cerr << "Error while reading <" << filename
-                << ">" << std::endl;
+      if (error == ERROR::OPEN) {
+        std::cerr << "Failed to open <" << filename
+                  << "> for reading" << std::endl;
+      } else {
+        std::cerr << "Error (" << errorName.at(error) << ") while reading <"
+                  << filename << ">" << std::endl;
+      }
       exit(1);
     }  
   }
 }
 
-void ObjectFile::write(std::ostream &st, Block::ERROR &r_error)
+void ObjectFile::write(std::ostream &st, ERROR &r_error)
 {
-  unsigned int i=0;
-  Block::ERROR error = Block::ERR_NONE;
+  ERROR error = ERROR::NONE;
 
-  while ((error == Block::ERR_NONE) &&
-         (i < blocks.size())) {
-    blocks[i]->write(st);
-    error = blocks[i]->error();
-    i++;
+  for (auto block: blocks) {
+    block.write(st);
+    error = block.getError();
+    if (error != ERROR::NONE) {
+      break;
+    }
   }
 
-  if (error == Block::ERR_NONE)
+  if (error == ERROR::NONE) {
     error = Block::write_leader(st, trailing_frames);
+  }
 
   r_error = error;
 }
 
-void ObjectFile::write(const std::string &filename, Block::ERROR *p_error)
+void ObjectFile::write(const std::string &filename, ERROR *p_error)
 {
   std::ofstream ofs;
-  Block::ERROR error = Block::ERR_NONE;
+  ERROR error = ERROR::NONE;
 
   ofs.open(filename.c_str());
 
   if (!ofs.good()) {
     if (p_error) {
-      *p_error = Block::ERR_STREAM;
+      *p_error = ERROR::OPEN;
       return;
     } else {
       std::cerr << "Failed to open <" << filename
@@ -837,7 +858,7 @@ void ObjectFile::write(const std::string &filename, Block::ERROR *p_error)
 
   ofs.close();
 
-  if (error != Block::ERR_NONE) {
+  if (error != ERROR::NONE) {
     if (p_error)
       *p_error = error;
     else {
@@ -849,24 +870,30 @@ void ObjectFile::write(const std::string &filename, Block::ERROR *p_error)
 }
 
 ObjectFile *ObjectFile::read_new_file(const std::string &filename,
-                                      ObjectBlock::ERROR *p_error)
+                                      bool list,
+                                      ERROR *p_error)
 {
-  ObjectBlock::ERROR error = ObjectBlock::ERR_NONE;
+  ERROR error = ERROR::NONE;
   
   ObjectFile *objfile = new ObjectFile;
 
-  objfile->read(filename, &error);
+  objfile->read(filename, list, &error);
 
-  if (error != ObjectBlock::ERR_NONE) {
+  if (error != ERROR::NONE) {
     delete objfile;
-    objfile = 0;
+    objfile = nullptr;
   }
 
-  if (p_error)
+  if (p_error) {
     *p_error = error;
-  else if (error != ObjectBlock::ERR_NONE) {
-    std::cerr << "Error while reading <" << filename
-              << ">" << std::endl;
+  } else if (error != ERROR::NONE) {
+    if (error == ERROR::OPEN) {
+      std::cerr << "Could not open <" << filename
+                << "> for reading" << std::endl;
+    } else {
+      std::cerr << "Error (" << errorName.at(error) << ") while reading <"
+                << filename << ">" << std::endl;
+    }
     exit(1);
   }  
   return objfile;
@@ -874,17 +901,14 @@ ObjectFile *ObjectFile::read_new_file(const std::string &filename,
 
 void ObjectFile::strip_end_markers()
 {
-  int i = blocks.size()-1;
-  bool trimming = true;
-
-  while ((i >= 0) && (trimming)) {
-    if (blocks[i]->is_eot() ||
-        blocks[i]->is_eoj()) {
-      delete blocks[i];
-      blocks.resize(i);
-    } else
-      trimming = false;
-    i--;
+  std::ranges::reverse_view rev_blocks(blocks);
+  for (auto block: rev_blocks) {
+    if (block.is_eot() ||
+        block.is_eoj()) {
+      blocks.pop_back();
+    } else {
+      break;
+    }
   }
 
   trailing_frames = 0;
@@ -892,10 +916,8 @@ void ObjectFile::strip_end_markers()
 
 void ObjectFile::append_standard_end_markers()
 {
-  ObjectBlock *block = new ObjectBlock;
-
-  block->make_eot();
-  blocks.push_back(block);
+  auto &block = blocks.emplace_back();
+  block.make_eot();
 }
 
 void ObjectFile::set_trailing_frames(unsigned int n)
@@ -905,16 +927,30 @@ void ObjectFile::set_trailing_frames(unsigned int n)
 
 void ObjectFile::set_leading_frames(unsigned int n)
 {
-  if (blocks.size() > 0)
-    blocks[0]->set_leader_frames(n);
+  if (blocks.size() > 0) {
+    blocks.front().set_leader_frames(n);
+  }
 }
+
+bool ObjectFile::operator==(const ObjectFile &rhs) const {
+  return (blocks == rhs.blocks);
+}
+
+enum class ACTION {
+  NONE,
+  CONCATENATE,
+  DIFF,
+  UPGRADE,
+  LIST
+};
 
 int main(int argc, char **argv)
 {
   std::string output_filename;
-  std::vector<std::string> filenames;
+  std::list<std::string> filenames;
 
-  //bool concatenate = false;
+  bool help = false;
+  ACTION action = ACTION::NONE;
 
   bool usage = false;
   bool pending_filename = false;
@@ -935,8 +971,40 @@ int main(int argc, char **argv)
         reading_args = false;
         break;
 
+      case 'h':
+        help = true;
+        break;
+          
       case 'c':
-        //concatenate = true;
+        if (action != ACTION::NONE) {
+          usage = true;
+        } else {
+          action = ACTION::CONCATENATE;
+        }
+        break;
+        
+      case 'd':
+        if (action != ACTION::NONE) {
+          usage = true;
+        } else {
+          action = ACTION::DIFF;
+        }
+        break;
+        
+      case 'l':
+        if (action != ACTION::NONE) {
+          usage = true;
+        } else {
+          action = ACTION::LIST;
+        }
+        break;
+        
+      case 'u':
+        if (action != ACTION::NONE) {
+          usage = true;
+        } else {
+          action = ACTION::UPGRADE;
+        }
         break;
 
       case 'o':
@@ -947,7 +1015,7 @@ int main(int argc, char **argv)
         break;
 
       default:
-        usage = 1;
+        usage = true;
       }
     } else {
       filenames.push_back(argv[a]);
@@ -955,37 +1023,77 @@ int main(int argc, char **argv)
     a++;
   }
 
-  if (filenames.size() == 0)
-    usage = 1;
+  switch (action) {
+  case ACTION::NONE:
+    usage = true;
+    break;
+  case ACTION::CONCATENATE:
+    if (filenames.size() < 2) {
+      usage = true;
+    }
+    break;
+  case ACTION::DIFF:
+    if ((filenames.size() != 2) || (output_filename.size() > 0)) {
+      usage = true;
+    }
+    break;
+  case ACTION::LIST:
+    if ((filenames.size() == 0) || (output_filename.size() > 0)) {
+      usage = true;
+    }
+    break;
+  case ACTION::UPGRADE:
+    if (filenames.size() != 1) {
+      usage = true;
+    }
+    break;
+  default: // Unexpected action?
+    usage = true;
+  }
 
   if (usage) {
     std::cerr << "usage: " << argv[0]
-              << " [-c] [-o[ ]filename] <input-filename>..."
+              << " [-h] -c|-d|-l|-u [-o[ ]filename] <input-filename>..."
               << std::endl;
     exit(1);
   }
+
+  if (help) {
+    std::cout << "Print some help..." << std::endl;
+    
+    exit((usage) ? 1 : 0);
+  }
   
-  std::vector<ObjectFile *> object_files;
-  unsigned int i;
-
-  for (i=0; i<filenames.size(); i++)
-    object_files.push_back(ObjectFile::read_new_file(filenames[i]));
-
-  for (i=0; i<object_files.size(); i++) {
-    object_files[i]->strip_end_markers();
-
-    if (i == 0)
-      object_files[i]->set_leading_frames(150);
-    else
-      object_files[i]->set_leading_frames(30);
-
-    if (i == object_files.size()-1) {
-      object_files[i]->set_trailing_frames(150);
-      object_files[i]->append_standard_end_markers();
-    } else
-      object_files[i]->set_trailing_frames(0);
+  std::list<ObjectFile> object_files;
+  bool list = (action == ACTION::LIST);
+  
+  for (auto filename: filenames) {
+    ObjectFile *of = ObjectFile::read_new_file(filename, list);
+    object_files.push_back(*of);
   }
 
+  if (list) {
+    exit(0);
+  }
+  
+  if (action == ACTION::CONCATENATE) {
+
+    auto last = object_files.end()--;
+    for (auto iof = object_files.begin(); iof != object_files.end(); iof++) {
+      auto &of = *iof;
+      of.strip_end_markers();
+
+      of.set_leading_frames((iof == object_files.begin()) ? 150 : 30);
+      
+      if (iof == last) {
+        of.set_trailing_frames(150);
+        of.append_standard_end_markers();
+      } else {
+        of.set_trailing_frames(0);
+      }
+    }
+  }
+  
   bool output_file = false;
   std::ofstream ofs;
   if (output_filename.size()>0) {
@@ -999,17 +1107,40 @@ int main(int argc, char **argv)
     }
   }
 
-  std::ostream &os = (output_file) ? ofs : std::cout;
+  int exit_code = 0;
+  
+  if (action == ACTION::DIFF) {
+    assert(object_files.size() == 2);
 
-  Block::ERROR error = Block::ERR_NONE;
-  i = 0;
+    ObjectFile &first = *object_files.begin();
+    ObjectFile &second = *(++object_files.begin());
 
-  for(i=0; (i<object_files.size()) && (error == Block::ERR_NONE) ; i++) 
-    object_files[i]->write(os, error);
-
-  if (error != Block::ERR_NONE) {
-    std::cerr << "Error while writing object text" << std::endl;
-    exit(1);
-  }
+    first.strip_end_markers();
+    second.strip_end_markers();
+  
+    if (first == second) {
+      std::cout << "Files are equivalent" << std::endl;
+    } else {
+      std::cout << "Files differ" << std::endl;
+      exit_code = 2;
+    }
     
+  } else {
+    std::ostream &os = (output_file) ? ofs : std::cout;
+    
+    ERROR error = ERROR::NONE;
+
+    for (auto of: object_files) {
+      of.write(os, error);
+      if (error != ERROR::NONE) {
+        break;
+      }
+    }
+    
+    if (error != ERROR::NONE) {
+      std::cerr << "Error while writing object text" << std::endl;
+      exit(1);
+    }
+  }
+  exit(exit_code);  
 }
