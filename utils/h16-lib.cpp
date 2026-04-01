@@ -23,6 +23,7 @@
  */
 
 #include <cstdlib>
+#include <cstdint>
 
 #include <iostream>
 #include <ostream>
@@ -51,6 +52,8 @@ enum class ERROR {
   // Added by class ObjectBlock
   BLOCK_TYPE, // Unknown block type
   WORDS,      // No Words in block
+  BLOCK_END,  // Ran off the end of the block while extracting
+  UNEXPECTED, // Unexpected data values in block
   // Added by class ObjectFile
   OPEN,       // Could not open file
 };
@@ -66,7 +69,9 @@ static const std::map<ERROR, std::string> errorName {
   {ERROR::DEL,        "DEL"},         
   {ERROR::CHECKSUM,   "CHECKSUM"},   
   {ERROR::BLOCK_TYPE, "BLOCK_TYPE"},  
-  {ERROR::WORDS,      "WORDS"},       
+  {ERROR::WORDS,      "WORDS"},
+  {ERROR::BLOCK_END,  "BLOCK_END"},
+  {ERROR::UNEXPECTED, "UNEXPECTED"},
   {ERROR::OPEN,       "OPEN"},
 };
 
@@ -97,14 +102,19 @@ protected:
   bool ok() const { return (error == ERROR::NONE); };
   bool eot;
   std::streampos pos;
-  std::list<unsigned> words;
+  std::vector<uint16_t> words;
   unsigned int leader_frames;
 
-  virtual std::string annotation(std::list<unsigned>::const_iterator wi) const;
-  
+  virtual std::string annotation(std::vector<uint16_t>::const_iterator wi) const;
+
+  uint8_t extract8(unsigned byteOffset);
+  uint16_t extract16(unsigned byteOffset);
+  uint32_t extract24(unsigned byteOffset);
+  std::string extractName(unsigned byteOffset);
+
 private:
   ERROR error;
-  unsigned int checksum;
+  uint16_t checksum;
 
 
   unsigned char read_char(std::istream &st);
@@ -401,7 +411,7 @@ void Block::dump(std::ostream &st) const
        << " " << std::setw(3) << SOH << "\n";
     if (pos >= 0) a++;
     
-    for (std::list<unsigned>::const_iterator i = words.cbegin(); i != words.cend(); i++) {
+    for (std::vector<uint16_t>::const_iterator i = words.cbegin(); i != words.cend(); i++) {
       std::string annot = annotation(i);
       const int &word(*i);
       
@@ -428,7 +438,7 @@ void Block::dump(std::ostream &st) const
   st << std::endl;
 }
 
-std::string Block::annotation(std::list<unsigned>::const_iterator wi) const
+std::string Block::annotation(std::vector<uint16_t>::const_iterator wi) const
 {
   std::string s;
 
@@ -465,13 +475,13 @@ ERROR Block::write_leader(std::ostream &st, unsigned int n)
 
 void Block::compute_checksum(bool add_not_replace)
 {
-  std::list<unsigned>::iterator limit(words.end());
+  std::vector<uint16_t>::iterator limit(words.end());
   if (!add_not_replace) {
     limit--;
   }
   
   checksum = 0;
-  for (std::list<unsigned>::iterator i = words.begin(); i != limit; i++) {
+  for (std::vector<uint16_t>::iterator i = words.begin(); i != limit; i++) {
     checksum ^= (*i);
   }
 
@@ -544,8 +554,18 @@ public:
   virtual ~ObjectBlock();
   void clear();
 
-  void parse_block_type();
+  void DecodeBlock();
 
+  static ObjectBlock *read_new_block(std::istream &st, ERROR *p_error = 0,
+                                     unsigned int *trailing_frames = 0);
+
+  bool is_eoj() const { return ((type == 0) && (subtype == 3)); };
+
+  bool legacy_block() const {
+    return (type > 0);
+  }
+ 
+protected:
   enum class BT {
     NONE,
     SUB_PROG_NAME,
@@ -571,16 +591,46 @@ public:
     REF_ITEM_COMN,
     EOT
   };
+
+  enum class DT { // Data type
+    GENERIC,
+    FORWARD_9,
+    FORWARD_DAC,
+    KNOWN_9,
+    KNOWN_DAC,
+    L_ABS_9,
+    L_ABS_DAC,
+    L_REL_9,
+    L_REL_DAC,
+    L_COMP_9,
+    L_COMP_DAC,
+    L_LAST_REL,
+    L_VALUE
+  };
+
+  enum class REL {
+    ABSOLUTE = 0,
+    POS_REL = 1,
+    NED_REL = 3
+  };
   
-  static ObjectBlock *read_new_block(std::istream &st, ERROR *p_error = 0,
-                                     unsigned int *trailing_frames = 0);
+  struct Data {
+    DT type;
+    uint16_t value;
+    uint16_t instr; // For 9-bit relocations - includes F & T bits
+    bool m; // Following symbol associated with this address
+    REL rel;
+    Data(ERROR &error, uint32_t w24, bool legacy = false);
+  };
 
-  bool is_eoj() { return ((type == 0) && (subtype == 3)); };
+  virtual std::string annotation(std::vector<uint16_t>::const_iterator wi) const;
 
-protected:
-  virtual std::string annotation(std::list<unsigned>::const_iterator wi) const;
-
+ 
 private:
+  /*
+   * Type of entries in the block_types table used to lookup the
+   * type of a block being read.
+   */
   struct BlockType {
     enum BT bt;
     int type;
@@ -596,7 +646,21 @@ private:
   static const std::vector<BlockType> block_types;
   static const BlockType eot_block_type;
 
+  uint16_t instr;
+  uint16_t address;
+  std::list<std::string> names;
+  std::vector<Data> items;
+
+  void parse_block_type();
   void lookup_block_type();
+  
+  void DecodeBlockType0_0();
+  void DecodeBlockType0_4();
+  void DecodeBlockType0_14();
+  void DecodeBlockType0_44();
+  void DecodeBlockType0_50();
+  void DecodeBlockType1and2();
+  void DecodeBlockType3up();
 };
 
 ObjectBlock::ObjectBlock()
@@ -686,7 +750,7 @@ void ObjectBlock::parse_block_type()
   }
 }
 
-std::string ObjectBlock::annotation(std::list<unsigned>::const_iterator wi) const
+std::string ObjectBlock::annotation(std::vector<uint16_t>::const_iterator wi) const
 {
   std::string r = Block::annotation(wi);
 
@@ -694,6 +758,278 @@ std::string ObjectBlock::annotation(std::list<unsigned>::const_iterator wi) cons
     r = block_type->descr;
   }
   return r;
+}
+
+uint8_t Block::extract8(unsigned byteOffset) {
+  unsigned wordOffset = byteOffset >> 1;
+  bool lower = (byteOffset - (wordOffset << 1));
+  if (wordOffset < words.size()) {
+    if (lower) {
+      return words[wordOffset] & 0xff;
+    } else {
+      return words[wordOffset] >> 8;
+    }
+  } else {
+    error = ERROR::BLOCK_END;
+    return 0;
+  }
+}
+  
+uint16_t Block::extract16(unsigned byteOffset) {
+  uint16_t high = extract8(byteOffset++);
+  uint16_t low  = extract8(byteOffset);
+  return (high << 8) | low;
+}
+
+uint32_t Block::extract24(unsigned byteOffset) {
+  uint32_t high = extract8(byteOffset++);
+  uint32_t low  = extract16(byteOffset);
+  return (high << 16) | low;
+}
+
+std::string Block::extractName(unsigned byteOffset) {
+  std::string r;
+  for (unsigned i = 0; i < 6; i++) {
+    uint8_t c = extract8(byteOffset++);
+    if (error != ERROR::NONE) {
+      break;
+    }
+    r.push_back(c);
+  }
+  return r;
+}
+
+ObjectBlock::Data::Data(ERROR &error, uint32_t w24, bool legacy) {
+
+  m = false;
+  rel = REL::ABSOLUTE; 
+  
+  if (legacy) {
+    value = (w24 >> 4) & 0x3fff; // 14-bit address
+    instr = (w24 >> 8) & 0xf300; // Instruction
+    
+    if ((w24 & 0xf) == 0) {
+      type = DT::GENERIC;
+      value = (w24 >> 8) & 0xffff; // Data or generic
+      instr = 0;
+    } else if ((w24 & 0xf) == 4) {
+      type = DT::L_LAST_REL;
+      instr = 0;
+    } else if ((w24 & 0xf) == 8) {
+      value = (w24 >> 4) & 0xffff; // 16-bit value
+      instr = 0;
+    } else if ((w24 & 0x7) == 1) {
+      type = DT::L_ABS_9;
+    } else if ((w24 & 0x7) == 2) {
+      type = DT::L_REL_9;
+    } else if ((w24 & 0x7) == 3) {
+      type = DT::L_COMP_9;
+    } else if ((w24 & 0x7) == 5) {
+      type = DT::L_ABS_DAC;
+    } else if ((w24 & 0x7) == 6) {
+      type = DT::L_REL_DAC;
+    } else if ((w24 & 0x7) == 7) {
+      type = DT::L_COMP_DAC;
+    } else {
+      // No idea what this is
+      type = DT::GENERIC;
+      value = 0;
+      instr = 0;
+      error = ERROR::UNEXPECTED;
+    }
+  } else {
+    instr = 0;
+    if ((w24 & 0x1) == 1) {
+      type = DT::KNOWN_9;
+      instr = (w24 >> 8) & 0xf300; // Instruction
+      value = (w24 >> 3) & 0x7fff; // 15-bit address
+      rel = static_cast<REL>((w24 >> 1) & 0x3);
+    } else if ((w24 & 0x7) == 0) {
+      type = DT::GENERIC;
+      value = (w24 >> 8) & 0xffff; // Data or generic
+    } else if ((w24 & 0x7) == 2) {
+      type = DT::FORWARD_9;
+      instr = (w24 >> 8) & 0xf300;
+      value = (w24 >> 3) & 0x1fff;
+      m = (w24 >> 16) & 1;
+    } else if ((w24 & 0x7) == 4) {
+      type = DT::KNOWN_DAC;
+      instr = (w24 >> 8) & 0x3000; // Just F & T
+      value = (w24 >> 3) & 0xffff; // 16-bit address
+      rel = static_cast<REL>((w24 >> 19) & 0x3);
+    } else if ((w24 & 0x7) == 6) {
+      type = DT::FORWARD_DAC;
+      instr = (w24 >> 8) & 0x3000; // Just F & T
+      value = (w24 >> 3) & 0x1fff;
+      m = (w24 >> 16) & 1;
+    }
+  }
+  
+}
+
+void ObjectBlock::DecodeBlockType1and2() {
+  assert((type == 1) || (type == 2));
+  unsigned n = (extract16(0) >> 6) & 0x3f; // 6-bit number of words
+  if (n >= 3) { // First word, address, and checksum
+    n <<= 1; // Convert to bytes
+    n -= 2; // Checksum
+  } else {
+    error = ERROR::BLOCK_END;
+    return;
+  }
+  address = extract16(1) & 0x3fff; // 14-bit address;
+
+  unsigned p = 3; // Offset of first 24-bit word
+  while ((p+3) <= n) {
+    uint32_t w24 = extract24(p);
+    if (error == ERROR::NONE) {
+      Data item(error, w24, /* legacy */ true);
+      if (error == ERROR::NONE) {
+        items.push_back(item);
+      }
+    } else {
+      break;
+    }
+    p += 3; // Each word is 3 bytes
+  }
+}
+
+void ObjectBlock::DecodeBlockType3up() {
+  assert((type >= 3) && (type <= 7));
+
+  if ((type == 5) || (type == 7)) {
+    instr = (extract16(0) << 4) & 0xf300; // 6-bit instruction
+  }
+  address = extract16(1) & 0x3fff; // 14-bit address;
+
+  if (type <= 4) {
+    return;
+  }
+  
+  std::string name = extractName(3);
+  if (error==ERROR::NONE) {
+    names.push_back(name);
+  }
+
+  if (type == 6) {
+    uint8_t t = extract8(9);
+    subtype = (t >> 6) & 0x3;
+  }
+}
+
+void ObjectBlock::DecodeBlockType0_0() {
+  unsigned n = extract8(2) & 0x3f;
+  n <<= 2; // To bytes
+  if (n < 6) { // Type, number, checksum
+    error = ERROR::BLOCK_END;
+  } else {
+    n -= 2; // For the checksum
+    unsigned p = 4; // Start of first symbol
+    while ((p+6) <= n) {
+      std::string s = extractName(p);
+      if (error == ERROR::NONE) {
+        names.push_back(s);
+      } else {
+        break;
+      }
+      p += 6;
+    }
+  }
+}
+
+void ObjectBlock::DecodeBlockType0_4() {
+  unsigned n = extract8(2) & 0x3f;
+  n <<= 2;
+  if (n < 8) { // Type, number, location, checksum
+    error = ERROR::BLOCK_END;
+  } else {
+    n -= 2; // For the checksum
+    address = extract16(4);
+    unsigned p = 6; // Start of first 24-bit word
+    while ((p+3) <= n) {
+      uint32_t w24 = extract24(p);
+      if (error == ERROR::NONE) {
+        Data item(error, w24);
+        if (error == ERROR::NONE) {
+          items.push_back(item);
+        }
+      } else {
+        break;
+      }
+      p += 3; // Each word is 3 bytes
+    }
+  }
+}
+
+void ObjectBlock::DecodeBlockType0_14() {
+  unsigned n = extract8(2) & 0x3f;
+  if (n < 4) {
+    error = ERROR::BLOCK_END;
+  } else {
+    address = extract16(4) & 0x7fff;
+  }
+}
+
+void ObjectBlock::DecodeBlockType0_44() {
+  unsigned n = extract8(2) & 0x3f;
+  if (n < 7) {
+    error = ERROR::BLOCK_END;
+  } else {
+    std::string s = extractName(4);
+    instr = extract16(10) & 1; // The P bit indicating DAC (else 9-bit)
+  }
+}
+
+void ObjectBlock::DecodeBlockType0_50() {
+  unsigned n = extract8(2) & 0x3f;
+  n <<= 2;
+  if (n < 6) { // Type, number, checksum
+    error = ERROR::BLOCK_END;
+  } else {
+    n -= 2; // For the checksum
+    unsigned p = 4; // Start of first symbol
+    while ((p+6) <= n) {
+      std::string s = extractName(p);
+      if (error == ERROR::NONE) {
+        names.push_back(s);
+      } else {
+        break;
+      }
+      p += 6;
+    }
+  }
+}
+
+void ObjectBlock::DecodeBlock() {
+  parse_block_type();
+
+  if ((error == ERROR::NONE) && (type >= 0)) { 
+    if (type == 0) {
+      if (subtype == 0) {
+        DecodeBlockType0_0();
+      } else if ((subtype < 4) || (subtype == 024) || (subtype == 030) ||
+                 (subtype == 054) || (subtype == 060)) {
+        // Nothing to do
+      } else if (subtype == 4) {
+        DecodeBlockType0_4();
+      } else if (subtype == 014) {
+        DecodeBlockType0_14();
+      } else if (subtype == 044) {
+        DecodeBlockType0_44();
+      } else if (subtype == 050) {
+        DecodeBlockType0_50();
+      } else {
+        std::cout << "subtype = " << std::oct << subtype << std::endl;
+        assert(0);
+      }
+    } else if (type <= 2) {
+      DecodeBlockType1and2();
+    } else if (type <= 7) {
+      DecodeBlockType3up();
+    } else {
+      assert(0);
+    }
+  }
 }
 
 ObjectBlock *ObjectBlock::read_new_block(std::istream &st, ERROR *p_error,
@@ -707,7 +1043,7 @@ ObjectBlock *ObjectBlock::read_new_block(std::istream &st, ERROR *p_error,
   error = block->getError();
 
   if (error == ERROR::NONE) {
-    block->parse_block_type();
+    block->DecodeBlock();
   } else {
     if ((error == ERROR::END) && p_trailing_frames) {
       *p_trailing_frames = block->leader_frames;
@@ -745,6 +1081,10 @@ public:
   void append_standard_end_markers();
   void set_trailing_frames(unsigned int n);
   void set_leading_frames(unsigned int n);
+
+  bool any_legacy_blocks() const;
+
+  void upgrade();
 
 private:
   std::list<ObjectBlock> blocks;
@@ -936,6 +1276,18 @@ bool ObjectFile::operator==(const ObjectFile &rhs) const {
   return (blocks == rhs.blocks);
 }
 
+bool ObjectFile::any_legacy_blocks() const {
+  for (auto block: blocks) {
+    if (block.legacy_block()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void ObjectFile::upgrade() {
+}
+
 enum class ACTION {
   NONE,
   CONCATENATE,
@@ -1092,6 +1444,13 @@ int main(int argc, char **argv)
         of.set_trailing_frames(0);
       }
     }
+  } else if (action == ACTION::UPGRADE) {
+    ObjectFile &file = *object_files.begin();
+    if (file.any_legacy_blocks()) {
+      file.upgrade();
+    } else {
+      std::cerr << "Warning: There are no legacy blocks to updgrade" << std::endl;
+    }
   }
   
   bool output_file = false;
@@ -1125,7 +1484,7 @@ int main(int argc, char **argv)
       exit_code = 2;
     }
     
-  } else {
+  } else if (action == ACTION::CONCATENATE) {
     std::ostream &os = (output_file) ? ofs : std::cout;
     
     ERROR error = ERROR::NONE;
