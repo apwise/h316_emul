@@ -38,6 +38,8 @@
 #include <ranges>
 #include <cassert>
 
+#define DEBUG 0
+
 enum class ERROR {
   // Used in class Block
   NONE,     // All OK
@@ -104,8 +106,9 @@ protected:
   std::streampos pos;
   std::vector<uint16_t> words;
   unsigned int leader_frames;
+  static std::string octal(uint16_t v);
 
-  virtual std::string annotation(std::vector<uint16_t>::const_iterator wi) const;
+  virtual std::string annotation(unsigned wi) const;
 
   uint8_t extract8(unsigned byteOffset);
   uint16_t extract16(unsigned byteOffset);
@@ -411,15 +414,14 @@ void Block::dump(std::ostream &st) const
        << " " << std::setw(3) << SOH << "\n";
     if (pos >= 0) a++;
     
-    for (std::vector<uint16_t>::const_iterator i = words.cbegin(); i != words.cend(); i++) {
+    for (unsigned i = 0; i < words.size(); i++) {
       std::string annot = annotation(i);
-      const int &word(*i);
       
       st << std::oct << std::setfill('0')
          << std::setw(8) << a
-         << " " << std::setw(3) << to_invisible(word, 0)
-         << " " << std::setw(3) << to_invisible(word, 1)
-         << " " << std::setw(3) << to_invisible(word, 2);
+         << " " << std::setw(3) << to_invisible(words[i], 0)
+         << " " << std::setw(3) << to_invisible(words[i], 1)
+         << " " << std::setw(3) << to_invisible(words[i], 2);
       if (pos >= 0) a+=3;
     
       if (annot.size() > 0) {
@@ -438,14 +440,13 @@ void Block::dump(std::ostream &st) const
   st << std::endl;
 }
 
-std::string Block::annotation(std::vector<uint16_t>::const_iterator wi) const
-{
+std::string Block::annotation(unsigned wi) const {
   std::string s;
 
-  if ((wi!=words.cbegin()) && (wi!=words.cend())) {
+  if ((wi >= 0) && (wi < words.size())) {
     std::ostringstream st;
     st << std::oct << std::setfill('0')
-       << std::setw(6) << (*wi);
+       << std::setw(6) << words[wi];
     s = st.str();
   }
   return s;
@@ -598,6 +599,7 @@ protected:
     FORWARD_DAC,
     KNOWN_9,
     KNOWN_DAC,
+    L_GENERIC,
     L_ABS_9,
     L_ABS_DAC,
     L_REL_9,
@@ -611,19 +613,27 @@ protected:
   enum class REL {
     ABSOLUTE = 0,
     POS_REL = 1,
-    NED_REL = 3
+    NEG_REL = 3
   };
   
   struct Data {
+    uint32_t w24;
     DT type;
     uint16_t value;
     uint16_t instr; // For 9-bit relocations - includes F & T bits
     bool m; // Following symbol associated with this address
     REL rel;
     Data(ERROR &error, uint32_t w24, bool legacy = false);
+    std::string annotation() const;
   };
 
-  virtual std::string annotation(std::vector<uint16_t>::const_iterator wi) const;
+  virtual std::string annotation(unsigned wi) const;
+  std::string annotation_0_0(unsigned wi) const;
+  std::string annotation_0_4(unsigned wi) const;
+  std::string annotation_1and2(unsigned wi) const;
+  std::string annotation_3and4(unsigned wi) const;
+  std::string annotation_6(unsigned wi) const;
+  std::string annotation_5and7(unsigned wi) const;
 
  
 private:
@@ -646,9 +656,9 @@ private:
   static const std::vector<BlockType> block_types;
   static const BlockType eot_block_type;
 
-  uint16_t instr;
+  uint16_t instr; // Should these be moved to a data item?
   uint16_t address;
-  std::list<std::string> names;
+  std::vector<std::string> names;
   std::vector<Data> items;
 
   void parse_block_type();
@@ -656,18 +666,27 @@ private:
   
   void DecodeBlockType0_0();
   void DecodeBlockType0_4();
+  void DecodeBlockType0_10();
   void DecodeBlockType0_14();
   void DecodeBlockType0_44();
   void DecodeBlockType0_50();
   void DecodeBlockType1and2();
   void DecodeBlockType3up();
+
+  void UpdateBlockType5and7(ObjectBlock &b);
+
+  static std::string octal24(uint32_t v);
+  static std::string sname(std::string name);
+  static std::string sinstr(uint16_t instr, bool &tag);
 };
 
 ObjectBlock::ObjectBlock()
   : error(ERROR::NONE),
     type(-1),
     subtype(-1),
-    block_type(nullptr)
+    block_type(nullptr),
+    instr(0),
+    address(0)
 {
 }
 
@@ -681,6 +700,10 @@ void ObjectBlock::clear() {
   type = -1;
   subtype = -1;
   block_type = nullptr;
+  instr = 0;
+  address = 0;
+  names.clear();
+  items.clear();
 }
 
 const std::vector<ObjectBlock::BlockType> ObjectBlock::block_types {
@@ -750,13 +773,188 @@ void ObjectBlock::parse_block_type()
   }
 }
 
-std::string ObjectBlock::annotation(std::vector<uint16_t>::const_iterator wi) const
-{
+std::string ObjectBlock::annotation(unsigned wi) const {
   std::string r = Block::annotation(wi);
-
-  if ((wi == words.cbegin()) && (block_type)) {
-    r = block_type->descr;
+  std::string s;
+  
+  if ((wi == 0) && (block_type)) {
+    s = block_type->descr;
+  } else if ((wi+1) == words.size()) {
+    s = "Checksum";
+  } else if ((type == 0) && (subtype==0)) {
+    s = annotation_0_0(wi);
+  } else if ((type == 0) && (subtype==4)) {
+    s = annotation_0_4(wi);
+  } else if ((type == 1) || (type == 2)) {
+    s = annotation_1and2(wi);
+  } else if ((type == 3) || (type == 4)) {
+    s = annotation_3and4(wi);
+  } else if ((type == 5) || (type == 7)) {
+    s = annotation_5and7(wi);
+  } else if (type == 6) {
+    s = annotation_6(wi);
   }
+  if (s.size() > 0) {
+    r += " " + s;
+  }
+  return r;
+}
+
+std::string Block::octal(uint16_t v) {
+  std::stringstream ss;
+  ss << std::oct << std::setw(6) << std::setfill('0') << v;
+  return ss.str();
+}
+
+std::string ObjectBlock::octal24(uint32_t v) {
+  std::stringstream ss;
+  ss << std::oct << std::setw(8) << std::setfill('0') << v;
+  return ss.str();
+}
+
+std::string ObjectBlock::sname(std::string name) {
+  int n = name.size();
+  bool trimming = true;
+  
+  for (int i = (n-1); i >=0; i--) {
+    name[i] &= 0x7f;
+    if (trimming) {
+      if (name[i] == ' ') {
+        n--;
+      } else {
+        trimming = false;
+      }
+    }
+  }
+  return name.substr(0, n);  
+}
+
+std::string ObjectBlock::annotation_1and2(unsigned wi) const {
+  assert((type == 1) || (type == 2));
+  std::string r;
+  if (wi == 1) {
+    r = "@"+octal(address);
+  } else if (((wi * 2) % 3) == 2) {
+    unsigned i = ((wi - 2) * 2) / 3;
+    r = items[i].annotation();
+    if (DEBUG) {
+      std::stringstream ss;
+      ss << i;
+      r += " i=" + ss.str();
+    }
+  } else if ((((wi * 2) + 1) % 3) == 2) {
+    unsigned i = ((wi - 2) * 2) / 3;
+    r = items[i].annotation();
+    if (DEBUG) {
+      std::stringstream ss;
+      ss << i;
+      r += " i=" + ss.str() + "*";
+    }
+  }
+  /* else {
+     r = "...";
+     } */
+  
+  return r;
+}
+
+std::string ObjectBlock::annotation_3and4(unsigned wi) const {
+  assert((type == 3) || (type == 4));
+  std::string r;
+  if (wi == 1) {
+    r = "@" + octal(address);
+  }
+  return r;
+}
+
+std::string ObjectBlock::annotation_6(unsigned wi) const {
+  assert(type == 6);
+  std::string r;
+  if (wi == 2) {
+    r = "@"+octal(address);
+  } else if ((wi == 4) && (names.size() >> 0)) {
+    r = sname(names.front());
+    switch (subtype) {
+    case 0:
+    case 2: r += " Subroutine definition"; break;
+    case 1: r += " Common Block definition"; break;
+    case 3: r += " Data storage into common follows"; break;
+    default: break;
+    }
+  }
+  return r;
+}
+
+std::string ObjectBlock::annotation_5and7(unsigned wi) const {
+  assert((type == 5) || (type == 7));
+  std::string r;
+  if (wi == 1) {
+    bool tag;
+    r = sinstr(instr, tag) + octal(address);
+    if (tag) {
+      r += ",1";
+    }
+  } else if ((wi == 4) && (names.size() > 0)) {
+    r = sname(names.front());
+  }
+  return r;
+}
+
+std::string ObjectBlock::annotation_0_0(unsigned wi) const {
+  assert((type == 0) && (subtype == 0));
+  std::string r;
+  /*
+   * 0 type
+   * 1 number
+   * 2 start name
+   * 4 end first name
+   */
+  if ((wi >= 4) && (((wi - 4) % 3) == 0)) {
+    unsigned i = ((wi - 4) / 3);
+    r = sname(names[i]);
+  }
+  return r;
+}
+
+std::string ObjectBlock::annotation_0_4(unsigned wi) const {
+  assert((type == 0) && (subtype == 4));
+  std::string r;
+  /*
+   * 0 type
+   * 1 number
+   * 2 address
+   * 3 start of 24-bit words...
+   * 4 complete w24[0] 8->2
+   * 5 complete w24[1] 10->11->2
+   * 6 -               (12->0 13->1)
+   * 7 complete w24[2]
+   * 8 complete w24[3]
+   */
+  if (wi == 2) {
+    r = "@" + octal(address);
+  } else if (wi >= 3) {
+    if (((wi * 2) % 3) == 2) {
+      unsigned i = ((wi - 3) * 2) / 3;
+      r = items[i].annotation();
+      if (DEBUG) {
+        std::stringstream ss;
+        ss << i;
+        r += " i=" + ss.str();
+      }
+    } else if ((((wi * 2) + 1) % 3) == 2) {
+      unsigned i = ((wi - 3) * 2) / 3;
+      r = items[i].annotation();
+      if (DEBUG) {
+        std::stringstream ss;
+        ss << i;
+        r += " i=" + ss.str() + "*";
+      }
+    }
+    /* else {
+       r = "...";
+       } */
+ }
+
   return r;
 }
 
@@ -799,8 +997,8 @@ std::string Block::extractName(unsigned byteOffset) {
   return r;
 }
 
-ObjectBlock::Data::Data(ERROR &error, uint32_t w24, bool legacy) {
-
+ObjectBlock::Data::Data(ERROR &error, uint32_t w24, bool legacy)
+  : w24(w24) {
   m = false;
   rel = REL::ABSOLUTE; 
   
@@ -809,13 +1007,14 @@ ObjectBlock::Data::Data(ERROR &error, uint32_t w24, bool legacy) {
     instr = (w24 >> 8) & 0xf300; // Instruction
     
     if ((w24 & 0xf) == 0) {
-      type = DT::GENERIC;
+      type = DT::L_GENERIC;
       value = (w24 >> 8) & 0xffff; // Data or generic
       instr = 0;
     } else if ((w24 & 0xf) == 4) {
       type = DT::L_LAST_REL;
       instr = 0;
     } else if ((w24 & 0xf) == 8) {
+      type = DT::L_VALUE;
       value = (w24 >> 4) & 0xffff; // 16-bit value
       instr = 0;
     } else if ((w24 & 0x7) == 1) {
@@ -864,7 +1063,102 @@ ObjectBlock::Data::Data(ERROR &error, uint32_t w24, bool legacy) {
       m = (w24 >> 16) & 1;
     }
   }
-  
+}
+
+std::string ObjectBlock::sinstr(uint16_t instr, bool &tag) {
+  std::string r;
+  unsigned op = (instr >> 10) & 0xf;
+  bool t = ((instr >> 14) & 1);
+  switch (op) {
+  case 0x0: r = "DAC"; break;
+  case 0x1: r = "JMP"; break;
+  case 0x2: r = "LDA"; break;
+  case 0x3: r = "ANA"; break;
+  case 0x4: r = "STA"; break;
+  case 0x5: r = "ERA"; break;
+  case 0x6: r = "ADD"; break;
+  case 0x7: r = "SUB"; break;
+  case 0x8: r = "JST"; break;
+  case 0x9: r = "CAS"; break;
+  case 0xa: r = "IRS"; break;
+  case 0xb: r = "IMA"; break;
+  case 0xc: r = "I/O"; break;
+  case 0xd: r = (t) ? "LDX" : "STX"; break;
+  case 0xe: r = "MPY"; break;
+  case 0xf: r = "DIV"; break;
+  }
+  r += ((instr >> 15) & 1) ? "*" : " ";
+  if (op == 0xd) {
+    t = false;
+  }
+  tag = false;
+  return r;
+}
+
+std::string ObjectBlock::Data::annotation() const {
+  std::string r;
+  bool tag;
+  std::string si = sinstr(instr, tag);
+  std::string more = ((m) ? "M" : "L");
+  std::string srel = ((rel == REL::POS_REL) ? "R" :
+                      (rel == REL::NEG_REL) ? "N" : "A");
+  switch (type) {
+  case DT::GENERIC:
+    r = "      "+octal(value);
+    tag = false;
+    break;
+  case DT::FORWARD_9:
+    r = si + " " + more + octal(value);
+    break;
+  case DT::FORWARD_DAC:
+    assert(((instr >> 10) & 0x0f) == 0);
+    r = si + " " + more + octal(value);
+    break;
+  case DT::KNOWN_9:
+    r = si + " " + srel + octal(value);
+    break;
+  case DT::KNOWN_DAC:
+    assert(((instr >> 10) & 0x0f) == 0);
+    r = si + " " + srel + octal(value);
+    break;
+  case DT::L_GENERIC:
+    r = "G"+octal(value);
+    tag = false;
+    break;
+  case DT::L_ABS_9:
+    r = si + " " + "A"+octal(value);
+    break;
+  case DT::L_ABS_DAC:
+    assert(((instr >> 10) & 0x0f) == 0);
+    r = si + " " + "A"+octal(value);
+    break;
+  case DT::L_REL_9:
+    r = si + " " + "R"+octal(value);
+    break;
+  case DT::L_REL_DAC:
+    assert(((instr >> 10) & 0x0f) == 0);
+    r = si + " " + "R"+octal(value);
+    break;
+  case DT::L_COMP_9:
+    r = si + " " + "C"+octal(value);
+    break;
+  case DT::L_COMP_DAC:
+    assert(((instr >> 10) & 0x0f) == 0);
+    r = si + " " + "C"+octal(value);
+    break;
+  case DT::L_LAST_REL:
+    r = "L"+octal(value);
+    tag = false;
+    break;
+  case DT::L_VALUE:
+    r = "V"+octal(value);
+    tag = false;
+    break;
+  default:
+    break;
+  }
+  if (tag) r += ",1";
+  return octal24(w24) + " " + r;
 }
 
 void ObjectBlock::DecodeBlockType1and2() {
@@ -961,6 +1255,10 @@ void ObjectBlock::DecodeBlockType0_4() {
   }
 }
 
+void ObjectBlock::DecodeBlockType0_10() {
+  
+}
+
 void ObjectBlock::DecodeBlockType0_14() {
   unsigned n = extract8(2) & 0x3f;
   if (n < 4) {
@@ -1012,6 +1310,8 @@ void ObjectBlock::DecodeBlock() {
         // Nothing to do
       } else if (subtype == 4) {
         DecodeBlockType0_4();
+      } else if (subtype == 010) {
+        DecodeBlockType0_10();
       } else if (subtype == 014) {
         DecodeBlockType0_14();
       } else if (subtype == 044) {
@@ -1030,6 +1330,13 @@ void ObjectBlock::DecodeBlock() {
       assert(0);
     }
   }
+}
+
+void ObjectBlock::UpdateBlockType5and7(ObjectBlock &b) {
+  assert((type == 5) || (type == 7));
+  b.clear();
+
+  
 }
 
 ObjectBlock *ObjectBlock::read_new_block(std::istream &st, ERROR *p_error,
