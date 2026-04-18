@@ -599,6 +599,7 @@ protected:
     FORWARD_DAC,
     KNOWN_9,
     KNOWN_DAC,
+    SYM_DEF,
     L_GENERIC,
     L_ABS_9,
     L_ABS_DAC,
@@ -623,6 +624,7 @@ protected:
     uint16_t instr; // For 9-bit relocations - includes F & T bits
     bool m; // Following symbol associated with this address
     REL rel;
+    Data(uint16_t value, uint16_t instr, bool m, REL rel);
     Data(ERROR &error, uint32_t w24, bool legacy = false);
     std::string annotation() const;
   };
@@ -630,6 +632,7 @@ protected:
   virtual std::string annotation(unsigned wi) const;
   std::string annotation_0_0(unsigned wi) const;
   std::string annotation_0_4(unsigned wi) const;
+  std::string annotation_0_44(unsigned wi) const;
   std::string annotation_1and2(unsigned wi) const;
   std::string annotation_3and4(unsigned wi) const;
   std::string annotation_6(unsigned wi) const;
@@ -785,6 +788,8 @@ std::string ObjectBlock::annotation(unsigned wi) const {
     s = annotation_0_0(wi);
   } else if ((type == 0) && (subtype==4)) {
     s = annotation_0_4(wi);
+  } else if ((type == 0) && (subtype==044)) {
+    s = annotation_0_44(wi);
   } else if ((type == 1) || (type == 2)) {
     s = annotation_1and2(wi);
   } else if ((type == 3) || (type == 4)) {
@@ -958,6 +963,15 @@ std::string ObjectBlock::annotation_0_4(unsigned wi) const {
   return r;
 }
 
+std::string ObjectBlock::annotation_0_44(unsigned wi) const {
+  assert((type == 0) && (subtype == 044));
+  std::string r;
+  if ((names.size()>0) && (wi == 4)) {
+    r = sname(names[0]);
+  }
+  return r;
+}
+
 uint8_t Block::extract8(unsigned byteOffset) {
   unsigned wordOffset = byteOffset >> 1;
   bool lower = (byteOffset - (wordOffset << 1));
@@ -1065,12 +1079,21 @@ ObjectBlock::Data::Data(ERROR &error, uint32_t w24, bool legacy)
   }
 }
 
+ObjectBlock::Data::Data(uint16_t value, uint16_t instr, bool m, REL rel)
+  : w24(~0)
+  , type(DT::SYM_DEF)
+  , value(value)
+  , instr(instr)
+  , m(m)
+  , rel(rel) {
+}
+
 std::string ObjectBlock::sinstr(uint16_t instr, bool &tag) {
   std::string r;
   unsigned op = (instr >> 10) & 0xf;
   bool t = ((instr >> 14) & 1);
   switch (op) {
-  case 0x0: r = "DAC"; break;
+  case 0x0: r = "---"; break;
   case 0x1: r = "JMP"; break;
   case 0x2: r = "LDA"; break;
   case 0x3: r = "ANA"; break;
@@ -1256,7 +1279,15 @@ void ObjectBlock::DecodeBlockType0_4() {
 }
 
 void ObjectBlock::DecodeBlockType0_10() {
-  
+  unsigned n = extract8(2) & 0x3f;
+  for (unsigned i = 3; i<n; i+=2) {
+    uint16_t x = extract16(i-1);
+    uint16_t instr = x & 0x1fff; // 13-bit symbol number
+    REL rel = static_cast<REL>((x >> 13) & 3);
+    bool m = (x >> 15) & 1; // The C bit
+    Data d(extract16(i), instr, m, rel);
+    items.push_back(d);
+  }
 }
 
 void ObjectBlock::DecodeBlockType0_14() {
@@ -1275,6 +1306,7 @@ void ObjectBlock::DecodeBlockType0_44() {
   } else {
     std::string s = extractName(4);
     instr = extract16(10) & 1; // The P bit indicating DAC (else 9-bit)
+    names.push_back(s);
   }
 }
 
