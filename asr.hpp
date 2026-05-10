@@ -1,0 +1,76 @@
+/* Honeywell Series 16 emulator
+ * Copyright (C) 1997, 1998, 2005, 2026  Adrian Wise
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA  02111-1307 USA
+ *
+ */
+#ifndef _ASR_HPP_
+#define _ASR_HPP_
+
+#include "tty_file.hpp"
+#include "io_to_p_intf.hpp"
+#include "get_filename_intf.hpp"
+#include <string>
+
+namespace h16 {
+  
+  class StdTty;
+
+#define ASR_PTR 0
+#define ASR_PTP 1
+
+  class ASR
+  {
+  public:
+    ASR(GetFilenameIntf &gfn);
+    bool get_asrch(char &c, bool local_echo=true);
+    void put_asrch(char c);
+    void set_filename(const std::string &filename, unsigned subdevice);
+    void ptp_on();
+    void ptr_on();
+
+    bool file_input(){return (running[ASR_PTR]);};
+
+    bool special(char c);
+  
+  private:
+    GetFilenameIntf &gfn;
+    StdTty &stdTty;
+
+    TTY_file tty_file[2];
+    char *filename[2];
+    bool pending_filename[2];
+    bool running[2];
+    bool ascii_file[2];
+    bool silent_file[2];
+    int char_count[2];
+
+    bool tape_char_received;
+    bool xoff_received;
+    void clear_ptp_flags();
+    void open_punch_file();
+
+    bool stop_after_next;
+    bool xoff_read;
+    void clear_ptr_flags();
+    void open_reader_file();
+
+    void get_filename(bool asr_ptp);
+    void close_file(bool asr_ptp);
+    void echo_asrch(char c, bool from_serial);
+  };
+}
+#endif // _ASR_HPP_

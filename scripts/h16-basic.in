@@ -31,7 +31,7 @@ h16prog="${H16PROG-h16}"
 #
 usage="Usage: $0 [--help] [<source-file>]" 
 help="Options:
---help     display this help and exit.
+--help     display this help and exit."
 
 #
 # flags and values from argument parsing
@@ -75,7 +75,7 @@ while test -n "$1"; do
   esac
 done
 
-if [ $have_srcnam = false ]; then
+if [ "$have_srcnam" = false ]; then
   echo "$usage"; exit 1
 fi
 
@@ -91,11 +91,11 @@ slstnam=$tape_dir/basic16_ptlb_h_41286879_621_a.ptp
 dirnam=`dirname $srcnam`
 basnam=`echo $srcnam | $sedprog 's/\.[^.]*$//'`
 
-if [ $have_objnam = false ]; then
+if [ "$have_objnam" = false ]; then
   objnam=$dirnam/$basnam.obj
 fi
 
-if [ $have_lstnam = false ]; then
+if [ "$have_lstnam" = false ]; then
   lstnam=$dirnam/$basnam.lst
 fi
 

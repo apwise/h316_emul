@@ -2,19 +2,22 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.71])
-AC_INIT([h16],[1.9.0],[apw@adrianwise.co.uk])
+AC_INIT([h16],[1.9.1],[apw@adrianwise.co.uk])
 
 AM_INIT_AUTOMAKE
+LT_INIT
 AC_PROG_MAKE_SET
 
-AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2020, 2024 Adrian Wise])
-AC_CONFIG_SRCDIR([proc.cc])
+AC_COPYRIGHT([Copyright (c) 1997-1999, 2004-2014, 2016-2020, 2024, 2026 Adrian Wise])
+AC_CONFIG_MACRO_DIRS([m4])
+AC_CONFIG_SRCDIR([proc.cpp])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_CXX
-AX_CXX_COMPILE_STDCXX_11(,[mandatory])
+AX_CXX_COMPILE_STDCXX([20],[noext],[mandatory])
+AX_COMPILER_FLAGS()
 
 AC_ARG_ENABLE([gui],
               AS_HELP_STRING([--disable-gui],[Compile a text-only version with no GUI]),
@@ -45,12 +48,14 @@ fi
 AC_CHECK_LIB([termcap], [tgoto])
 AC_CHECK_LIB([history], [add_history])
 AC_CHECK_LIB([readline], [readline])
-AC_CHECK_LIB([depp], [DeppEnable])
 
+AC_CHECK_FILE([/usr/include/digilent/adept], [CFLAGS="$CFLAGS -I/usr/include/digilent/adept"])
+AC_CHECK_FILE([/usr/lib/digilent/adept], [LDFLAGS="$LDFLAGS -L/usr/lib/digilent/adept"])
+AC_CHECK_LIB([depp], [DeppEnable])
 AM_CONDITIONAL([ENABLE_DEPP], [test x$ac_cv_lib_depp_DeppEnable = xyes])
 
 # Checks for header files.
-AC_CHECK_HEADERS([stdlib.h string.h unistd.h errno.h readline/readline.h readline/history.h])
+AC_CHECK_HEADERS([unistd.h readline/readline.h readline/history.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

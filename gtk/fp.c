@@ -305,7 +305,7 @@ static void reg_button_callback (GtkWidget *widget, gpointer data)
 
   rb = (struct ONE_REG_BUTTON *) data;
   fp = rb->fp;
-  first = (fp->intf->cpu == CPU_DDP516) ? RB_X : RB_A;
+  first = (fp->intf->cpu_model == CPU_DDP516) ? RB_X : RB_A;
 
   if (gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON (widget) ) )
     {
@@ -373,7 +373,7 @@ static GtkWidget *reg_buttons(struct FRONT_PANEL *fp)
   hbox2 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10); 
   gtk_box_set_homogeneous( GTK_BOX(hbox2), 1);
   
-  first = (fp->intf->cpu == CPU_DDP516) ? RB_X : RB_A;
+  first = (fp->intf->cpu_model == CPU_DDP516) ? RB_X : RB_A;
 
   for (i=first; i<RB_NUM; i++)
     {
@@ -798,7 +798,7 @@ static GtkWidget *lower(struct FRONT_PANEL *fp)
   gtk_box_pack_start (GTK_BOX (box), vbox, 1, 0, 0);
   gtk_widget_show (vbox);
 
-  if (fp->intf->cpu == CPU_DDP516)
+  if (fp->intf->cpu_model == CPU_DDP516)
     {
       vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);       
       gtk_box_set_homogeneous( GTK_BOX(vbox), 0);

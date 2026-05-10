@@ -28,7 +28,7 @@ To compile the verion of the ASR utility with adept support (to talk
 to FPGA boards (such as the Digilent cmods6) configure with something
 like this (depending on install locations):
 
-./configure CFLAGS="-I /usr/include/digilent/adept" LDFLAGS=-L/usr/lib64/digilent/adept
+./configure CFLAGS="-I /usr/include/digilent/adept" LDFLAGS=-L/usr/lib/digilent/adept
 
 'help' may be typed at the "MON>" prompt:
 

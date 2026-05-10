@@ -10,7 +10,7 @@ BUILDDIR=${workspace}
 run_vt()
 {
   name=$1
-  rm -f logfile.txt
+  rm -f logfile.txt ${name}_actual.txt
   res=${jshuERROR}
   ${workspace}/install/bin/h16 -t ${name}.txt |& tee logfile.txt
   if diff logfile.txt ${name}_expected.txt; then
