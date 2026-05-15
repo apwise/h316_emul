@@ -46,14 +46,14 @@ namespace h16 {
      * Writing to X changes location "zero"
      */
     void set_py(uint16_t n) {p = y = n;}
-    uint16_t get_p() {return p;}
+    uint16_t get_p() const {return p;}
     void set_a(uint16_t n) {a = n;}
-    uint16_t get_a() {return a;}
+    uint16_t get_a() const {return a;}
     void set_b(uint16_t n) {b = n;}
-    uint16_t get_b() {return b;}
+    uint16_t get_b() const {return b;}
     void set_x(uint16_t n);
     void set_just_x(uint16_t n);
-    uint16_t get_x() {return x;}
+    uint16_t get_x() const {return x;}
   
     /* 
      * Get and set sense switches
@@ -111,7 +111,9 @@ namespace h16 {
     virtual bool jump_time_to_event(uint64_t &half_cycles) = 0;
     virtual void io_polling(uint16_t instr) = 0;
   
-    void do_instr(bool &run_flag);
+    bool do_instr();
+    void unwind_instr();
+    uint16_t get_m() {return m;}
 
     void set_run(bool x) { run = x; }
     bool get_run() { return run; }
@@ -178,7 +180,7 @@ namespace h16 {
     bool ea_disable; // disable extended-addressing (after next jmp)
     bool pmi;        // previous mode indicator (ea whn interrupted)
     
-    bool melov_pending;
+    bool melov_pending, prev_melov;
    
     bool dmc_cyc;
     unsigned int dmc_dev;

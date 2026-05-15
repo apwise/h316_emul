@@ -24,6 +24,8 @@
 #include <cstdint>
 #include <iostream>
 #include <cinttypes>
+#include <format>
+#include <cassert>
 
 #include "stdtty.hpp"
 #include "proc.hpp"
@@ -45,6 +47,17 @@
 using namespace h16;
 
 #ifdef ENABLE_GUI
+
+static bool gui_get_filename(const std::string &device_name,
+                             const std::string &extension,
+                             const std::string &description,
+                             bool booting,
+                             std::string &filename) {
+
+  return "todo";
+}
+
+
 /* fp_run() is the routine that is called by the GUI
  * front-panel to have the machine 'run'. It is installed
  * either as an idle routine, when the machine is
@@ -53,8 +66,6 @@ using namespace h16;
 
 static void fp_run(struct FP_INTF *intf) {
   Proc *p = (Proc *) intf->data;
-  bool monitor_flag = 0;
-  bool run = intf->running;
   int count = FP_UPDATE;
 
   /*
@@ -63,9 +74,6 @@ static void fp_run(struct FP_INTF *intf) {
    * that this occured.
    */
   if (intf->start_button_interrupt_pending) {
-    //printf("%s start_button_interrupt_pending",
-    //       __PRETTY_FUNCTION__);
-    
     intf->start_button_interrupt_pending = 0;
     p->start_button();
   }
@@ -78,21 +86,32 @@ static void fp_run(struct FP_INTF *intf) {
     }
     
     /*
-     * Do machine instructions until the count
-     * expires, or the run flag is cleared (eg/ because
-     * of a HLT instruction) or the monitor is
-     * called for
+     * Do machine instructions until the count expires,
+     * or a HLT instruction, or the monitor is called for.
      */
-    while ((count--) && (run || (intf->mode == FPM_SI))
-           && (!monitor_flag)) {
-      p->do_instr(run, monitor_flag);
+    assert(count > 0);
+    Proc::DI di;
+    do {
+      do {
+        di = p->do_instr();
+        if (di == Proc::DI::FNAM) {
+          std::string fn;
+          gui_get_filename(p->get_device_name(),
+                           p->get_extension(),
+                           p->get_description(),
+                           p->is_booting(),
+                           fn);
+            
+          di = Proc::DI::HALT; // For now - to avoid infinite loop
+        }
+      } while (di == Proc::DI::FNAM);
+    } while ((di == Proc::DI::OK) && (--count > 0));
+
+    intf->exit_called = (di == Proc::DI::EXIT);
+
+    if (di == Proc::DI::HALT) {
+      intf->running = false;
     }
-    
-    int exit_code;
-    intf->exit_called = p->get_exit_called(exit_code);
-    
-    if (intf->mode != FPM_SI)
-      intf->running = run;
   }
 }
 
@@ -126,12 +145,28 @@ static bool special_chars(void *callback_arg, int k) {
   return r;
 }
 
+static bool get_filename(const std::string &device_name,
+                         const std::string &extension,
+                         const std::string &description,
+                         bool booting,
+                         std::string &filename) {
+
+  StdTty &stdtty {StdTty::getInstance()};
+  
+  std::string str = std::format("{}: {}> ",
+                                device_name,
+                                (description.size() == 0) ? "Filename" : description);
+  
+  stdtty.get_input(str.c_str(), filename, false);
+
+  return (filename.size() > 0);
+}
+
 /*
  * Where it all starts...
  */
 int main(int argc, char **argv) {
   int exit_code = 0;
-  bool exit_called = false;
 #ifdef ENABLE_GUI
   bool front_panel = 1;
 #endif
@@ -198,19 +233,21 @@ int main(int argc, char **argv) {
      * simulating...
      */
     struct FP_INTF *intf = p->fp_intf();
-    intf->exit_called = 0;
+    intf->exit_called = false;
     intf->run = fp_run;
     intf->master_clear = fp_master_clear;
     
     setup_fp(intf);
-    exit_called = p->get_exit_called(exit_code);
+    
+    if (intf->exit_called) {
+      exit_code = p->get_exit_code();
+    }
   } else {
 #endif
     /*
      * This is the text-based version
      */
     bool run = 0;
-    bool monitor_flag = 0;
     Monitor *m;
     std::ifstream is;
     
@@ -242,15 +279,36 @@ int main(int argc, char **argv) {
      */
     
     while (run) {
-      while (run && (!monitor_flag)) {
-        p->do_instr(run, monitor_flag);
+      Proc::DI di;
+      do {
+        di = p->do_instr();
+        if (di == Proc::DI::FNAM) {
+          std::string fn;
+          if (get_filename(p->get_device_name(),
+                           p->get_extension(),
+                           p->get_description(),
+                           p->is_booting(),
+                           fn)) {
+            
+            p->put_filename(fn);
+          } else {
+            di = Proc::DI::MON;
+          }
+        }
+      } while ((di == Proc::DI::OK) || (di == Proc::DI::FNAM));
+
+      if (di == Proc::DI::HALT) {
+        run = false;
       }
-      exit_called = p->get_exit_called(exit_code);
-      if (exit_called) {
-        fprintf(((exit_code==0) ? stdout : stderr),
-                PRIu64 ": vsim exit code = %d\n", p->get_half_cycles(), exit_code);
-      } else {
-        monitor_flag = 0;
+
+      if (di == Proc::DI::EXIT) {
+        exit_code = p->get_exit_code();
+        // Only print this out in text mode (not GUI)...
+        std::ostream &os((exit_code == 0)? std::cout : std::cerr);
+        os << std::format("{:0>10d}: exit code = {:d}",
+                          p->get_half_cycles(), exit_code) << std::endl;
+        run = false;
+      } else if ((!run) || (di == Proc::DI::MON)) {
         m->do_commands(run, is);
       }
     }

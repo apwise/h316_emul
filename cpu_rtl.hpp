@@ -38,7 +38,7 @@ namespace h16 {
     }
 
     void do_instr(bool &run_flag) {
-      CPU::do_instr(run_flag);
+      run_flag = CPU::do_instr();
     }
 
   private:
