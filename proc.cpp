@@ -39,6 +39,7 @@
 #include "plt.hpp"
 
 #include "instr.hpp"
+#include "file_exception.hpp"
 
 // How long is the start button depressed for (half_cycles)
 #define START_BUTTON_DOWN_TIME 1000
@@ -64,16 +65,37 @@ Proc::~Proc()
   delete mfm;
 }
 
-void Proc::do_instr(bool &run_flag, bool &monitor_flag) {
-  CPU::do_instr(run_flag);
+/*
+    enum class DI { // do_instr return codes
+      OK,   // No problems
+      HALT, // Halt instruction cleared runff
+      EXIT, // exit() has been called
+      MON,  // Request to (re)enter the monitor
+      FNAM, // Device requesting filename
+    };
+*/
+Proc::DI Proc::do_instr() {
+  DI ret = DI::OK;
+  
+  bool run = false;
+  
+  try {
+    run = CPU::do_instr();
+  }
+  catch (FileException &fe) {
+    unwind_instr();
 
+    // Return immediately - changing no further state
+    return DI::FNAM;
+  }
+  
   /*
    * If we're still running then service any
    * events that are due now.
    * If we just halted then flush all pending
    * events.
    */
-  if (run_flag) {
+  if (run) {
     (void) event_queue.call_devices(get_half_cycles());
   } else {
     event_queue.flush_events(get_half_cycles_ref());
@@ -85,8 +107,16 @@ void Proc::do_instr(bool &run_flag, bool &monitor_flag) {
    */
   StdTty::service();
 
-  monitor_flag = goto_monitor_flag;
-  goto_monitor_flag = false;
+  if (exit_called) {
+    ret = DI::EXIT;
+  } else if (goto_monitor_flag) {
+    ret = DI::MON;
+    goto_monitor_flag = false;
+  } else if (!run) {
+    ret = DI::HALT;
+  }
+
+  return ret;
 }
 
 void Proc::exit(int code)
@@ -148,16 +178,23 @@ void Proc::master_clear()
 std::string Proc::get_file_name(const std::string &device_name,
                                 const std::string &extension,
                                 const std::string &description) {
-  StdTty &stdtty {StdTty::getInstance()};
-  std::string res;
 
-  std::string str = std::format("{}: {}> ",
-                                device_name,
-                                (description.size() == 0) ? "Filename" : description);
-    
-  stdtty.get_input(str.c_str(), res, false);
+  if (filename_valid) {
+    filename_valid = false;
+    return filename;
+  }
+  
+  this->device_name = device_name;
+  this->extension = extension;
+  this-> description = description;
+  
+  FileException fe;
+  throw (fe);
+}
 
-  return res;
+bool Proc::is_booting() const {
+  uint16_t p = get_p();
+  return ((p > 0) && (p < 020)); 
 }
 
 void Proc::anomaly(Level level, const std::string &message) {

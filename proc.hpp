@@ -39,13 +39,23 @@ namespace h16 {
 
   class Proc : public CPU, public IoToPIntf {
   public:
+    enum class DI { // do_instr return codes
+      OK,   // No problems
+      HALT, // Halt instruction cleared runff
+      EXIT, // exit() has been called
+      MON,  // Request to (re)enter the monitor
+      FNAM, // Device requesting filename
+    };
+    
     Proc(bool HasEa);
     virtual ~Proc();
 
-    void do_instr(bool &run_flag, bool &monitor_flag);
+    DI do_instr();
  
     void exit(int code);
-    bool get_exit_called(int &code){code = exit_code; return exit_called;}
+    // TODO change this to get_exit_code()
+    //bool get_exit_called(int &code){code = exit_code; return exit_called;}
+    bool get_exit_code(){return exit_code;}
 
     void start_button();
     void goto_monitor() { goto_monitor_flag = true; }
@@ -105,6 +115,15 @@ namespace h16 {
     bool dump_vmem(const std::string &, unsigned exec_addr, bool octal=false);
     bool dump_coemem(const std::string &, unsigned exec_addr);
 
+    bool is_booting() const;
+    std::string &get_device_name() {return device_name;}
+    std::string &get_extension() {return extension;}
+    std::string &get_description() {return description;}
+    void put_filename(const std::string &fn) {
+      filename = fn;
+      filename_valid = true;
+    }
+
   private:
     Mfm *mfm;
 
@@ -124,7 +143,18 @@ namespace h16 {
     EventQueue event_queue;
     static constexpr double cycle_time = 1.60; // Microseconds
     static constexpr double half_cycles_per_microsecond = (2.0 / cycle_time);
-  
+
+    /*
+     * get_filename() variables
+     *
+     * Save values from the caller.
+     */
+    std::string device_name;
+    std::string extension;
+    std::string description;
+
+    bool filename_valid;
+    std::string filename; // returned filename
   };
 }
 #endif // _PROC_HPP_

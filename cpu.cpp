@@ -185,6 +185,7 @@ void CPU::master_clear() {
   fetched = false;
 
   melov_pending = false;
+  prev_melov = false;
   dmc_cyc = false;
   dmc_dev = 0;
   fetched_p = 0;
@@ -2050,13 +2051,13 @@ void CPU::write_prt(unsigned int n, uint16_t v) {
  * This is where the action happens!
  *
  *****************************************************************/
-void CPU::do_instr(bool &run_flag) {
+bool CPU::do_instr() {
   uint16_t instr;
   uint16_t dmc_addr=0;
   int16_t dmc_data=0;
   bool dmc_erl=false;
 
-  run = true; // else we wouldn't have gotten here!
+  run = true; // Might be cleared in do_HLT()
 
   /*
    * fetched records whether or not an instruction
@@ -2066,7 +2067,7 @@ void CPU::do_instr(bool &run_flag) {
 
     /*
      * Yes, it has been fetched
-     * Normal executions sequence...
+     * Normal execution sequence...
      */
 
     if (break_flag) {
@@ -2153,6 +2154,7 @@ void CPU::do_instr(bool &run_flag) {
 
       last_jmp_self_minus_one = jmp_self_minus_one;
       jmp_self_minus_one = false;
+      prev_melov = melov;
       melov = melov_pending;
       melov_pending = false;
 
@@ -2252,5 +2254,16 @@ void CPU::do_instr(bool &run_flag) {
   }
   
   fetched = true;
-  run_flag = run; // pass back the run status
+  return run; // pass back the run status
+}
+
+void CPU::unwind_instr() {
+  /*
+   * unwind state changes in do_instr() before the call vi
+   * instr_table.dispatch if it throws an exception.
+   */
+  melov_pending = melov;
+  melov = prev_melov;
+  jmp_self_minus_one = last_jmp_self_minus_one;
+  p = fetched_p;
 }
