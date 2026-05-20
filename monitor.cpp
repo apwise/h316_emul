@@ -233,6 +233,11 @@ void Monitor::break_command(std::vector<std::string> &words, const std::string &
         c = buffer[i];
       }
     }
+
+    if (c == '#') {
+      // Comment - ignore the rest of the line
+      break;
+    }
     
     unsigned j = i;
 
@@ -267,8 +272,6 @@ bool Monitor::do_command(bool &run, std::vector<std::string> words) {
   
   if (words.size() == 0) return ok; // Blank lines allowed in script files
   
-  if (words.front()[0] == '#') return ok; // comment
-
   std::string &scmd {words.front()};
   if (command_map.count(scmd) != 0) {
     const CmdTab &cte (command_map.at(scmd));
