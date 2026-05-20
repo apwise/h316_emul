@@ -1321,7 +1321,7 @@ void CPU::do_INH(uint16_t instr [[maybe_unused]]) {
   if (ml) {
     melov_pending = true;
   }
-  // Even if in memory loackout mode still treated as an inhibit
+  // Even if in memory lockout mode still treated as an inhibit
   pi_pending = pi = false;
 }
 
