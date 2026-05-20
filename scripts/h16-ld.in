@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 pkgdatadir=@pkgdatadir@
 
@@ -235,6 +235,18 @@ if ${h16prog} -t ${tmpnam2} > /dev/null; then
     fi
     if [ "${high_set}" = false ]; then
         high=`awk '/HIGH/ { print $2}' ${map_nam}`
+
+        # If desectorizing into non-base sectors using SETB,
+        # then it's possible that a SETB region is above
+        # HIGH. So check each value of BASE in the map to see
+        # whether high needs to be changed.
+
+        mapfile -t bases < <( awk '/BASE/ { print $2}' ${map_nam} )
+        for b in "${bases[@]}"; do
+            if [ `expr "${b}" ">" "${high}"` -ne 0 ]; then
+                high="${b}"
+            fi
+        done
     fi
     start=`awk '/START/ { print $2}' ${map_nam}`
     names=`awk '/NAMES/ { print $2}' ${map_nam}`
