@@ -53,7 +53,7 @@ static bool gui_get_filename(const std::string &device_name,
                              const std::string &description,
                              bool booting,
                              std::string &filename) {
-
+  std::cout << "Hello" << std::endl;
   return "todo";
 }
 
