@@ -38,6 +38,7 @@ usage="Usage: $0 [--help] [Options] [-o <slst-basename>] ([-f] <object-file>)*"
 help="Options:
 --help     display this help and exit.
 --go       Make the SLST a load-and-go tape.
+--omem     Produce, in addition, an octal memory file.
 --vmem     Produce, in addition, a Verilog memory initialisation file.
 --coe      Produce, in addition, a Xilinx initialisation file.
 --map|-m   Produce, in addition, a map file.
@@ -56,6 +57,7 @@ help="Options:
 #
 usage_flag=false
 load_and_go=false
+omem_file=false
 vmem_file=false
 coe_file=false
 map_file=false
@@ -81,6 +83,8 @@ while [ -n "$1" ]; do
         --help) echo "$usage"; echo "$help"; ${rmprog} -f ${tmpnam}; exit ${EXIT_OK};;
         
         --go) load_and_go=true;;
+        
+        --omem) omem_file=true;;
         
         --vmem) vmem_file=true;;
         
@@ -204,6 +208,7 @@ fi
 
 base_nam=`expr //${slst_nam} : '.*/\([^.]*\)'`
 full_nam=`dirname ${slst_nam}`/${base_nam}
+omem_nam=${full_nam}.omem
 vmem_nam=${full_nam}.vmem
 coem_nam=${full_nam}.coe
 
@@ -339,7 +344,7 @@ ptp ${slst_nam}
 g
 EOF
 
-if [ "${vmem_file}" = true -o ${coe_file} = true ]; then
+if [ "${omem_file}" = true -o "${vmem_file}" = true -o ${coe_file} = true ]; then
     # Clear upper memory containing LDR-APM and PAL-AP
     # and LDR-APM's name table
     cat >> ${tmpnam} <<EOF
@@ -353,6 +358,12 @@ g'77774           # runs until STA, above, is replaced by HLT
 clear
 m'77776,'000000   # clear last two
 m'77777,'000000   # words of memory
+EOF
+fi
+
+if [ "${omem_file}" = true ]; then
+    cat >> ${tmpnam} <<EOF
+omem ${omem_nam},'${start}
 EOF
 fi
 
