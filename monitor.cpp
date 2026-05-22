@@ -26,6 +26,7 @@
 #include <csignal>
 #include <cctype>
 #include <cassert>
+#include <algorithm>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y autoconf-archive
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+    - name: auto
+      run: |
+        aclocal
+        autoconf
+        automake --add-missing
+    - name: enable-verif
+      run: |
+        mkdir -p build-enable-verif install-enable-verif
+        cd build-enable-verif
+        ../configure --prefix=${GITHUB_WORKSPACE}/install-enable-verif --enable-verif --disable-gui --disable-spi
+        make
+        make install
+    - name: packages2
+      run: sudo apt-get install -y libgtk-3-dev
+    - name: enable-gui
+      run: |
+        mkdir -p build-enable-gui install-enable-gui
+        cd build-enable-gui
+        ../configure --prefix=${GITHUB_WORKSPACE}/install-enable-gui --enable-gui --disable-verif --disable-spi
+        make
+        make install
+    - name: VT
+      run: |
+        cd tests/VT
+        INSTALLATION=install-enable-verif ./VT.sh
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: (!cancelled())
+      with:
+        files: |
+          tests/VT/results/TEST_h316_emul.VT.xml
+    - name: distcheck
+      run: |
+        cd build-enable-verif
+        make distcheck
+    - name: Publish Release File
+      uses: actions/upload-artifact@v7
+      with:
+        name: Release tarfile
+        path: build-enable-verif/h16-*.tar.gz
