@@ -54,9 +54,9 @@ jobs:
       run: |
         cd build-enable-verif
         make distcheck
-    - name: Publish Release File
-      uses: actions/upload-artifact@v7
-      with:
-        name: tarfile
-        path: build-enable-verif/h16-*.tar.gz
-        compression-level: 0
+#    - name: Publish Release File
+#      uses: actions/upload-artifact@v7
+#      with:
+#        name: tarfile
+#        path: build-enable-verif/h16-*.tar.gz
+#        compression-level: 0
