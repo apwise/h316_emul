@@ -5,14 +5,15 @@ workspace="$( cd `dirname $0`/../..; pwd )"
 . ../scripts/jshutest.inc
 
 jshu_pkgname=h316_emul
-BUILDDIR=${workspace}
+
+INSTALLDIR="${INSTALLATION:-install}"
 
 run_vt()
 {
   name=$1
   rm -f logfile.txt ${name}_actual.txt
   res=${jshuERROR}
-  ${workspace}/install/bin/h16 -t ${name}.txt |& tee logfile.txt
+  ${workspace}/${INSTALLDIR}/bin/h16 -t ${name}.txt |& tee logfile.txt
   if diff logfile.txt ${name}_expected.txt; then
       res=${jshuPASS}
   else
