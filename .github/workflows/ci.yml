@@ -59,3 +59,4 @@ jobs:
       with:
         name: tarfile
         path: build-enable-verif/h16-*.tar.gz
+        compression-level: 0
