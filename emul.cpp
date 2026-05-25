@@ -108,21 +108,15 @@ static void fp_master_clear(struct FP_INTF *intf) {
 #endif
 
 /*
- * Do whatever has to happen in the case that
- * an Alt-key is pressed
+ * Offer the input character to various devices to
+ * implement things like starting readers or generating
+ * start-button interrupts.
  */
 static bool special_chars(void *callback_arg, int k) {
   Proc *p = static_cast<Proc *>(callback_arg);
-  bool r = false;
 
-  if ( k == ('s' | 0x80)) {
-    p->start_button();
-    r = 1;
-  } else if ( k == ('m' | 0x80)) {
-    p->goto_monitor();
-    r = 1;
-  }
-  
+  bool r = p->special(k);
+
   return r;
 }
 

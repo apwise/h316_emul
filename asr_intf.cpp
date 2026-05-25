@@ -233,10 +233,22 @@ void AsrIntf::event(int reason)
       activity = Activity::NONE;
       input_pending = false;
       ready = true;
-        p.set_interrupt(mask);
+      p.set_interrupt(mask);
     }
     break;
-    
+
+  case Event::KEYBRD: {
+    char c;
+    if (asr->get_asrch(c)) {
+      data_buf = c & 0xff;
+      activity = Activity::NONE;
+      input_pending = false;
+      ready = true;
+      p.set_interrupt(mask);
+    }
+  }
+    break;
+
   case Event::PTR_ON:
     asr->ptr_on();
     break;
@@ -260,7 +272,19 @@ void AsrIntf::set_filename(const std::string &filename, unsigned subdevice) {
 }
 
 bool AsrIntf::special(char c) {
-  return asr->special(c);
+  bool r = false;
+  if ((c & 0x80) == 0) {
+    // This is a normal character
+    if ((!output_mode) &&   // In input mode
+        (mask != 0) &&      // The mask is set
+        (!input_pending) && // Input is not already pending
+        (!asr->file_input())) {  // Not reading from a file
+      p.queue(0, *this, iEvent(KEYBRD) );
+    }
+  } else {
+    r = asr->special(c);
+  }
+  return r;
 }
 
 DEFINE_UNEXPECTED_DMC(AsrIntf)
