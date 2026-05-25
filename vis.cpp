@@ -28,9 +28,29 @@ VIS::VIS(IoToPIntf &p)
 }
 
 DEFINE_UNEXPECTED_INA(VIS)
-DEFINE_UNEXPECTED_SKS(VIS)
+
+IoStatus VIS::sks(uint16_t instr)
+{
+  bool r = false;
+  
+  switch(instr & 0700) {
+
+  case 0100: r = true; break; // Assumed to be skip if not interrupting
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
 DEFINE_UNEXPECTED_OTA(VIS)
-DEFINE_UNEXPECTED_OCP(VIS)
+
+void VIS::ocp(uint16_t instr)
+{
+  // Silently ignore all OCP
+}
+
 DEFINE_NULL_SMK(VIS)
 DEFINE_NULL_EVENT(VIS)
 DEFINE_UNEXPECTED_DMC(VIS)

@@ -28,7 +28,22 @@ DOT::DOT(IoToPIntf &p)
 }
 
 DEFINE_UNEXPECTED_INA(DOT)
-DEFINE_UNEXPECTED_SKS(DOT)
+
+IoStatus DOT::sks(uint16_t instr)
+{
+  bool r = false;
+  
+  switch(instr & 0700) {
+
+  case 0100: r = true; break; // Assumed to be skip if not interrupting
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
 DEFINE_UNEXPECTED_OTA(DOT)
 DEFINE_UNEXPECTED_OCP(DOT)
 DEFINE_NULL_SMK(DOT)

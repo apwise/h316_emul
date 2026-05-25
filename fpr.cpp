@@ -28,7 +28,23 @@ FPR::FPR(IoToPIntf &p)
 }
 
 DEFINE_UNEXPECTED_INA(FPR)
-DEFINE_UNEXPECTED_SKS(FPR)
+
+IoStatus FPR::sks(uint16_t instr)
+{
+  bool r = false;
+  
+  switch(instr & 0700) {
+
+  case 0100: r = true; break; // Assumed to be skip if FST not interrupting
+  case 0300: r = true; break; // Assumed to be skip if LST not interrupting
+   
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
 DEFINE_UNEXPECTED_OTA(FPR)
 DEFINE_UNEXPECTED_OCP(FPR)
 DEFINE_NULL_SMK(FPR)

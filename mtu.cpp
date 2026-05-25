@@ -28,7 +28,23 @@ MTU::MTU(IoToPIntf &p)
 }
 
 DEFINE_UNEXPECTED_INA(MTU)
-DEFINE_UNEXPECTED_SKS(MTU)
+
+IoStatus MTU::sks(uint16_t instr)
+{
+  bool r = false;
+  
+  switch(instr & 0700) {
+
+  case 0100: r = true; break; // skip if not busy
+  case 0400: r = true; break; // skip if not interrupting
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
 DEFINE_UNEXPECTED_OTA(MTU)
 DEFINE_UNEXPECTED_OCP(MTU)
 DEFINE_NULL_SMK(MTU)

@@ -28,9 +28,30 @@ PRP::PRP(IoToPIntf &p)
 }
 
 DEFINE_UNEXPECTED_INA(PRP)
-DEFINE_UNEXPECTED_SKS(PRP)
+
+IoStatus PRP::sks(uint16_t instr)
+{
+  bool r = false;
+  
+  switch(instr & 0700) {
+
+  case 0100: r = true; break; // Assumed to be skip if reader not interrupting
+  case 0300: r = true; break; // Assumed to be skip if punch not interrupting
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
 DEFINE_UNEXPECTED_OTA(PRP)
-DEFINE_UNEXPECTED_OCP(PRP)
+
+void PRP::ocp(uint16_t instr)
+{
+  // Silently ignore all OCP
+}
+
 DEFINE_NULL_SMK(PRP)
 DEFINE_NULL_EVENT(PRP)
 DEFINE_UNEXPECTED_DMC(PRP)

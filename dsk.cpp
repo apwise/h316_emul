@@ -28,7 +28,22 @@ DSK::DSK(IoToPIntf &p)
 }
 
 DEFINE_UNEXPECTED_INA(DSK)
-DEFINE_UNEXPECTED_SKS(DSK)
+
+IoStatus DSK::sks(uint16_t instr)
+{
+  bool r = false;
+  
+  switch(instr & 0700) {
+
+  case 0000: r = false; break; // Assumed to be skip if disk on
+    
+  default:
+    p.anomaly(IoToPIntf::Level::ERROR, message(instr));
+  }
+  
+  return status(r);
+}
+
 DEFINE_UNEXPECTED_OTA(DSK)
 DEFINE_UNEXPECTED_OCP(DSK)
 DEFINE_NULL_SMK(DSK)
