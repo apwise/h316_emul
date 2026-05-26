@@ -115,6 +115,17 @@ h16_SOURCES += 	spi.cpp \
 
 endif
 
+if ENABLE_UKC
+
+h16_SOURCES +=  mtu.cpp mtu.hpp \
+                dot.cpp dot.hpp \
+                fpr.cpp fpr.hpp \
+                prp.cpp prp.hpp \
+                dsk.cpp dsk.hpp \
+                vis.cpp vis.hpp
+
+endif
+
 nodist_h16_SOURCES = version.h
 
 BUILT_SOURCES = version.h

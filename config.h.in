@@ -6,6 +6,9 @@
 /* Define to 1 to compile with SPI */
 #undef ENABLE_SPI
 
+/* Define to 1 to compile with UKC devices */
+#undef ENABLE_UKC
+
 /* Define to 1 to compile with verification devices */
 #undef ENABLE_VERIF
 
