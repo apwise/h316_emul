@@ -43,10 +43,11 @@ namespace h16 {
       PLT = 027, // Incremental plotter
     
 #if ENABLE_VERIF
+      NUL = 037, // Used as an unused I/O device in X16_08T1
       // Devices for verification purposes
-      VSM = 035, // Simulation exit code
-      VD1 = 036, // DMC verification - channel
-      VD2 = 037, // DMC verification - central controller
+      VSM = 075, // Simulation exit code
+      VD1 = 076, // DMC verification - channel
+      VD2 = 077, // DMC verification - central controller
 #endif
     };
   
