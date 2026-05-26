@@ -28,6 +28,7 @@
 #include <set>
 
 #include "dum.hpp"
+#include "nul.hpp"
 #include "asr_intf.hpp"
 #include "ptr.hpp"
 #include "ptp.hpp"
@@ -75,6 +76,7 @@ IoDispatch::IoDispatch(IoToPIntf &p)
   io_table[D(PLT)] = new PLT(p);
 
 #if ENABLE_VERIF
+  io_table[D(NUL)] = new NUL(p);
   io_table[D(VSM)] = new VSIM(p);
   VDMC *vdmc = new VDMC(p, D(VD2));
   io_table[D(VD1)] = vdmc;

@@ -143,12 +143,13 @@ StdTty::StdTty()
   savedState = new SavedState;
   
   if (isatty(STDIN_FILENO)) {
+
     // Install a signal handler to catch SIGIO
     struct sigaction sa {};
     sa.sa_handler = catch_sigio;
 
     tty_input = false;
-    
+
     int res = sigaction(SIGIO, &sa, &savedState->sa);
     perror(res, "StdTty: sigaction()");
 
@@ -158,10 +159,13 @@ StdTty::StdTty()
     
     savedState->flags = flags; // Save to restore at exit
     
-    flags |= O_NONBLOCK;
+    flags |= (O_NONBLOCK | O_ASYNC);
     
     res = fcntl(STDIN_FILENO, F_SETFL, flags);
     perror(res, "StdTty: fcntl(F_SETFL)");
+
+    res = fcntl(STDIN_FILENO, F_SETOWN, getpid());
+    perror(res, "StdTty: fcntl(F_SETOWN)");
 
     // Save the current terminal attributes
     res = tcgetattr(STDIN_FILENO, &savedState->t);
@@ -185,6 +189,7 @@ StdTty::~StdTty() {
       perror(res, "~StdTty: sigaction()");
     }
     delete savedState;
+    savedState = nullptr;
   }
 }
 
@@ -417,8 +422,7 @@ void StdTty::perror(int res, const std::string &prefix) {
 void StdTty::service_tty_input()
 {
   bool r;
-
-  tty_input = 0;
+  tty_input = false;
 
   if ((!canonical) && isatty(0)) {
       while ((r = read (STDIN_FILENO, &pending_char, 1)) == 1) {
@@ -440,7 +444,6 @@ void StdTty::service_tty_input()
 
 bool StdTty::special_action(char c)
 {
-  // cout << __PRETTY_FUNCTION__ << "\n";
   bool r = false;
   int k = ((int) c) & 0xff;
 
@@ -457,7 +460,7 @@ bool StdTty::special_action(char c)
     k |= 0x80; // try putting on the top bit
   }
 
-  if (( k & 0x80 ) && (callback)) {
+  if (callback) {
     r = (*callback)(callback_arg, k);
   }
   

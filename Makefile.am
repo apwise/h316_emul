@@ -31,6 +31,7 @@ if ENABLE_DEPP
 endif
 
 h16_SOURCES = 	dum.cpp \
+		nul.cpp \
 		asr_intf.cpp \
 		emul.cpp \
 		event_queue.cpp \
@@ -47,6 +48,7 @@ h16_SOURCES = 	dum.cpp \
 		rtc.cpp \
 		gpl.c \
 		dum.hpp \
+		nul.hpp \
 		asr.hpp \
 		event_queue.hpp \
 		io_to_p_intf.hpp \

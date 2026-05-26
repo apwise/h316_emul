@@ -271,16 +271,14 @@ void Proc::send_event(IoDispatch::Device dev, unsigned reason) {
 
 bool Proc::special(char k)
 {
-  bool r = false;
+  bool r = ioDispatch.tty_special(k);
 
-  r = ioDispatch.tty_special(k);
-
-  if ( (k & 0x7f) == 'h' ) {
-    std::cout << "ALT-m Go to the monitor\nALT-s Start button interrupt" << std::endl;
-  }
-
-  if (!r) {
+  if (!r && ((k & 0x80) != 0)) {
     switch (k & 0x7f) {
+    case 'h':
+      std::cout << "ALT-m Go to the monitor\nALT-s Start button interrupt" << std::endl;
+      // Don't set 'r' so that other routines can also print help
+      break;
     case 's':
       start_button();
       r = 1;

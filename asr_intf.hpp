@@ -36,6 +36,7 @@ namespace h16 {
       DUMMY_CYCLE,
       OUTPUT,
       INPUT,
+      KEYBRD,
 
       // These can be used in direct calls to event():
       PTR_ON,
