@@ -273,19 +273,25 @@ bool Proc::special(char k)
 {
   bool r = ioDispatch.tty_special(k);
 
+  // Special-case ALT-h to also print help from this level
+  if (((k & 0x80) != 0) && ((k & 0x7f) == 'h')) {
+    r = false;
+  }
+
   if (!r && ((k & 0x80) != 0)) {
     switch (k & 0x7f) {
     case 'h':
-      std::cout << "ALT-m Go to the monitor\nALT-s Start button interrupt" << std::endl;
-      // Don't set 'r' so that other routines can also print help
+      std::cout << "ALT-m Go to the monitor\n"
+                << "ALT-s Start button interrupt" << std::endl;
+      r = true;
       break;
     case 's':
       start_button();
-      r = 1;
+      r = true;
       break;
     case 'm':
       goto_monitor();
-      r = 1;
+      r = true;
       break;
     }
   }

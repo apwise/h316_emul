@@ -452,8 +452,13 @@ bool StdTty::special_action(char c)
      the gnome-terminal sends ESC folowed by <c>. */
 
   if (k == C_ESC) {
-    escape = true;
-    return true; // Don't want ESC to become pending
+    if (escape) {
+      // Two escapes - send ESC
+      escape = false;
+    } else {
+      escape = true;
+      return true; // Don't want ESC to become pending
+    }
   }
 
   if (escape) {
