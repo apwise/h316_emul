@@ -58,10 +58,14 @@ using namespace h16;
 
 static bool special_chars(void *callback_arg, int k)
 {
-  ASR *p = static_cast<ASR *>(callback_arg);
-  bool r = p->special(k);
+  ASR *asr = static_cast<ASR *>(callback_arg);
 
-#if 0
+  if (((k & 0x80) != 0) && ((k & 0x7f) == 'h')) {
+    std::cout << "\nALT-h Print this help\n";
+  }
+
+  bool r = asr->special(k);
+
   // Special-case ALT-h to also print help from this level
   if (((k & 0x80) != 0) && ((k & 0x7f) == 'h')) {
     r = false;
@@ -73,9 +77,13 @@ static bool special_chars(void *callback_arg, int k)
       std::cout << "ALT-q Quit\n";
       r = true;
       break;
+    case 'q':
+      asr->master_clear();
+      exit(0);
+      break;
     }
   }
-#endif
+
   return r;
 }
 
