@@ -35,7 +35,6 @@ namespace h16 {
   public:
     Monitor(Proc &p, int argc, char **argv);
     void do_commands(bool &run, std::ifstream &is);
-    void sig_handler(int signo);
     
   private:
     struct CmdTab {
