@@ -44,11 +44,6 @@
 
 #define PROMPT "MON"
 
-namespace h16 {
-  static Monitor *monitor = 0;
-  static void sig_handler(int signo);
-}
-
 using namespace h16;
 
 const std::vector<std::string> Monitor::instructions_text {
@@ -86,20 +81,6 @@ const std::vector<Monitor::CmdTab> Monitor::commands {
   {"warranty",   CmdTab::ANY, 0, 0, "Statement of no warranty",                     &Monitor::warranty},
 };
 
-static void h16::sig_handler(int signo)
-{
-  if (monitor) {
-    monitor->sig_handler(signo);
-  }
-}
-
-void Monitor::sig_handler(int signo)
-{
-  if (signo == SIGINT) {
-    p.goto_monitor();
-  }
-}
-
 Monitor::Monitor(Proc &p, int argc, char **argv)
   : p(p)
   , argc(argc)
@@ -109,19 +90,6 @@ Monitor::Monitor(Proc &p, int argc, char **argv)
   , doing_commands(false)
   , run(false)
 {
-  if (!monitor) {
-    struct sigaction sa;
-
-    bzero(&sa, sizeof(struct sigaction));
-           
-    sa.sa_handler = &::sig_handler;
-    
-    if (sigaction(SIGINT, &sa, 0)) {
-      abort();
-    }
-    monitor = this;
-  }
-
   // Populate the command_map
   for (auto &cmd: commands) {
     command_map.insert({cmd.name,cmd});

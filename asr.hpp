@@ -45,6 +45,7 @@ namespace h16 {
     bool file_input(){return (running[ASR_PTR]);};
 
     bool special(char c);
+    void master_clear();
   
   private:
     GetFilenameIntf &gfn;

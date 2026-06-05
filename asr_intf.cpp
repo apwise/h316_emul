@@ -67,6 +67,10 @@ void AsrIntf::master_clear()
   output_mode = false;
   output_pending = false;
   activity = Activity::NONE;
+
+  if (asr) {
+    asr->master_clear();
+  }
 }
 
 IoStatus AsrIntf::ina(uint16_t instr, int16_t &data)

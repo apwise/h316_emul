@@ -58,8 +58,33 @@ using namespace h16;
 
 static bool special_chars(void *callback_arg, int k)
 {
-  ASR *p = static_cast<ASR *>(callback_arg);
-  return p->special(k);
+  ASR *asr = static_cast<ASR *>(callback_arg);
+
+  if (((k & 0x80) != 0) && ((k & 0x7f) == 'h')) {
+    std::cout << "\nALT-h Print this help\n";
+  }
+
+  bool r = asr->special(k);
+
+  // Special-case ALT-h to also print help from this level
+  if (((k & 0x80) != 0) && ((k & 0x7f) == 'h')) {
+    r = false;
+  }
+
+  if (!r && ((k & 0x80) != 0)) {
+    switch (k & 0x7f) {
+    case 'h':
+      std::cout << "ALT-q Quit\n";
+      r = true;
+      break;
+    case 'q':
+      asr->master_clear();
+      exit(0);
+      break;
+    }
+  }
+
+  return r;
 }
 
 class Pal_monitor {
@@ -299,8 +324,6 @@ int main(int argc, char **argv)
   bool ok;
   Pal_monitor pal_monitor;
   
-  stdtty.register_callback(nullptr, &special_chars);
-
   if (tape) {
     asr.set_filename(tape, ASR_PTR);
     asr.ptr_on();

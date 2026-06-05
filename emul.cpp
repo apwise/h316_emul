@@ -63,9 +63,6 @@ static void fp_run(struct FP_INTF *intf) {
    * that this occured.
    */
   if (intf->start_button_interrupt_pending) {
-    //printf("%s start_button_interrupt_pending",
-    //       __PRETTY_FUNCTION__);
-    
     intf->start_button_interrupt_pending = 0;
     p->start_button();
   }
@@ -134,16 +131,16 @@ int main(int argc, char **argv) {
   if ((argc>arg) &&
       ((strncmp(argv[arg], "-h", 2)==0) ||
        (strncmp(argv[arg], "--h", 3)==0))) {
-    printf("Usage: %s [-h|--h] [-t [<script-file]]\n", argv[0]);
-    printf("     : [-h|--h] Prints this help\n");
-    printf("     : -t Selects text-only mode. %s\n",
+    std::cout << "Usage: " << argv[0] << " [-h|--h] [-t [<script-file]]\n"
+              << "     : [-h|--h] Prints this help\n"
+              << "     : -t Selects text-only mode. "
 #ifdef ENABLE_GUI
-           "(Disables the GUI)"
+              << "(Disables the GUI)\n"
 #else
-           "(Assumed, because compiled without GUI support)"
+              << "(Assumed, because compiled without GUI support)\n"
 #endif
-           );
-    printf("     : type \"help\" at \"MON>\" prompt in text-only mode for help on script file commands\n");
+              << "     : type \"help\" at \"MON>\" prompt in text-only mode for help on script file commands"
+              << std::endl;
     
     exit(0);
   }
@@ -241,8 +238,10 @@ int main(int argc, char **argv) {
       }
       exit_called = p->get_exit_called(exit_code);
       if (exit_called) {
-        fprintf(((exit_code==0) ? stdout : stderr),
-                PRIu64 ": vsim exit code = %d\n", p->get_half_cycles(), exit_code);
+        p->master_clear(); // Allow devices to close files.
+        std::ostream &os((exit_code==0) ? std::cout : std::cerr);
+        os << '\n' << std::dec << p->get_half_cycles()
+           << ": vsim exit code = " << exit_code << std::endl;
       } else {
         monitor_flag = 0;
         m->do_commands(run, is);

@@ -218,12 +218,13 @@ void StdTty::set_canonical(bool c)
       res = tcgetattr (STDIN_FILENO, &tattr);
       perror(res, "StdTty::set_canonical(false): tcgetattr()");
       
-      tattr.c_lflag &= ~(ICANON|ECHO);
-      tattr.c_iflag &= ~(IGNCR | ICRNL | INLCR);
-      tattr.c_oflag |= (ONLCR | ONLRET);
-      tattr.c_oflag &= ~(ONOCR);
-      tattr.c_cc[VMIN] = 0;
-      tattr.c_cc[VTIME] = 0;
+      tattr.c_lflag &= ~(ICANON|ECHO); // Turn of canonical and echoing of chars
+      tattr.c_iflag &= ~(IGNCR | ICRNL | INLCR); // Input: don't ignore CR, xlate CR to LF, or LF to CR
+      tattr.c_oflag |= (ONLCR | ONLRET); // Output: Map LF to CR-LF, treat LF as moving to column 0
+      tattr.c_oflag &= ~(ONOCR); // Don't output CR at column 0
+      tattr.c_lflag &= ~(ISIG); // Disable ^C, ^Z, ^S, signals
+      tattr.c_cc[VMIN] = 0; // Minimum characters for non-canonical read (polling read)
+      tattr.c_cc[VTIME] = 0; // Timeout in deciseconds for noncanonical read (polling read)
       
       res = tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
       perror(res, "StdTty::set_canonical(false): tcsetattr()");
@@ -452,8 +453,13 @@ bool StdTty::special_action(char c)
      the gnome-terminal sends ESC folowed by <c>. */
 
   if (k == C_ESC) {
-    escape = true;
-    return true; // Don't want ESC to become pending
+    if (escape) {
+      // Two escapes - send ESC
+      escape = false;
+    } else {
+      escape = true;
+      return true; // Don't want ESC to become pending
+    }
   }
 
   if (escape) {

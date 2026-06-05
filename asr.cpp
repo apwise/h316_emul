@@ -201,7 +201,7 @@ void ASR::ptr_on() {
 
 void ASR::get_filename(bool asr_ptp)
 {
-  std::string temp = gfn.get_file_name(((asr_ptp) ? "AsrPTP: " : "AsrPTR: "), "ptp", "");
+  std::string temp = gfn.get_file_name(((asr_ptp) ? "AsrPTP" : "AsrPTR"), "ptp", "");
   set_filename(temp, asr_ptp);
 }
 
@@ -254,66 +254,60 @@ bool ASR::special(char c)
   if ((c & 0x80) != 0) {
     switch(c & 0x7f) {
     case 'h': /* help */
-      printf("\n");
-      printf("ALT-h Print this help\n");
-      printf("ALT-p Select file for punch output\n");
-      printf("ALT-u Start punch\n");
-      printf("ALT-r Select file for reader input\n");
-      printf("ALT-t Start reader\n");
+      printf("ALT-p Select file for ASR punch output\n");
+      printf("ALT-u Start ASR punch\n");
+      printf("ALT-r Select file for ASR reader input\n");
+      printf("ALT-t Start ASR reader\n");
       printf("      \'&\' before filename specifies ASCII file\n");
       printf("      \'@\' before filename specifies silent\n");
-      printf("ALT-c Close files\n");
-      printf("ALT-q Quit\n");
-      // Don't set 'r' so that other routines can also print help
+      printf("ALT-c Close ASR files\n");
+      r = true;
       break;
     
     case 'c': /* close files */
-      close_file(ASR_PTP);
-      close_file(ASR_PTR);
-      clear_ptr_flags();
-      clear_ptp_flags();
-      r = 1;
-      break;
-    
-    case 'q': /* quit */
-      close_file(ASR_PTP);
-      close_file(ASR_PTR);
-      r = 1;
-      exit(0);
+      master_clear();
+      r = true;
       break;
     
     case 'p': /* punch */
       close_file(ASR_PTP);
       clear_ptp_flags();
       get_filename(ASR_PTP);
-      r = 1;
+      r = true;
       break;
     
     case 'r': /* reader */
       close_file(ASR_PTR);
       clear_ptr_flags();
       get_filename(ASR_PTR);
-      r = 1;
+      r = true;
       break;
     
     case 't': /* start reader */
       open_reader_file();
-      r = 1;
+      r = true;
       break;
 
     case 'u': /* start punch */
       open_punch_file();
-      r = 1;
+      r = true;
       break;
     
     case 'z': /* Print some status */
       printf("\nAsrPTR:\n");
       printf("running = %d\n", ((int)running[ASR_PTR]) );
       printf("char_count = %d\n", ((int) char_count[ASR_PTR]) );
-    
-      r = 1;
+      r = true;
       break;
     }
   }
   return r;
+}
+
+void ASR::master_clear()
+{
+  close_file(ASR_PTP);
+  close_file(ASR_PTR);
+  clear_ptr_flags();
+  clear_ptp_flags();
 }
