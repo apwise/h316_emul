@@ -67,9 +67,6 @@ namespace h16 {
     void set_canonical(bool c);
     bool get_canonical(){return canonical;};
   
-    void catch_sigio() {
-      tty_input = true;
-    };
     bool get_tty_input(){return tty_input;};
     void service_tty_input();
 
@@ -90,7 +87,8 @@ namespace h16 {
     char cr_or_lf;
 
     static void catch_sigio(int sig);
-  
+    static void catch_sigterm(int sig);
+
     void perror(int res, const std::string &prefix);
               
     bool special_action(char c);

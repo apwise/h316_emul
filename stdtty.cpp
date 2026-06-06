@@ -21,6 +21,7 @@
 #include "config.h"
 #include "stdtty.hpp"
 
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <cstdarg>
@@ -124,10 +125,26 @@ StdTty::StdTtyDestructor::~StdTtyDestructor() {
   }
 };
 
+/*
+ * Catch SIGIO
+ *
+ * All this does is set a flag to indicate that the STDIN
+ * file descriptor should be polled for input.
+ */
 void StdTty::catch_sigio(int sig) {
   pStdTty->tty_input = true;
 };
 
+/*
+ * Catch SIGTERM
+ *
+ * This attempts to get the terminal back into its original state
+ * when the process is killed. Since the static object, StdTty::destructor,
+ * will be destroyed, there's nothing to do but exit().
+ */
+void StdTty::catch_sigterm(int sig) {
+  exit(1);
+};
 
 StdTty::StdTty()
   : savedState(nullptr)
@@ -151,7 +168,7 @@ StdTty::StdTty()
     tty_input = false;
 
     int res = sigaction(SIGIO, &sa, &savedState->sa);
-    perror(res, "StdTty: sigaction()");
+    perror(res, "StdTty: sigaction(SIGIO)");
 
     // Save current stdin flags
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
@@ -170,6 +187,11 @@ StdTty::StdTty()
     // Save the current terminal attributes
     res = tcgetattr(STDIN_FILENO, &savedState->t);
     perror(res, "StdTty: tcgetattr()");
+
+    // Install a signal handler to catch SIGTERM
+    sa.sa_handler = catch_sigterm;
+    res = sigaction(SIGTERM, &sa, &savedState->sa);
+    perror(res, "StdTty: sigaction(SIGTERM)");
   }
   
   set_canonical(false);
@@ -194,12 +216,17 @@ StdTty::~StdTty() {
 }
 
 void StdTty::register_callback(void *callback_arg, callback_t *callback) {
+  assert(!this->callback); // Can't register twice
   this->callback_arg = callback_arg;
   this->callback = callback;
 }
 
 void StdTty::set_canonical(bool c)
 {
+  if (!savedState) {
+    return;
+  }
+
   int res;
   tty_input = false;
   pending = false;
