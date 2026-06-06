@@ -147,7 +147,8 @@ void StdTty::catch_sigterm(int sig) {
 };
 
 StdTty::StdTty()
-  : savedState(nullptr)
+  : isatty(::isatty(STDIN_FILENO))
+  , savedState(nullptr)
   , canonical(true)
   , tty_input(false)
   , pending(false)
@@ -159,7 +160,7 @@ StdTty::StdTty()
 {
   savedState = new SavedState;
   
-  if (isatty(STDIN_FILENO)) {
+  if (isatty) {
 
     // Install a signal handler to catch SIGIO
     struct sigaction sa {};
@@ -200,7 +201,7 @@ StdTty::StdTty()
 StdTty::~StdTty() {
   set_canonical(true); // Restore terminal characteristics
   if (savedState) {
-    if (isatty(STDIN_FILENO)) {
+    if (isatty) {
 
       // Restore original stdin flags
       int res = fcntl(STDIN_FILENO, F_SETFL, savedState->flags);
@@ -231,30 +232,32 @@ void StdTty::set_canonical(bool c)
   tty_input = false;
   pending = false;
 
-  if ((c != canonical) && isatty(STDIN_FILENO)) {
+  if (c != canonical) {
 
-    if (c) {
-      // non-canonical to canonical
+    if (isatty) {
+      if (c) {
+        // non-canonical to canonical
       
-      res = tcsetattr(STDIN_FILENO, TCSAFLUSH, &savedState->t);
-      perror(res, "StdTty::set_canonical(true): tcsetattr()");
-    } else {
-      // canonical to non-canonical
+        res = tcsetattr(STDIN_FILENO, TCSAFLUSH, &savedState->t);
+        perror(res, "StdTty::set_canonical(true): tcsetattr()");
+      } else {
+        // canonical to non-canonical
 
-      struct termios tattr;
-      res = tcgetattr (STDIN_FILENO, &tattr);
-      perror(res, "StdTty::set_canonical(false): tcgetattr()");
+        struct termios tattr;
+        res = tcgetattr (STDIN_FILENO, &tattr);
+        perror(res, "StdTty::set_canonical(false): tcgetattr()");
       
-      tattr.c_lflag &= ~(ICANON|ECHO); // Turn of canonical and echoing of chars
-      tattr.c_iflag &= ~(IGNCR | ICRNL | INLCR); // Input: don't ignore CR, xlate CR to LF, or LF to CR
-      tattr.c_oflag |= (ONLCR | ONLRET); // Output: Map LF to CR-LF, treat LF as moving to column 0
-      tattr.c_oflag &= ~(ONOCR); // Don't output CR at column 0
-      tattr.c_lflag &= ~(ISIG); // Disable ^C, ^Z, ^S, signals
-      tattr.c_cc[VMIN] = 0; // Minimum characters for non-canonical read (polling read)
-      tattr.c_cc[VTIME] = 0; // Timeout in deciseconds for noncanonical read (polling read)
+        tattr.c_lflag &= ~(ICANON|ECHO); // Turn of canonical and echoing of chars
+        tattr.c_iflag &= ~(IGNCR | ICRNL | INLCR); // Input: don't ignore CR, xlate CR to LF, or LF to CR
+        tattr.c_oflag |= (ONLCR | ONLRET); // Output: Map LF to CR-LF, treat LF as moving to column 0
+        tattr.c_oflag &= ~(ONOCR); // Don't output CR at column 0
+        tattr.c_lflag &= ~(ISIG); // Disable ^C, ^Z, ^S, signals
+        tattr.c_cc[VMIN] = 0; // Minimum characters for non-canonical read (polling read)
+        tattr.c_cc[VTIME] = 0; // Timeout in deciseconds for noncanonical read (polling read)
       
-      res = tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
-      perror(res, "StdTty::set_canonical(false): tcsetattr()");
+        res = tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
+        perror(res, "StdTty::set_canonical(false): tcsetattr()");
+      }
     }
     
     canonical = c;
@@ -268,23 +271,24 @@ void StdTty::set_canonical(bool c)
  */
 bool StdTty::got_char(char &c)
 {
-  bool r;
+  bool r = false;
   
   if (pending) {
-    r = 1;
-    pending = 0;
+    r = true;
+    pending = false;
     c = pending_char;
-  } else {
+  } else if (! isatty) {
     r = (read(STDIN_FILENO, &c, 1) == 1);
     
-    if ((! isatty(STDIN_FILENO)) && (c == '\n')) {
-      // If input redirected from a file (or pipe) then translate
-      // a line-end to a carriage-return, as if typed on keyboard.
-      c = '\r';
-    }
-    
-    if (r)
+    if (r) {
+      if (c == '\n') {
+        // If input redirected from a file (or pipe) then translate
+        // a line-end to a carriage-return, as if typed on keyboard.
+        c = '\r';
+      }
+
       r = !special_action(c);
+    }
   }
   
   return r;
@@ -420,7 +424,7 @@ void StdTty::get_input(const std::string &prompt, std::string &str, bool more)
   } else {
     str.clear();
     
-    if (! isatty(STDIN_FILENO)) {
+    if (! isatty) {
       // Input is not from a terminal (file or pipe?)
       // and something failed - probably EOF.
       // Returning as normal will be interpreted as a blank
@@ -452,21 +456,22 @@ void StdTty::service_tty_input()
   bool r;
   tty_input = false;
 
-  if ((!canonical) && isatty(0)) {
-      while ((r = read (STDIN_FILENO, &pending_char, 1)) == 1) {
-        /*
-         * if pending is already set then at this point
-         * we drop data. Unfortunate, but we have to move
-         * on else the special processing will not happen for
-         * the queued characters.
-         */
-        if (pending) {
-          putc(0x07, stdout);
-          fflush(stdout);
-        }
-        if (r)
-          pending = !special_action(pending_char);
+  if ((!canonical) && isatty) {
+    while ((r = read(STDIN_FILENO, &pending_char, 1)) == 1) {
+      /*
+       * if pending is already set then at this point
+       * we drop data. Unfortunate, but we have to move
+       * on else the special processing will not happen for
+       * the queued characters.
+       */
+      if (pending) {
+        putc(0x07, stdout);
+        fflush(stdout);
       }
+      if (r) {
+        pending = !special_action(pending_char);
+      }
+    }
   }
 }
 

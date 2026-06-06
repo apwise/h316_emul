@@ -71,6 +71,7 @@ namespace h16 {
     void service_tty_input();
 
   private:
+    const bool isatty;
     struct SavedState *savedState;
     bool canonical;
     bool tty_input;
