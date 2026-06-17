@@ -43,6 +43,14 @@
 #include "spi.hpp"
 #include "fram.hpp"
 #endif
+#if ENABLE_UKC
+#include "mtu.hpp"
+#include "dot.hpp"
+#include "fpr.hpp"
+#include "prp.hpp"
+#include "dsk.hpp"
+#include "vis.hpp"
+#endif
 
 #include "proc.hpp"
 
@@ -64,6 +72,10 @@ IoDispatch::IoDispatch(IoToPIntf &p)
   io_table[D(PTP)] = new PTP(p);
   io_table[D(LPT)] = new LPT(p);
 
+#if ENABLE_UKC
+  io_table[D(MTU)] = new MTU(p);
+#endif
+  
 #if ENABLE_SPI
   FRAM *fram = new FRAM;
   SpiDev *devices[SPI::CHIP_SELECTS] = {fram, 0, 0, 0};
@@ -75,6 +87,14 @@ IoDispatch::IoDispatch(IoToPIntf &p)
   io_table[D(RTC)] = new RTC(p);
   io_table[D(PLT)] = new PLT(p);
 
+#if ENABLE_UKC
+  io_table[D(DOT)] = new DOT(p);
+  io_table[D(FPR)] = new FPR(p);
+  io_table[D(PRP)] = new PRP(p);
+  io_table[D(DSK)] = new DSK(p);
+  io_table[D(VIS)] = new VIS(p);
+#endif
+  
 #if ENABLE_VERIF
   io_table[D(NUL)] = new NUL(p);
   io_table[D(VSM)] = new VSIM(p);

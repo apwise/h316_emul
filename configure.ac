@@ -44,6 +44,14 @@ if test x$enable_spi = xyes; then
   AC_DEFINE_UNQUOTED([ENABLE_SPI], [1], [Define to 1 to compile with SPI])
 fi
 
+AC_ARG_ENABLE([ukc],
+              AS_HELP_STRING([--enable-ukc],[Compile with support for UKC devices]),
+              [], [enable_ukc=no])
+AM_CONDITIONAL([ENABLE_UKC], [test x$enable_ukc = xyes])
+if test x$enable_ukc = xyes; then
+  AC_DEFINE_UNQUOTED([ENABLE_UKC], [1], [Define to 1 to compile with UKC devices])
+fi
+
 # Checks for libraries.
 AC_CHECK_LIB([termcap], [tgoto])
 AC_CHECK_LIB([history], [add_history])

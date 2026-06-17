@@ -41,7 +41,16 @@ namespace h16 {
 #endif
       RTC = 020, // Real-time clock
       PLT = 027, // Incremental plotter
-    
+
+#if ENABLE_UKC
+      MTU = 010, // Magnetic tape
+      DOT = 030, // DOT display
+      FPR = 036, // Fast printer
+      PRP = 040, // Papertape reader/punch
+      DSK = 041, // Disk
+      VIS = 046, // VISTS - don't know what it is...
+#endif
+      
 #if ENABLE_VERIF
       NUL = 037, // Used as an unused I/O device in X16_08T1
       // Devices for verification purposes
